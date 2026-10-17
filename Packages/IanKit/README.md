@@ -2,7 +2,7 @@
 
 All logic and views for Ian, as one Swift package. Swift 6 language mode with strict concurrency, macOS 14.
 
-Each folder under `Sources/` is one SwiftPM target. The `.gitkeep` files hold the folders until D1 adds the first source file; delete them then.
+Each folder under `Sources/` is one SwiftPM target.
 
 | Target | Holds | May import | Package |
 |---|---|---|---|

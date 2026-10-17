@@ -1,0 +1,51 @@
+{
+  "actions" : [
+    {
+      "confirm" : null,
+      "id" : "approve",
+      "input" : "none",
+      "label" : "Approve",
+      "style" : "primary"
+    },
+    {
+      "confirm" : "Reject this proposal?",
+      "id" : "reject",
+      "input" : "none",
+      "label" : "Reject",
+      "style" : "secondary"
+    }
+  ],
+  "attention" : "needs_you",
+  "detail" : {
+    "actionClass" : "draft_email",
+    "actionClassLabel" : "Draft email",
+    "confidence" : {
+      "source" : "self_report",
+      "value" : 0.82
+    },
+    "decisionTier" : "personal",
+    "expiresAt" : "2026-10-16T10:30:00.000Z",
+    "kind" : "proposal",
+    "policyDecision" : "propose",
+    "summary" : "A reply to [PERSON] with the revised scope attached.",
+    "targetSystem" : "graph",
+    "targetSystemLabel" : "Outlook"
+  },
+  "dueAt" : null,
+  "horizon" : "now",
+  "id" : "prop_01JAXQ4Z7C5W6N0R2T8V9Y3K1M",
+  "kind" : "proposal",
+  "links" : {
+    "lance" : "https://lance.example.invalid/proposals/prop_01JAXQ4Z7C5W6N0R2T8V9Y3K1M",
+    "source" : null
+  },
+  "meta" : "[CLIENT], draft email, expires at 11:30",
+  "pressure" : 0.72,
+  "title" : "Send the revised scope to [CLIENT]",
+  "unit" : {
+    "id" : "unit_client",
+    "name" : "[CLIENT]"
+  },
+  "version" : 3,
+  "working" : false
+}

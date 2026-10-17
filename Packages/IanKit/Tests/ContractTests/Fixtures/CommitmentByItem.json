@@ -1,0 +1,59 @@
+{
+  "actions" : [
+    {
+      "confirm" : null,
+      "id" : "settle",
+      "input" : "none",
+      "label" : "Settle",
+      "style" : "primary"
+    },
+    {
+      "confirm" : null,
+      "id" : "snooze",
+      "input" : "until",
+      "label" : "Snooze",
+      "style" : "quiet"
+    }
+  ],
+  "attention" : "needs_you",
+  "detail" : {
+    "chase" : {
+      "count" : 0,
+      "lastChasedAt" : null,
+      "nextChaseAt" : null,
+      "state" : "not_chased"
+    },
+    "counterparty" : {
+      "id" : "person_0001",
+      "name" : "[PERSON]"
+    },
+    "evidence" : {
+      "quote" : "I will send the signed order form over by Friday.",
+      "source" : {
+        "kind" : "email",
+        "label" : "Email",
+        "observedAt" : "2026-10-14T14:42:00.000Z",
+        "system" : "graph"
+      }
+    },
+    "kind" : "commitment_by",
+    "toConfirm" : false
+  },
+  "dueAt" : "2026-10-16T16:00:00.000Z",
+  "horizon" : "now",
+  "id" : "cmt_01JAXQ5B2D7F9H1K3M5P7R9T1V",
+  "kind" : "commitment_by",
+  "links" : {
+    "lance" : "https://lance.example.invalid/commitments/cmt_01JAXQ5B2D7F9H1K3M5P7R9T1V",
+    "source" : null
+  },
+  "meta" : "[PERSON] at [CLIENT], due today",
+  "pressure" : 0.64,
+  "title" : "Send [PERSON] the signed order form",
+  "unit" : {
+    "id" : "unit_client",
+    "name" : "[CLIENT]"
+  },
+  "version" : 4,
+  "working" : false
+}

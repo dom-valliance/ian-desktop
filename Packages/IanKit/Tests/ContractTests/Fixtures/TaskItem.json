@@ -1,0 +1,39 @@
+{
+  "actions" : [
+    {
+      "confirm" : null,
+      "id" : "done",
+      "input" : "none",
+      "label" : "Done",
+      "style" : "primary"
+    }
+  ],
+  "attention" : "ambient",
+  "detail" : {
+    "assignee" : {
+      "isPrincipal" : true,
+      "name" : "[PERSON]"
+    },
+    "kind" : "task",
+    "project" : null,
+    "source" : "notion",
+    "status" : "In Progress"
+  },
+  "dueAt" : null,
+  "horizon" : "later",
+  "id" : "task_notion_0000000000000000000000000001",
+  "kind" : "task",
+  "links" : {
+    "lance" : "https://lance.example.invalid/tasks/task_notion_0000000000000000000000000001",
+    "source" : "https://notion.example.invalid/0000000000000000000000000001"
+  },
+  "meta" : "Notion, no due date",
+  "pressure" : 0.1,
+  "title" : "Draft the agenda for the [CLIENT] steering group",
+  "unit" : {
+    "id" : "other",
+    "name" : "Other"
+  },
+  "version" : 2,
+  "working" : true
+}
