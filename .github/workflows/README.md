@@ -1,6 +1,6 @@
 # Workflows
 
-D1 adds three workflows. Dom owns the GitHub side (ADR 0007 in Lance applies here too); CI runs from the first push. All three run on pull requests and on pushes to `main`, with read-only `contents` permission, and cancel an earlier run of the same ref.
+D1 adds three workflows. Dom owns the GitHub side (Lance ADR 0007 applies here too); CI runs from the first push. All three run on pull requests and on pushes to `main`, with read-only `contents` permission, and cancel an earlier run of the same ref.
 
 | Workflow | Runs | On |
 |---|---|---|
@@ -40,5 +40,5 @@ D1 adds three workflows. Dom owns the GitHub side (ADR 0007 in Lance applies her
 ## Rules
 
 - Every action is pinned to a full commit SHA with its version in a trailing comment, as Lance does. Checkout runs with `persist-credentials: false`.
-- Every pnpm step sets `working-directory:` to its package. Corepack takes the pnpm version from the nearest `package.json`, and there is no root one, so `pnpm --dir` would pick the wrong version.
+- Every pnpm step sets `working-directory:` to its package, so corepack reads the pnpm version from that package's `packageManager` field; there is no root `package.json`. Locally, `pnpm --dir` works with pnpm 12.4.2 on the path, as AGENTS.md lists.
 - Before the first push, run each workflow's commands locally with the same binaries the workflow installs.

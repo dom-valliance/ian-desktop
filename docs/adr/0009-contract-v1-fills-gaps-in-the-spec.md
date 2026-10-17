@@ -38,6 +38,7 @@ Naming a field the prose of spec 5 implies (such as `Snapshot.serverTime`, `Chas
 17. **Headers and errors.** Every operation accepts `Desktop-Client-Version`; without it a request is not version-checked. A server that does not offer `POST /handoff` answers `404`.
 18. **Lists.** `GET /items` takes `state` as `open` or `to_confirm`, and pages with `cursor` and `limit` (1 to 200, default 50, as Lance pages today). The snapshot's `items` include alerts and commitments awaiting confirmation; Today excludes the latter.
 19. **Session id.** The heartbeat's `deviceId` is generated at launch and held in memory, so it adds no `UserDefaults` key beyond spec 6.4.
+20. **Field columns.** The field's columns are `field.units`, up to five, drawn in the order sent. Other is last when the server sends it; spec 5.4's "four units plus Other" becomes the server's choice, so a principal with fewer units or nothing ungrouped gets fewer columns, and the client never recognises Other by its id.
 
 ## Consequences
 

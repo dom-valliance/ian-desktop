@@ -19,7 +19,7 @@ Redocly CLI with `recommended-strict` (`redocly.yaml`), so a warning fails the l
 ## Writing to it
 
 - Examples use `[CLIENT]` and `[PERSON]` placeholders and `.invalid` hosts. No real data.
-- Times are UTC with milliseconds. Reuse `DateTime`; a nullable time repeats its pattern inline.
+- Times are UTC with milliseconds. Reuse `DateTime`; a nullable time repeats its pattern inline. Quote every time in an example, and quote `yes`, `no`, `on` and `off`: the fixture extractor reads YAML 1.1, which would turn them into booleans.
 - A property that may be missing a referenced value is optional, never `oneOf` a `$ref` and `null`: the Swift generator drops such a property without an error.
 - Both `oneOf` unions (`ItemDetail`, `StreamEvent`) carry a discriminator `mapping`, which the Swift generator needs. Ajv rejects `mapping`; a validator in the mock must treat `discriminator` as an annotation. The members' single-value `kind` and `type` enums keep `oneOf` unambiguous without it.
 - Nothing in the schema ties `item.kind` to `item.detail.kind`, or a field cell's `unitId` to `field.units`. The mock's tests assert both.
