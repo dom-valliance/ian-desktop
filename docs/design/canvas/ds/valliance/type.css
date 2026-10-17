@@ -1,0 +1,146 @@
+/* ============================================================
+   VALLIANCE — TYPE SYSTEM
+   Satoshi — loaded via Fontshare CDN.
+   Embed in <head>:
+     <link rel="stylesheet" href="https://api.fontshare.com/v2/css?f[]=satoshi@300,301,400,401,500,501,700,701,900,901&display=swap">
+   ============================================================ */
+
+:root {
+  --font-family: 'Satoshi', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+
+  /* Weights */
+  --fw-light:    300;
+  --fw-regular:  400;
+  --fw-medium:   500;
+  --fw-bold:     700;
+  --fw-black:    900;
+
+  /* ─── TYPE SCALE ─── */
+  /* Display — for hero moments                                 */
+  --type-display-size:   64px;
+  --type-display-lh:     1.05;
+  --type-display-ls:     -0.02em;
+  --type-display-weight: var(--fw-medium);
+
+  /* H1 — page titles */
+  --type-h1-size:   44px;
+  --type-h1-lh:     1.1;
+  --type-h1-ls:     -0.015em;
+  --type-h1-weight: var(--fw-regular);
+
+  /* H2 — section headers */
+  --type-h2-size:   32px;
+  --type-h2-lh:     1.15;
+  --type-h2-ls:     -0.01em;
+  --type-h2-weight: var(--fw-regular);
+
+  /* H3 — sub-sections */
+  --type-h3-size:   24px;
+  --type-h3-lh:     1.2;
+  --type-h3-ls:     -0.005em;
+  --type-h3-weight: var(--fw-regular);
+
+  /* H4 — card titles */
+  --type-h4-size:   18px;
+  --type-h4-lh:     1.3;
+  --type-h4-ls:     -0.002em;
+  --type-h4-weight: var(--fw-regular);
+
+  /* Body large — lead paragraphs */
+  --type-body-lg-size:   18px;
+  --type-body-lg-lh:     1.55;
+  --type-body-lg-weight: var(--fw-regular);
+
+  /* Body — default */
+  --type-body-size:   16px;
+  --type-body-lh:     1.55;
+  --type-body-weight: var(--fw-regular);
+
+  /* Body small — dense UI */
+  --type-body-sm-size:   14px;
+  --type-body-sm-lh:     1.5;
+  --type-body-sm-weight: var(--fw-regular);
+
+  /* Label — inputs, UI */
+  --type-label-size:   13px;
+  --type-label-lh:     1.4;
+  --type-label-ls:     0;
+  --type-label-weight: var(--fw-medium);
+
+  /* Caption — meta, helper */
+  --type-caption-size:   12px;
+  --type-caption-lh:     1.4;
+  --type-caption-weight: var(--fw-regular);
+
+  /* Overline — all-caps category */
+  --type-overline-size:   11px;
+  --type-overline-lh:     1.3;
+  --type-overline-ls:     0.08em;
+  --type-overline-weight: var(--fw-medium);
+}
+
+/* Base */
+html {
+  font-family: var(--font-family);
+  font-size: var(--type-body-size);
+  line-height: var(--type-body-lh);
+  color: var(--fg-primary);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
+
+/* Utility classes */
+.t-display   { font-size: var(--type-display-size);   line-height: var(--type-display-lh);   letter-spacing: var(--type-display-ls);   font-weight: var(--type-display-weight); }
+.t-h1        { font-size: var(--type-h1-size);        line-height: var(--type-h1-lh);        letter-spacing: var(--type-h1-ls);        font-weight: var(--type-h1-weight); }
+.t-h2        { font-size: var(--type-h2-size);        line-height: var(--type-h2-lh);        letter-spacing: var(--type-h2-ls);        font-weight: var(--type-h2-weight); }
+.t-h3        { font-size: var(--type-h3-size);        line-height: var(--type-h3-lh);        letter-spacing: var(--type-h3-ls);        font-weight: var(--type-h3-weight); }
+.t-h4        { font-size: var(--type-h4-size);        line-height: var(--type-h4-lh);        letter-spacing: var(--type-h4-ls);        font-weight: var(--type-h4-weight); }
+.t-body-lg   { font-size: var(--type-body-lg-size);   line-height: var(--type-body-lg-lh);   font-weight: var(--type-body-lg-weight); }
+.t-body      { font-size: var(--type-body-size);      line-height: var(--type-body-lh);      font-weight: var(--type-body-weight); }
+.t-body-sm   { font-size: var(--type-body-sm-size);   line-height: var(--type-body-sm-lh);   font-weight: var(--type-body-sm-weight); }
+.t-label     { font-size: var(--type-label-size);     line-height: var(--type-label-lh);     font-weight: var(--type-label-weight); }
+.t-caption   { font-size: var(--type-caption-size);   line-height: var(--type-caption-lh);   font-weight: var(--type-caption-weight); color: var(--fg-muted); }
+.t-overline  { font-size: var(--type-overline-size);  line-height: var(--type-overline-lh);  letter-spacing: var(--type-overline-ls); font-weight: var(--type-overline-weight); text-transform: uppercase; color: var(--fg-muted); }
+
+/* ─── LINKS ───
+   Opt-in `.link` utility. We don't style bare <a> globally so the sidebar
+   nav, button-styled links and other consumers keep control.
+   - Colour: `--fg-link` (75% black) at rest, `--fg-link-hover` (100%) on hover.
+     Dark mode swaps to 80% white → 100% white via the semantic token layer.
+   - Hairline underline with 3px offset; thickens to 2px on hover.
+   - `.link--muted` uses --fg-muted for footers / dense meta runs.
+   - `.link--quiet` hides the underline until hover (for nav-ish links).
+   ─────────────────────────────────────────────────────────── */
+.link {
+  color: var(--fg-link);
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 3px;
+  text-decoration-color: currentColor;
+  transition: text-decoration-thickness var(--duration-base) var(--ease-standard),
+              color var(--duration-base) var(--ease-standard);
+}
+.link:hover {
+  color: var(--fg-link-hover);
+  text-decoration-thickness: 2px;
+}
+.link:focus-visible {
+  outline: none;
+  border-radius: 2px;
+  box-shadow: var(--shadow-focus);
+}
+.link--muted        { color: var(--fg-muted); }
+.link--muted:hover  { color: var(--fg-primary); }
+.link--quiet        { text-decoration: none; }
+.link--quiet:hover  { text-decoration: underline; text-decoration-thickness: 1px; }
+
+/* Prose opt-in: when wrapping a block of editorial body copy, set
+   `.prose` on the parent and bare <a> elements inside inherit .link. */
+.prose a {
+  color: var(--fg-link);
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 3px;
+}
+.prose a:hover { color: var(--fg-link-hover); text-decoration-thickness: 2px; }

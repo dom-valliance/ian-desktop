@@ -1,0 +1,251 @@
+/* ============================================================
+   VALLIANCE — FOUNDATION TOKENS
+   ------------------------------------------------------------
+   Two-layer color system:
+     1. PRIMITIVE   — raw palette values (Off-White, Black, etc.)
+     2. SEMANTIC    — role-based tokens components reference
+   Swap the semantic mapping in [data-theme="dark"] to theme.
+   ============================================================ */
+
+:root {
+  /* ─── PRIMITIVE: OFF-WHITE (warm neutral) ─── */
+  --off-white-20:  rgba(235, 230, 230, 0.20);   /* EBE6E6 @ 20% */
+  --off-white-30:  rgba(235, 230, 230, 0.30);   /* EBE6E6 @ 30% */
+  --off-white-50:  #F2EEEE;
+  --off-white-60:  rgba(235, 230, 230, 0.60);   /* EBE6E6 @ 60% */
+  --off-white-70:  rgba(235, 230, 230, 0.70);   /* EBE6E6 @ 70% */
+  --off-white-80:  rgba(235, 230, 230, 0.80);   /* EBE6E6 @ 80% */
+  --off-white-100: #EBE6E6;
+  --off-white-200: #E6DCDC;
+  --off-white-300: #DBCECE;
+  --off-white-400: #AB9898;
+
+  /* ─── PRIMITIVE: BLACK (alpha ramp on warm canvas) ─── */
+  --black-05:  rgba(0, 0, 0, 0.05);
+  --black-10:  rgba(0, 0, 0, 0.10);
+  --black-20:  rgba(0, 0, 0, 0.20);
+  --black-30:  rgba(0, 0, 0, 0.30);
+  --black-50:  rgba(0, 0, 0, 0.50);
+  --black-70:  rgba(0, 0, 0, 0.70);
+  --black-80:  rgba(0, 0, 0, 0.80);
+  --black-100: rgba(0, 0, 0, 1.00);
+
+  /* ─── PRIMITIVE: WHITE (alpha ramp for dark mode) ─── */
+  --white-5:   rgba(255, 255, 255, 0.05);
+  --white-10:  rgba(255, 255, 255, 0.10);
+  --white-15:  rgba(255, 255, 255, 0.15);
+  --white-20:  rgba(255, 255, 255, 0.20);
+  --white-30:  rgba(255, 255, 255, 0.30);
+  --white-40:  rgba(255, 255, 255, 0.40);
+  --white-50:  rgba(255, 255, 255, 0.50);
+  --white-60:  rgba(255, 255, 255, 0.60);
+  --white-70:  rgba(255, 255, 255, 0.70);
+  --white-80:  rgba(255, 255, 255, 0.80);
+  --white-90:  rgba(255, 255, 255, 0.90);
+  --white-100: rgba(255, 255, 255, 1.00);
+
+  /* ─── PRIMITIVE: GREY (neutral slate, for surfaces + UI) ─── */
+  --grey-highlight: #6D7481;
+  --grey-100:  #F7F5F5;
+  --grey-200:  #F1F1F1;
+  --grey-300:  #E3E3E3;
+  --grey-400:  #DBD5D5;
+  --grey-500:  #A19A9A;
+  --grey-600:  #8D8989;
+  --grey-700:  #757575;
+  --grey-800:  #2E2E2E;
+  --grey-900:  #242424;
+  --grey-1000: #171717;
+
+  /* ─── PRIMITIVE: PINK (accent, warm magenta) ─── */
+  --pink-25:  #FBF0F8;
+  --pink-30:  rgba(243, 211, 235, 0.30);  /* F3D3EB @ 30% */
+  --pink-60:  rgba(243, 211, 235, 0.60);  /* F3D3EB @ 60% */
+  --pink-100: #F3D3EB;
+  --pink-200: #F0B9E2;
+  --pink-300: #AD6A9C;
+  --pink-400: #964B84;
+
+  /* ─── PRIMITIVE: PEACH (accent, warm terracotta) ─── */
+  --peach-25:  #FFF4F0;
+  --peach-50:  #FBEAE2;
+  --peach-75:  #F9E2D7;
+  --peach-100: #F3C3AB;
+  --peach-200: #F3A982;
+  --peach-300: #AC5E37;
+
+  /* ─── PRIMITIVE: BLUE (accent, cool periwinkle) ─── */
+  --blue-50:  #EBF0F8;
+  --blue-75:  #E4EAF5;
+  --blue-100: #C7D3EB;
+  --blue-200: #B0C1E3;
+  --blue-300: #63769C;
+  --blue-400: #476396;
+
+  /* ─── PRIMITIVE: TEAL (accent only — never used as a background surface) ─── */
+  --teal-100: #7FBFC1;
+  --teal-300: #1A5859;
+  --teal-400: #18494A;
+  --teal-500: #0E3233;
+
+  /* ─── NEUTRAL BASELINE ─── */
+  --neutral-base: #EBE6E6;
+
+  /* ═══════════════════════════════════════════════════════════
+     SEMANTIC TOKENS — LIGHT MODE (default)
+     Components should reference ONLY these, never the primitives.
+     ═══════════════════════════════════════════════════════════ */
+
+  /* Backgrounds */
+  --bg-canvas:     var(--off-white-50);   /* the page */
+  --bg-surface:    #FDFBF9;               /* cards, panels */
+  --bg-surface-2:  var(--off-white-100);  /* nested surface */
+  --bg-sunken:     var(--off-white-200);  /* inputs, inset */
+  --bg-overlay:    rgba(10, 8, 8, 0.55);  /* modal backdrop */
+  --bg-inverse:    var(--grey-1000);      /* dark-on-light spots */
+  --bg-row-hover:  var(--white-50);       /* table row hover (light) */
+
+  /* Foregrounds */
+  --fg-primary:    var(--black-100);      /* headings, body */
+  --fg-secondary:  var(--black-80);       /* secondary body */
+  --fg-muted:      var(--black-50);       /* captions, helper */
+  --fg-subtle:     var(--black-30);       /* placeholders */
+  --fg-disabled:   var(--black-20);
+  --fg-on-accent:  var(--off-white-50);
+  --fg-on-inverse: var(--off-white-50);
+
+  /* Borders */
+  --border-subtle:  var(--black-05);
+  --border-default: var(--black-10);
+  --border-strong:  var(--black-20);
+  --border-focus:   var(--blue-300);
+
+  /* Link — 75% black rest, 100% on hover. Dark mode flips below. */
+  --fg-link:        rgba(0, 0, 0, 0.75);
+  --fg-link-hover:  var(--black-100);
+
+  /* Accent — semantic */
+  --accent-primary:       var(--black-100);
+  --accent-primary-hover: var(--grey-900);
+  --accent-pink:          var(--pink-300);
+  --accent-pink-soft:     var(--pink-60);
+  --accent-peach:         var(--peach-300);
+  --accent-peach-soft:    var(--peach-75);
+  --accent-blue:          var(--blue-300);
+  --accent-blue-soft:     var(--blue-75);
+  --accent-highlight:     var(--grey-highlight);
+
+  /* Status */
+  --status-info-fg:      var(--blue-300);
+  --status-info-bg:      var(--blue-50);
+  --status-success-fg:   #2E5F3A;
+  --status-success-bg:   #E4EDE2;
+  --status-warning-fg:   var(--peach-300);
+  --status-warning-bg:   var(--peach-50);
+  --status-danger-fg:    #7A2A2A;
+  --status-danger-bg:    #F3DEDE;
+
+  /* ─── SPACING SCALE (8-pt base, spacious) ─── */
+  --space-0:   0;
+  --space-1:   4px;
+  --space-2:   8px;
+  --space-3:   12px;
+  --space-4:   16px;
+  --space-5:   24px;
+  --space-6:   32px;
+  --space-7:   48px;
+  --space-8:   64px;
+  --space-9:   96px;
+  --space-10:  128px;
+
+  /* ─── RADIUS (subtle — 4px base) ─── */
+  --radius-none: 0;
+  --radius-xs:   2px;
+  --radius-sm:   4px;
+  --radius-md:   6px;
+  --radius-lg:   8px;  /* Default for cards and containers */
+  --radius-card: var(--radius-lg);  /* Alias — kept for back-compat */
+  --radius-xl:   16px;
+  --radius-full: 9999px;
+
+  /* ─── SHADOWS (low-chroma, warm-cast) ─── */
+  --shadow-xs: 0 1px 2px rgba(30, 20, 15, 0.04);
+  --shadow-sm: 0 1px 3px rgba(30, 20, 15, 0.06), 0 1px 2px rgba(30, 20, 15, 0.04);
+  --shadow-md: 0 4px 12px rgba(30, 20, 15, 0.06), 0 2px 4px rgba(30, 20, 15, 0.04);
+  --shadow-lg: 0 12px 32px rgba(30, 20, 15, 0.08), 0 4px 8px rgba(30, 20, 15, 0.04);
+  --shadow-xl: 0 24px 64px rgba(30, 20, 15, 0.12), 0 8px 16px rgba(30, 20, 15, 0.06);
+  --shadow-focus: 0 0 0 3px rgba(74, 80, 112, 0.22);
+
+  /* ─── MOTION ─── */
+  --ease-standard: cubic-bezier(0.2, 0, 0, 1);
+  --ease-entrance: cubic-bezier(0, 0, 0, 1);
+  --ease-exit:     cubic-bezier(0.3, 0, 1, 1);
+  --ease-spring:   cubic-bezier(0.32, 0.72, 0, 1);
+
+  --duration-base:    220ms;
+  --duration-slow:    340ms;
+  --duration-slower:  520ms;
+
+  /* ─── Z-INDEX ─── */
+  --z-base:    0;
+  --z-raised:  10;
+  --z-sticky:  100;
+  --z-overlay: 1000;
+  --z-modal:   1100;
+  --z-toast:   1200;
+  --z-tooltip: 1300;
+}
+
+/* ═══════════════════════════════════════════════════════════
+   SEMANTIC TOKENS — DARK MODE
+   Swap the mapping; components don't change.
+   ═══════════════════════════════════════════════════════════ */
+
+[data-theme="dark"] {
+  --bg-canvas:     var(--grey-1000);
+  --bg-surface:    var(--grey-900);
+  --bg-surface-2:  var(--grey-800);
+  --bg-sunken:     #050404;
+  --bg-overlay:    rgba(0, 0, 0, 0.70);
+  --bg-inverse:    var(--off-white-50);
+  --bg-row-hover:  var(--black-50);       /* table row hover (dark — inverse) */
+
+  --fg-primary:    var(--white-100);
+  --fg-secondary:  var(--white-80);
+  --fg-muted:      var(--white-50);
+  --fg-subtle:     var(--white-30);
+  --fg-disabled:   var(--white-20);
+  --fg-on-accent:  var(--grey-1000);
+  --fg-on-inverse: var(--grey-1000);
+
+  --border-subtle:  var(--white-5);
+  --border-default: var(--white-10);
+  --border-strong:  var(--white-20);
+  --border-focus:   var(--blue-200);
+
+  --fg-link:        rgba(255, 255, 255, 0.80);
+  --fg-link-hover:  var(--white-100);
+
+  --accent-primary:       var(--off-white-50);
+  --accent-primary-hover: var(--off-white-100);
+  --accent-pink:          var(--pink-200);
+  --accent-pink-soft:     rgba(217, 151, 184, 0.15);
+  --accent-peach:         var(--peach-200);
+  --accent-peach-soft:    rgba(211, 144, 102, 0.15);
+  --accent-blue:          var(--blue-200);
+  --accent-blue-soft:     rgba(156, 160, 189, 0.18);
+
+  --status-info-bg:     rgba(156, 160, 189, 0.15);
+  --status-success-fg:  #9EC2A1;
+  --status-success-bg:  rgba(158, 194, 161, 0.12);
+  --status-warning-bg:  rgba(211, 144, 102, 0.15);
+  --status-danger-fg:   #D88C8C;
+  --status-danger-bg:   rgba(216, 140, 140, 0.15);
+
+  --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.30);
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.40), 0 1px 2px rgba(0, 0, 0, 0.30);
+  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.40), 0 2px 4px rgba(0, 0, 0, 0.30);
+  --shadow-lg: 0 12px 32px rgba(0, 0, 0, 0.50), 0 4px 8px rgba(0, 0, 0, 0.30);
+  --shadow-xl: 0 24px 64px rgba(0, 0, 0, 0.60), 0 8px 16px rgba(0, 0, 0, 0.40);
+  --shadow-focus: 0 0 0 3px rgba(156, 160, 189, 0.32);
+}

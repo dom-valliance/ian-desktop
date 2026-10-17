@@ -1,0 +1,129 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<title>Orbit in context, expanded</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+@font-face{font-family:'Satoshi';src:url(/_blob/0fc71bec0e6f45f403814898e95f2538) format('woff2');font-weight:400;font-style:normal}
+@font-face{font-family:'Satoshi';src:url(/_blob/489ba4c1f7f99e30592226cd39bdb4ff) format('woff2');font-weight:500;font-style:normal}
+body{margin:0}
+a{color:rgba(255,255,255,0.8)}a:hover{color:#FFFFFF}
+</style>
+</helmet>
+<div style="width: 1440px; height: 900px; position: relative; overflow: hidden; background: #1B1A1A; color: #FFFFFF; font-family: 'Satoshi', -apple-system, BlinkMacSystemFont, 'Helvetica Neue', sans-serif">
+
+<div aria-hidden="true" style="position: absolute; left: 96px; top: 72px; width: 760px; height: 560px; border-radius: 12px; background: rgba(255,255,255,0.035); border: 1px solid rgba(255,255,255,0.06)"></div>
+<div aria-hidden="true" style="position: absolute; left: 180px; top: 150px; width: 520px; height: 420px; border-radius: 12px; background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.05)"></div>
+
+<sc-if value="{{open}}" hint-placeholder-val="{{ true }}">
+<section aria-label="Ian" style="position: absolute; right: 40px; bottom: 132px; width: 420px; box-sizing: border-box; border-radius: 16px; background: rgba(36,36,36,0.94); border: 1px solid rgba(255,255,255,0.12); box-shadow: 0 24px 64px rgba(0,0,0,0.6), 0 8px 16px rgba(0,0,0,0.4); display: flex; flex-direction: column">
+
+<div style="display: flex; justify-content: space-between; align-items: center; padding: 16px 20px; border-bottom: 1px solid rgba(255,255,255,0.08)">
+<div style="display: flex; flex-direction: column; gap: 2px">
+<div style="font-size: 18px; font-weight: 500">Ian</div>
+<div style="font-size: 12px; color: rgba(255,255,255,0.7)">{{openCount}} open. Dry run</div>
+</div>
+<div style="font-size: 12px; color: rgba(255,255,255,0.7)">Work items</div>
+</div>
+
+<div style="display: flex; flex-direction: column; padding: 8px 12px; gap: 8px">
+<sc-for list="{{items}}" as="item" hint-placeholder-count="3">
+<article style="border-radius: 8px; padding: 12px 14px; background: {{item.bg}}; border: 1px solid {{item.border}}; display: flex; flex-direction: column; gap: 10px">
+<div style="display: flex; gap: 10px; align-items: flex-start">
+<span aria-hidden="true" style="flex: none; margin-top: 6px; width: {{item.dot}}; height: {{item.dot}}; border-radius: 9999px; background: {{item.colour}}"></span>
+<div style="display: flex; flex-direction: column; gap: 2px; min-width: 0">
+<div style="font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; font-weight: 500; color: rgba(255,255,255,0.7)">{{item.kind}}</div>
+<div style="font-size: 15px; font-weight: 500; line-height: 1.35">{{item.title}}</div>
+<div style="font-size: 13px; color: rgba(255,255,255,0.75)">{{item.meta}}</div>
+</div>
+</div>
+<sc-if value="{{item.resolved}}" hint-placeholder-val="{{ false }}">
+<div style="font-size: 13px; color: #9EC2A1">{{item.status}}</div>
+</sc-if>
+<sc-if value="{{item.pending}}" hint-placeholder-val="{{ true }}">
+<div style="display: flex; gap: 8px; flex-wrap: wrap">
+<button type="button" onClick="{{item.primaryRun}}" style="font: inherit; font-size: 13px; min-height: 32px; padding: 6px 14px; border-radius: 6px; border: 0; background: #F2EEEE; color: #171717; cursor: pointer">{{item.primary}}</button>
+<button type="button" onClick="{{item.secondaryRun}}" style="font: inherit; font-size: 13px; min-height: 32px; padding: 6px 14px; border-radius: 6px; border: 1px solid rgba(255,255,255,0.2); background: transparent; color: #FFFFFF; cursor: pointer">{{item.secondary}}</button>
+<button type="button" onClick="{{item.handRun}}" style="font: inherit; font-size: 13px; min-height: 32px; padding: 6px 14px; border-radius: 6px; border: 1px solid rgba(176,193,227,0.45); background: transparent; color: #C7D3EB; cursor: pointer">Hand to Ian</button>
+</div>
+</sc-if>
+</article>
+</sc-for>
+</div>
+
+<div style="padding: 12px 20px 16px; border-top: 1px solid rgba(255,255,255,0.08); display: flex; flex-direction: column; gap: 6px">
+<label for="ian-capture" style="font-size: 12px; color: rgba(255,255,255,0.7)">Tell Ian</label>
+<div style="display: flex; gap: 8px">
+<input id="ian-capture" type="text" placeholder="Chase the estimate and draft a reply" style="flex: 1; min-width: 0; font: inherit; font-size: 14px; padding: 8px 12px; border-radius: 6px; border: 1px solid rgba(255,255,255,0.16); background: #171717; color: #FFFFFF">
+<button type="button" style="font: inherit; font-size: 13px; padding: 8px 14px; border-radius: 6px; border: 0; background: #B0C1E3; color: #171717; cursor: pointer">Send</button>
+</div>
+</div>
+</section>
+</sc-if>
+
+<button type="button" aria-label="{{orbitLabel}}" onClick="{{toggle}}" style="position: absolute; right: 40px; bottom: 40px; width: 76px; height: 76px; padding: 0; border: 0; background: transparent; cursor: pointer">
+<span aria-hidden="true" style="position: absolute; left: 12px; top: 12px; width: 52px; height: 52px; box-sizing: border-box; border-radius: 9999px; border: 1px solid rgba(255,255,255,0.16)"></span>
+<span aria-hidden="true" style="position: absolute; left: 33px; top: 33px; width: 10px; height: 10px; border-radius: 9999px; background: #A19A9A"></span>
+<sc-for list="{{sats}}" as="s" hint-placeholder-count="3">
+<span aria-hidden="true" style="position: absolute; left: {{s.x}}; top: {{s.y}}; width: {{s.size}}; height: {{s.size}}; border-radius: 9999px; background: {{s.colour}}"></span>
+</sc-for>
+</button>
+
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":900}}'>
+class Component extends DCLogic {
+constructor(props) {
+super(props);
+this.state = { open: true, done: {} };
+}
+renderVals() {
+const base = [
+{ id: 'a', kind: 'Commitment, owed by you', title: 'Send the SOW notes', meta: 'To [PERSON], due 17:00 today', level: 'needs', primary: 'Done', secondary: 'Snooze', primaryMsg: 'Settled. Recorded on the ledger', secondaryMsg: 'Snoozed until 16:00' },
+{ id: 'b', kind: 'Proposal from meeting debrief', title: 'Create a Notion task to prepare the workshop agenda', meta: 'Confidence 0.82, self-reported', level: 'needs', primary: 'Approve', secondary: 'Reject', primaryMsg: 'Approved. The executor will create the task', secondaryMsg: 'Rejected. Counted against the rule' },
+{ id: 'c', kind: 'Commitment, owed to you', title: '[PERSON] owes the revised estimate', meta: 'Two working days overdue', level: 'urgent', primary: 'Chase', secondary: 'Snooze', primaryMsg: 'Ian is drafting a chase for your approval', secondaryMsg: 'Snoozed until tomorrow 09:00' }
+];
+const palette = {
+needs: { colour: '#F3A982', dot: '10px', bg: 'rgba(255,255,255,0.03)', border: 'rgba(243,169,130,0.35)' },
+urgent: { colour: '#D88C8C', dot: '12px', bg: 'rgba(216,140,140,0.08)', border: 'rgba(216,140,140,0.6)' }
+};
+const done = this.state.done;
+const mark = (id, msg) => () => this.setState({ done: Object.assign({}, this.state.done, { [id]: msg }) });
+const items = base.map((it) => {
+const p = palette[it.level];
+const status = done[it.id] || '';
+return Object.assign({}, it, p, {
+resolved: !!status,
+pending: !status,
+status: status,
+primaryRun: mark(it.id, it.primaryMsg),
+secondaryRun: mark(it.id, it.secondaryMsg),
+handRun: mark(it.id, 'Handed to Ian. A proposal will follow')
+});
+});
+const open = items.filter((i) => i.pending);
+const spots = [[34, 6], [60, 50], [8, 50], [34, 64]];
+const sats = open.map((i, n) => {
+const big = i.level === 'urgent';
+const size = big ? 12 : 9;
+const xy = spots[n % spots.length];
+return { x: (xy[0] - (big ? 1.5 : 0)) + 'px', y: (xy[1] - (big ? 1.5 : 0)) + 'px', size: size + 'px', colour: i.colour };
+});
+return {
+open: this.state.open,
+toggle: () => this.setState({ open: !this.state.open }),
+items: items,
+sats: sats,
+openCount: open.length,
+orbitLabel: 'Ian, ' + open.length + ' open items. ' + (this.state.open ? 'Close panel' : 'Open panel')
+};
+}
+}
+</script>
+</body>
+</html>

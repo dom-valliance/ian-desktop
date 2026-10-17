@@ -1,0 +1,177 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<title>Five presences, four states</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+@font-face{font-family:'Satoshi';src:url(/_blob/0fc71bec0e6f45f403814898e95f2538) format('woff2');font-weight:400;font-style:normal}
+@font-face{font-family:'Satoshi';src:url(/_blob/489ba4c1f7f99e30592226cd39bdb4ff) format('woff2');font-weight:500;font-style:normal}
+body{margin:0}
+a{color:rgba(255,255,255,0.8)}a:hover{color:#FFFFFF}
+@keyframes ianBreath{0%,100%{transform:scale(1);opacity:1}50%{transform:scale(1.12);opacity:0.85}}
+@keyframes ianPulse{0%,100%{box-shadow:0 0 0 6px rgba(216,140,140,0.22)}50%{box-shadow:0 0 0 12px rgba(216,140,140,0.10)}}
+.ian-breath{animation:ianBreath 4.2s cubic-bezier(0.2,0,0,1) infinite}
+.ian-pulse{animation:ianPulse 1.6s cubic-bezier(0.2,0,0,1) infinite}
+</style>
+</helmet>
+<div style="width: 1440px; height: 1180px; box-sizing: border-box; padding: 64px; background: #171717; color: #FFFFFF; font-family: 'Satoshi', -apple-system, BlinkMacSystemFont, 'Helvetica Neue', sans-serif; display: flex; flex-direction: column; gap: 32px">
+
+<div style="display: flex; justify-content: space-between; align-items: flex-end; gap: 48px">
+<div style="display: flex; flex-direction: column; gap: 12px; max-width: 760px">
+<div style="font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; font-weight: 500; color: rgba(255,255,255,0.7)">Ian on the desktop</div>
+<h1 style="margin: 0; font-size: 44px; line-height: 1.1; letter-spacing: -0.015em; font-weight: 400">Five presences, four states</h1>
+<p style="margin: 0; font-size: 18px; line-height: 1.55; color: rgba(255,255,255,0.8)">Each concept lives in the bottom-right corner of the main display. Colour carries urgency, and every urgency level also differs in size or lightness, so it reads without colour vision.</p>
+</div>
+<div style="display: flex; gap: 20px; font-size: 13px; color: rgba(255,255,255,0.8)">
+<div style="display: flex; align-items: center; gap: 8px"><span style="width: 10px; height: 10px; border-radius: 9999px; background: #8D8989"></span>Resting</div>
+<div style="display: flex; align-items: center; gap: 8px"><span style="width: 10px; height: 10px; border-radius: 9999px; background: #B0C1E3"></span>Working</div>
+<div style="display: flex; align-items: center; gap: 8px"><span style="width: 10px; height: 10px; border-radius: 9999px; background: #F3A982"></span>Needs you</div>
+<div style="display: flex; align-items: center; gap: 8px"><span style="width: 10px; height: 10px; border-radius: 9999px; background: #D88C8C"></span>Urgent</div>
+</div>
+</div>
+
+<div style="display: grid; grid-template-columns: 248px repeat(4, minmax(0, 1fr)); gap: 16px; font-size: 13px; color: rgba(255,255,255,0.7)">
+<div></div>
+<div>Resting. Nothing waiting on you</div>
+<div>Working. An agent run in progress</div>
+<div>Needs you. A decision or commitment due today</div>
+<div>Urgent. P0 or P1, client-facing, time-bound</div>
+</div>
+
+<div style="display: grid; grid-template-columns: 248px repeat(4, minmax(0, 1fr)); grid-auto-rows: 160px; gap: 16px">
+
+<!-- EMBER -->
+<div style="display: flex; flex-direction: column; justify-content: center; gap: 6px">
+<div style="font-size: 22px; font-weight: 500">Ember</div>
+<div style="font-size: 14px; line-height: 1.5; color: rgba(255,255,255,0.8)">A single orb. Says only that something wants you.</div>
+<div style="font-size: 12px; color: rgba(255,255,255,0.7)">Intrusion: lowest. Information: lowest</div>
+</div>
+<div style="position: relative; background: #242424; border: 1px solid rgba(255,255,255,0.1); border-radius: 8px; overflow: hidden">
+<div style="position: absolute; right: 28px; bottom: 28px; width: 12px; height: 12px; border-radius: 9999px; background: #8D8989"></div>
+</div>
+<div style="position: relative; background: #242424; border: 1px solid rgba(255,255,255,0.1); border-radius: 8px; overflow: hidden">
+<div class="{{breath}}" style="position: absolute; right: 26px; bottom: 26px; width: 16px; height: 16px; border-radius: 9999px; background: #B0C1E3; box-shadow: 0 0 0 6px rgba(176,193,227,0.16)"></div>
+</div>
+<div style="position: relative; background: #242424; border: 1px solid rgba(255,255,255,0.1); border-radius: 8px; overflow: hidden">
+<div style="position: absolute; right: 24px; bottom: 24px; width: 20px; height: 20px; border-radius: 9999px; background: #F3A982; box-shadow: 0 0 0 8px rgba(243,169,130,0.2), 0 0 28px rgba(243,169,130,0.35)"></div>
+</div>
+<div style="position: relative; background: #242424; border: 1px solid rgba(255,255,255,0.1); border-radius: 8px; overflow: hidden">
+<div style="position: absolute; right: 64px; bottom: 26px; padding: 4px 10px; border-radius: 9999px; background: #2E2E2E; border: 1px solid rgba(216,140,140,0.5); font-size: 12px; color: #FFFFFF">Client reply overdue</div>
+<div class="{{pulse}}" style="position: absolute; right: 22px; bottom: 22px; width: 24px; height: 24px; border-radius: 9999px; background: #D88C8C; box-shadow: 0 0 0 6px rgba(216,140,140,0.22)"></div>
+</div>
+
+<!-- ORBIT -->
+<div style="display: flex; flex-direction: column; justify-content: center; gap: 6px">
+<div style="font-size: 22px; font-weight: 500">Orbit</div>
+<div style="font-size: 14px; line-height: 1.5; color: rgba(255,255,255,0.8)">A core with one satellite per open item. Count and urgency at a glance.</div>
+<div style="font-size: 12px; color: rgba(255,255,255,0.7)">Intrusion: low. Information: medium</div>
+</div>
+<div style="position: relative; background: #242424; border: 1px solid rgba(255,255,255,0.1); border-radius: 8px; overflow: hidden">
+<svg aria-hidden="true" width="76" height="76" viewBox="0 0 76 76" style="position: absolute; right: 14px; bottom: 14px"><circle cx="38" cy="38" r="26" fill="none" stroke="rgba(255,255,255,0.14)" stroke-width="1"></circle><circle cx="38" cy="38" r="5" fill="#8D8989"></circle><circle cx="38" cy="12" r="3" fill="#757575"></circle><circle cx="60.5" cy="51" r="3" fill="#757575"></circle><circle cx="15.5" cy="51" r="3" fill="#757575"></circle></svg>
+</div>
+<div style="position: relative; background: #242424; border: 1px solid rgba(255,255,255,0.1); border-radius: 8px; overflow: hidden">
+<svg aria-hidden="true" width="76" height="76" viewBox="0 0 76 76" style="position: absolute; right: 14px; bottom: 14px"><circle cx="38" cy="38" r="26" fill="none" stroke="rgba(255,255,255,0.14)" stroke-width="1"></circle><path d="M 38 12 A 26 26 0 0 1 60.5 25" fill="none" stroke="#B0C1E3" stroke-width="2" stroke-linecap="round" opacity="0.6"></path><circle cx="38" cy="38" r="5" fill="#B0C1E3"></circle><circle cx="60.5" cy="25" r="3.5" fill="#B0C1E3"></circle><circle cx="60.5" cy="51" r="3" fill="#757575"></circle><circle cx="15.5" cy="51" r="3" fill="#757575"></circle></svg>
+</div>
+<div style="position: relative; background: #242424; border: 1px solid rgba(255,255,255,0.1); border-radius: 8px; overflow: hidden">
+<svg aria-hidden="true" width="76" height="76" viewBox="0 0 76 76" style="position: absolute; right: 14px; bottom: 14px"><circle cx="38" cy="38" r="26" fill="none" stroke="rgba(255,255,255,0.14)" stroke-width="1"></circle><circle cx="38" cy="38" r="5" fill="#A19A9A"></circle><circle cx="15.5" cy="25" r="5.5" fill="#F3A982"></circle><circle cx="15.5" cy="25" r="9" fill="none" stroke="rgba(243,169,130,0.35)" stroke-width="1.5"></circle><circle cx="60.5" cy="51" r="3" fill="#757575"></circle><circle cx="38" cy="64" r="3" fill="#757575"></circle><circle cx="60.5" cy="25" r="3" fill="#757575"></circle></svg>
+</div>
+<div style="position: relative; background: #242424; border: 1px solid rgba(255,255,255,0.1); border-radius: 8px; overflow: hidden">
+<div style="position: absolute; right: 104px; bottom: 70px; padding: 4px 10px; border-radius: 9999px; background: #2E2E2E; border: 1px solid rgba(216,140,140,0.5); font-size: 12px; color: #FFFFFF">Risk language, client mail</div>
+<svg aria-hidden="true" width="96" height="96" viewBox="0 0 96 96" style="position: absolute; right: 14px; bottom: 14px"><circle cx="58" cy="58" r="26" fill="none" stroke="rgba(255,255,255,0.14)" stroke-width="1"></circle><circle cx="58" cy="58" r="5" fill="#A19A9A"></circle><line x1="41" y1="41" x2="20" y2="20" stroke="rgba(216,140,140,0.6)" stroke-width="1" stroke-dasharray="2 3"></line><circle cx="16" cy="16" r="7" fill="#D88C8C"></circle><circle cx="80.5" cy="71" r="3" fill="#757575"></circle><circle cx="58" cy="84" r="3" fill="#757575"></circle></svg>
+</div>
+
+<!-- SIGIL -->
+<div style="display: flex; flex-direction: column; justify-content: center; gap: 6px">
+<div style="font-size: 22px; font-weight: 500">Sigil</div>
+<div style="font-size: 14px; line-height: 1.5; color: rgba(255,255,255,0.8)">An abstract face of two marks. Personality without a persona.</div>
+<div style="font-size: 12px; color: rgba(255,255,255,0.7)">Intrusion: medium. Information: low</div>
+</div>
+<div style="position: relative; background: #242424; border: 1px solid rgba(255,255,255,0.1); border-radius: 8px; overflow: hidden">
+<svg aria-hidden="true" width="48" height="48" viewBox="0 0 48 48" style="position: absolute; right: 22px; bottom: 22px"><rect x="0.5" y="0.5" width="47" height="47" rx="14" fill="#2E2E2E" stroke="rgba(255,255,255,0.14)"></rect><line x1="14" y1="24" x2="20" y2="24" stroke="#A19A9A" stroke-width="2" stroke-linecap="round"></line><line x1="28" y1="24" x2="34" y2="24" stroke="#A19A9A" stroke-width="2" stroke-linecap="round"></line></svg>
+</div>
+<div style="position: relative; background: #242424; border: 1px solid rgba(255,255,255,0.1); border-radius: 8px; overflow: hidden">
+<svg aria-hidden="true" width="48" height="48" viewBox="0 0 48 48" style="position: absolute; right: 22px; bottom: 22px"><rect x="0.5" y="0.5" width="47" height="47" rx="14" fill="#2E2E2E" stroke="rgba(176,193,227,0.4)"></rect><circle cx="15" cy="23" r="2.5" fill="#B0C1E3"></circle><circle cx="27" cy="23" r="2.5" fill="#B0C1E3"></circle><circle cx="18" cy="34" r="1.5" fill="#B0C1E3" opacity="0.5"></circle><circle cx="24" cy="34" r="1.5" fill="#B0C1E3" opacity="0.75"></circle><circle cx="30" cy="34" r="1.5" fill="#B0C1E3"></circle></svg>
+</div>
+<div style="position: relative; background: #242424; border: 1px solid rgba(255,255,255,0.1); border-radius: 8px; overflow: hidden">
+<svg aria-hidden="true" width="52" height="52" viewBox="0 0 52 52" style="position: absolute; right: 20px; bottom: 20px"><rect x="0.5" y="0.5" width="51" height="51" rx="15" fill="#2E2E2E" stroke="rgba(243,169,130,0.6)"></rect><circle cx="19" cy="23" r="3.5" fill="#F3A982"></circle><circle cx="33" cy="23" r="3.5" fill="#F3A982"></circle><path d="M 20 34 Q 26 37 32 34" fill="none" stroke="#F3A982" stroke-width="2" stroke-linecap="round"></path></svg>
+</div>
+<div style="position: relative; background: #242424; border: 1px solid rgba(255,255,255,0.1); border-radius: 8px; overflow: hidden">
+<div style="position: absolute; right: 88px; bottom: 36px; padding: 4px 10px; border-radius: 9999px; background: #2E2E2E; border: 1px solid rgba(216,140,140,0.5); font-size: 12px; color: #FFFFFF">Kill switch tripped</div>
+<svg aria-hidden="true" width="56" height="56" viewBox="0 0 56 56" style="position: absolute; right: 18px; bottom: 18px"><rect x="1" y="1" width="54" height="54" rx="16" fill="#2E2E2E" stroke="#D88C8C" stroke-width="2"></rect><circle cx="20" cy="24" r="5" fill="#D88C8C"></circle><circle cx="36" cy="24" r="5" fill="#D88C8C"></circle><line x1="22" y1="38" x2="34" y2="38" stroke="#D88C8C" stroke-width="2" stroke-linecap="round"></line></svg>
+</div>
+
+<!-- TIDE -->
+<div style="display: flex; flex-direction: column; justify-content: center; gap: 6px">
+<div style="font-size: 22px; font-weight: 500">Tide</div>
+<div style="font-size: 14px; line-height: 1.5; color: rgba(255,255,255,0.8)">No avatar. A line of light along the screen edge rises with urgency.</div>
+<div style="font-size: 12px; color: rgba(255,255,255,0.7)">Intrusion: lowest. Information: low</div>
+</div>
+<div style="position: relative; background: #242424; border: 1px solid rgba(255,255,255,0.1); border-radius: 8px; overflow: hidden">
+<div style="position: absolute; right: 0; top: 0; bottom: 0; width: 2px; background: rgba(255,255,255,0.08)"></div>
+</div>
+<div style="position: relative; background: #242424; border: 1px solid rgba(255,255,255,0.1); border-radius: 8px; overflow: hidden">
+<div style="position: absolute; right: 0; top: 0; bottom: 0; width: 2px; background: rgba(255,255,255,0.08)"></div>
+<div style="position: absolute; right: 0; top: 64px; width: 3px; height: 40px; border-radius: 2px; background: #B0C1E3"></div>
+</div>
+<div style="position: relative; background: #242424; border: 1px solid rgba(255,255,255,0.1); border-radius: 8px; overflow: hidden">
+<div style="position: absolute; right: 0; top: 0; bottom: 0; width: 2px; background: rgba(255,255,255,0.08)"></div>
+<div style="position: absolute; right: 0; bottom: 0; width: 4px; height: 72px; background: #F3A982"></div>
+<div style="position: absolute; right: 4px; bottom: 50px; width: 22px; height: 22px; border-radius: 6px 0 0 6px; background: #F3A982; color: #171717; font-size: 12px; font-weight: 500; display: flex; align-items: center; justify-content: center">2</div>
+</div>
+<div style="position: relative; background: #242424; border: 1px solid rgba(255,255,255,0.1); border-radius: 8px; overflow: hidden">
+<div style="position: absolute; right: 0; top: 0; bottom: 0; width: 5px; background: #D88C8C"></div>
+<div style="position: absolute; right: 5px; bottom: 50px; padding: 4px 10px; border-radius: 6px 0 0 6px; background: #D88C8C; color: #171717; font-size: 12px; font-weight: 500">Proposal expires in 10 min</div>
+</div>
+
+<!-- PANE -->
+<div style="display: flex; flex-direction: column; justify-content: center; gap: 6px">
+<div style="font-size: 22px; font-weight: 500">Pane</div>
+<div style="font-size: 14px; line-height: 1.5; color: rgba(255,255,255,0.8)">A deck of glass cards. The top card is the work, ready to act on.</div>
+<div style="font-size: 12px; color: rgba(255,255,255,0.7)">Intrusion: high. Information: highest</div>
+</div>
+<div style="position: relative; background: #242424; border: 1px solid rgba(255,255,255,0.1); border-radius: 8px; overflow: hidden">
+<div style="position: absolute; right: 18px; bottom: 26px; width: 44px; height: 28px; border-radius: 6px; background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.14)"></div>
+<div style="position: absolute; right: 22px; bottom: 22px; width: 44px; height: 28px; border-radius: 6px; background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.18)"></div>
+</div>
+<div style="position: relative; background: #242424; border: 1px solid rgba(255,255,255,0.1); border-radius: 8px; overflow: hidden">
+<div style="position: absolute; right: 16px; bottom: 34px; width: 72px; height: 44px; border-radius: 6px; background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.14); transform: rotate(-6deg)"></div>
+<div style="position: absolute; right: 24px; bottom: 22px; width: 72px; height: 44px; border-radius: 6px; background: rgba(255,255,255,0.07); border: 1px solid rgba(176,193,227,0.5); display: flex; align-items: flex-start; justify-content: flex-end; padding: 6px; box-sizing: border-box"><span style="width: 6px; height: 6px; border-radius: 9999px; background: #B0C1E3"></span></div>
+</div>
+<div style="position: relative; background: #242424; border: 1px solid rgba(255,255,255,0.1); border-radius: 8px; overflow: hidden">
+<div style="position: absolute; right: 14px; bottom: 30px; width: 156px; height: 72px; border-radius: 6px; background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.14); transform: rotate(-3deg)"></div>
+<div style="position: absolute; right: 22px; bottom: 18px; width: 164px; box-sizing: border-box; padding: 10px 12px; border-radius: 6px; background: rgba(46,46,46,0.92); border: 1px solid rgba(243,169,130,0.6); display: flex; flex-direction: column; gap: 2px">
+<div style="font-size: 13px; font-weight: 500">Send the SOW notes</div>
+<div style="font-size: 12px; color: rgba(255,255,255,0.75)">Owed to [PERSON], due 17:00</div>
+</div>
+</div>
+<div style="position: relative; background: #242424; border: 1px solid rgba(255,255,255,0.1); border-radius: 8px; overflow: hidden">
+<div style="position: absolute; right: 16px; bottom: 16px; width: 196px; box-sizing: border-box; padding: 10px 12px; border-radius: 6px; background: rgba(46,46,46,0.95); border: 1px solid #D88C8C; display: flex; flex-direction: column; gap: 8px">
+<div style="display: flex; flex-direction: column; gap: 2px">
+<div style="font-size: 13px; font-weight: 500">Escalation from [CLIENT]</div>
+<div style="font-size: 12px; color: rgba(255,255,255,0.75)">Draft reply ready to review</div>
+</div>
+<div style="display: flex; gap: 6px">
+<button type="button" style="font: inherit; font-size: 12px; padding: 4px 10px; border-radius: 4px; border: 0; background: #F2EEEE; color: #171717">Review</button>
+<button type="button" style="font: inherit; font-size: 12px; padding: 4px 10px; border-radius: 4px; border: 1px solid rgba(255,255,255,0.2); background: transparent; color: #FFFFFF">Later</button>
+</div>
+</div>
+</div>
+
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"motion":{"editor":"boolean","default":true},"$preview":{"width":1440,"height":1180}}'>
+class Component extends DCLogic {
+renderVals() {
+const on = this.props.motion ?? true;
+return { breath: on ? 'ian-breath' : '', pulse: on ? 'ian-pulse' : '' };
+}
+}
+</script>
+</body>
+</html>

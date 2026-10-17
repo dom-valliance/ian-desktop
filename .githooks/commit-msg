@@ -1,0 +1,15 @@
+#!/usr/bin/env sh
+# Checks the commit header against Conventional Commits, at most 72 characters.
+# Enable once per clone: git config core.hooksPath .githooks
+header=$(head -n 1 "$1")
+case "$header" in
+  Merge*|Revert*|fixup!*|squash!*) exit 0 ;;
+esac
+if ! printf '%s' "$header" | grep -Eq '^(build|chore|ci|docs|feat|fix|perf|refactor|revert|style|test)(\([a-z0-9-]+\))?!?: .+'; then
+  echo "commit-msg: use a Conventional Commits header, for example 'feat(store): apply item events in order'" >&2
+  exit 1
+fi
+if [ "${#header}" -gt 72 ]; then
+  echo "commit-msg: the header is ${#header} characters; the limit is 72" >&2
+  exit 1
+fi

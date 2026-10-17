@@ -1,0 +1,25 @@
+# IanKit
+
+All logic and views for Ian, as one Swift package. Swift 6 language mode with strict concurrency, macOS 14.
+
+Each folder under `Sources/` is one SwiftPM target. The `.gitkeep` files hold the folders until D1 adds the first source file; delete them then.
+
+| Target | Holds | May import | Package |
+|---|---|---|---|
+| `Contract` | Types and client generated from `contract/ian-desktop.v1.yaml` by `swift-openapi-generator`. Nothing hand-written except the generator config | OpenAPIRuntime | D1, D3 |
+| `Auth` | Token providers: `dev-local` bearer for the mock, PKCE loopback for `lance-dev`, Keychain storage | Foundation, Security | D3 |
+| `Client` | HTTP through `swift-openapi-urlsession`, the SSE reader with `Last-Event-ID` replay and backoff, environment profiles | Contract, Auth | D3 |
+| `Store` | Observable state, the reducer that applies a snapshot and each event, pending marks on actions | Contract, Client | D3 |
+| `Attention` | Local notifications, the attention ladder, suppression (camera, external meeting, quiet hours, user pause), the session heartbeat | Store | D4, D8 |
+| `Surface` | Orbit and Pillars renderers (`Canvas` in `TimelineView`), the window model (`NSPanel`s, menu bar extra) | Store, Attention | D4, D5 |
+| `Features` | The seven views | Store, Surface, Attention | D5 to D7 |
+
+The import column is the intended dependency graph. D1 encodes it in `Package.swift`; a change to it needs an ADR.
+
+Rules that apply here (ADR 0001):
+
+- No target computes pressure, horizon, grouping, eligibility or a policy outcome. If a view seems to need one, the contract is missing a field.
+- Buttons come from an item's `actions`, in the order sent. No view hard-codes an action.
+- Nothing is written to disk except tokens in the Keychain and the client settings in `UserDefaults` listed in spec 6.4.
+
+Tests live in `Tests/`, one test target per source target (`StoreTests`, `SurfaceTests` and so on). Snapshot tests use `swift-snapshot-testing`.

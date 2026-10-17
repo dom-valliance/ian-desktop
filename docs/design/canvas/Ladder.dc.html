@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<title>Attention ladder</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+@font-face{font-family:'Satoshi';src:url(/_blob/0fc71bec0e6f45f403814898e95f2538) format('woff2');font-weight:400;font-style:normal}
+@font-face{font-family:'Satoshi';src:url(/_blob/489ba4c1f7f99e30592226cd39bdb4ff) format('woff2');font-weight:500;font-style:normal}
+body{margin:0}
+a{color:rgba(0,0,0,0.75)}a:hover{color:#000000}
+</style>
+</helmet>
+<div style="width: 1440px; height: 820px; box-sizing: border-box; padding: 64px; background: #F2EEEE; color: #000000; font-family: 'Satoshi', -apple-system, BlinkMacSystemFont, 'Helvetica Neue', sans-serif; display: flex; flex-direction: column; gap: 32px">
+
+<div style="display: flex; flex-direction: column; gap: 12px; max-width: 860px">
+<div style="font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; font-weight: 500; color: rgba(0,0,0,0.6)">Attention ladder</div>
+<h1 style="margin: 0; font-size: 44px; line-height: 1.1; letter-spacing: -0.015em; font-weight: 400">The avatar earns the right to interrupt</h1>
+<p style="margin: 0; font-size: 18px; line-height: 1.55; color: rgba(0,0,0,0.8)">One delivery decision per item across desktop and Slack, drawn from the same push budget. The desktop wins when it is active, Slack takes over after ten idle minutes.</p>
+</div>
+
+<div style="display: grid; grid-template-columns: 200px repeat(4, minmax(0, 1fr)); gap: 1px; background: rgba(0,0,0,0.1); border: 1px solid rgba(0,0,0,0.1); border-radius: 8px; overflow: hidden; font-size: 14px; line-height: 1.5">
+
+<div style="background: #F2EEEE; padding: 16px"></div>
+<div style="background: #FDFBF9; padding: 16px; display: flex; align-items: center; gap: 10px"><span style="width: 10px; height: 10px; border-radius: 9999px; background: #8D8989"></span><span style="font-size: 18px; font-weight: 500">Ambient</span></div>
+<div style="background: #FDFBF9; padding: 16px; display: flex; align-items: center; gap: 10px"><span style="width: 12px; height: 12px; border-radius: 9999px; background: #AC5E37"></span><span style="font-size: 18px; font-weight: 500">Needs you</span></div>
+<div style="background: #FDFBF9; padding: 16px; display: flex; align-items: center; gap: 10px"><span style="width: 14px; height: 14px; border-radius: 9999px; background: #7A2A2A"></span><span style="font-size: 18px; font-weight: 500">Urgent</span></div>
+<div style="background: #FDFBF9; padding: 16px; display: flex; align-items: center; gap: 10px"><span style="width: 14px; height: 14px; border-radius: 2px; background: #171717"></span><span style="font-size: 18px; font-weight: 500">Stop</span></div>
+
+<div style="background: #F2EEEE; padding: 16px; font-weight: 500">Triggers</div>
+<div style="background: #FDFBF9; padding: 16px; color: rgba(0,0,0,0.8)">Agent runs, brief stored, new low-importance mail, P3 alerts</div>
+<div style="background: #FDFBF9; padding: 16px; color: rgba(0,0,0,0.8)">Proposal awaiting decision, commitment due today, meeting prep ready, P2 alerts</div>
+<div style="background: #FDFBF9; padding: 16px; color: rgba(0,0,0,0.8)">P1 alerts, client mail unanswered, risk language, proposal about to expire</div>
+<div style="background: #FDFBF9; padding: 16px; color: rgba(0,0,0,0.8)">P0, kill switch tripped, budget ceiling crossed, foreign decision attempt</div>
+
+<div style="background: #F2EEEE; padding: 16px; font-weight: 500">Avatar</div>
+<div style="background: #FDFBF9; padding: 16px; color: rgba(0,0,0,0.8)">Changes state only. No motion beyond a slow breath while working</div>
+<div style="background: #FDFBF9; padding: 16px; color: rgba(0,0,0,0.8)">Grows and holds colour. Hover peeks the top item</div>
+<div style="background: #FDFBF9; padding: 16px; color: rgba(0,0,0,0.8)">Shows a one-line whisper beside the avatar for eight seconds</div>
+<div style="background: #FDFBF9; padding: 16px; color: rgba(0,0,0,0.8)">Opens the panel on the next pointer movement</div>
+
+<div style="background: #F2EEEE; padding: 16px; font-weight: 500">macOS notification</div>
+<div style="background: #FDFBF9; padding: 16px; color: rgba(0,0,0,0.8)">None</div>
+<div style="background: #FDFBF9; padding: 16px; color: rgba(0,0,0,0.8)">None. The avatar carries it</div>
+<div style="background: #FDFBF9; padding: 16px; color: rgba(0,0,0,0.8)">Banner with Approve, Snooze and Open actions</div>
+<div style="background: #FDFBF9; padding: 16px; color: rgba(0,0,0,0.8)">Time-sensitive notification, breaks through Focus</div>
+
+<div style="background: #F2EEEE; padding: 16px; font-weight: 500">Slack</div>
+<div style="background: #FDFBF9; padding: 16px; color: rgba(0,0,0,0.8)">Never</div>
+<div style="background: #FDFBF9; padding: 16px; color: rgba(0,0,0,0.8)">Only after ten idle minutes on the desktop</div>
+<div style="background: #FDFBF9; padding: 16px; color: rgba(0,0,0,0.8)">After ten idle minutes, or when the desktop app is not running</div>
+<div style="background: #FDFBF9; padding: 16px; color: rgba(0,0,0,0.8)">Always, at once</div>
+
+<div style="background: #F2EEEE; padding: 16px; font-weight: 500">Held back when</div>
+<div style="background: #FDFBF9; padding: 16px; color: rgba(0,0,0,0.8)">Never held. Nothing interrupts</div>
+<div style="background: #FDFBF9; padding: 16px; color: rgba(0,0,0,0.8)">Screen shared, camera live, Focus on, quiet hours, external meeting in progress</div>
+<div style="background: #FDFBF9; padding: 16px; color: rgba(0,0,0,0.8)">Screen shared or camera live. Content hidden, avatar state shown</div>
+<div style="background: #FDFBF9; padding: 16px; color: rgba(0,0,0,0.8)">Never held. Content hidden while sharing</div>
+
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":820}}'>
+class Component extends DCLogic {
+renderVals() {
+return {};
+}
+}
+</script>
+</body>
+</html>

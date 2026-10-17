@@ -1,0 +1,276 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<title>Pillars, alerts and commitments as a field</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&amp;display=swap">
+<style>
+@font-face{font-family:'Satoshi';src:url(/_blob/0fc71bec0e6f45f403814898e95f2538) format('woff2');font-weight:400;font-style:normal}
+@font-face{font-family:'Satoshi';src:url(/_blob/489ba4c1f7f99e30592226cd39bdb4ff) format('woff2');font-weight:500;font-style:normal}
+body{margin:0}
+a{color:rgba(255,255,255,0.8)}a:hover{color:#FFFFFF}
+</style>
+</helmet>
+<div style="width: 1440px; height: 900px; position: relative; overflow: hidden; background: #171717; color: #F2EEEE; font-family: 'Satoshi', -apple-system, BlinkMacSystemFont, 'Helvetica Neue', sans-serif">
+
+<div style="position: absolute; left: 64px; top: 56px; display: flex; flex-direction: column; gap: 10px; max-width: 500px">
+<div style="font-family: 'DM Mono', ui-monospace, monospace; font-size: 12px; letter-spacing: 0.16em; text-transform: uppercase; color: rgba(242,238,238,0.7)">Ian / Option F / Pillars</div>
+<h1 style="margin: 0; font-size: 40px; line-height: 1.1; letter-spacing: -0.015em; font-weight: 400">Your work as a field of pillars</h1>
+<p style="margin: 0; font-size: 16px; line-height: 1.55; color: rgba(242,238,238,0.8)">Columns are units of work. Rows are horizons, with Now at the front. Height is time pressure, colour is kind. Light rising from a pillar means Ian is working on it. Settle an item and its pillar sinks into the grid.</p>
+</div>
+
+<div style="position: absolute; left: 64px; top: 330px; display: flex; flex-direction: column; gap: 10px; font-size: 14px; color: rgba(242,238,238,0.85)">
+<div style="font-family: 'DM Mono', ui-monospace, monospace; font-size: 12px; letter-spacing: 0.16em; text-transform: uppercase; color: rgba(242,238,238,0.7)">Kind</div>
+<div style="display: flex; align-items: center; gap: 10px"><span style="width: 12px; height: 12px; border-radius: 2px; background: #F3A982"></span>Commitment owed by you</div>
+<div style="display: flex; align-items: center; gap: 10px"><span style="width: 12px; height: 12px; border-radius: 2px; background: #B0C1E3"></span>Commitment owed to you</div>
+<div style="display: flex; align-items: center; gap: 10px"><span style="width: 12px; height: 12px; border-radius: 2px; background: #F0B9E2"></span>Proposal awaiting your decision</div>
+<div style="display: flex; align-items: center; gap: 10px"><span style="width: 12px; height: 12px; border-radius: 2px; background: #D88C8C; outline: 2px solid #F2EEEE; outline-offset: 1px"></span>Alert, P0 or P1, with a light rim</div>
+</div>
+
+<div style="position: absolute; left: 64px; bottom: 56px; font-family: 'DM Mono', ui-monospace, monospace; font-size: 12px; letter-spacing: 0.16em; text-transform: uppercase; color: rgba(242,238,238,0.6)">{{openCount}} open / {{todayCount}} now / Dry run</div>
+
+<sc-if value="{{open}}" hint-placeholder-val="{{ true }}">
+<section aria-label="Ian, work field" style="position: absolute; right: 40px; bottom: 150px; width: 860px; box-sizing: border-box; border-radius: 16px; background: rgba(28,27,27,0.96); border: 1px solid rgba(255,255,255,0.12); box-shadow: 0 24px 64px rgba(0,0,0,0.6), 0 8px 16px rgba(0,0,0,0.4); display: flex; flex-direction: column">
+
+<div style="display: flex; justify-content: space-between; align-items: center; padding: 14px 20px; border-bottom: 1px solid rgba(255,255,255,0.08)">
+<div style="font-size: 18px; font-weight: 500">Ian</div>
+<div style="font-family: 'DM Mono', ui-monospace, monospace; font-size: 12px; letter-spacing: 0.16em; text-transform: uppercase; color: rgba(242,238,238,0.7)">Field / {{openCount}} open</div>
+</div>
+
+<div style="display: flex; gap: 0">
+<svg aria-hidden="true" width="540" height="400" viewBox="0 0 540 420" style="flex: none">
+<polygon points="{{plate}}" fill="rgba(255,255,255,0.025)" stroke="rgba(255,255,255,0.08)" stroke-width="1"></polygon>
+<sc-for list="{{rowLabels}}" as="r" hint-placeholder-count="3">
+<text x="{{r.x}}" y="{{r.y}}" text-anchor="end" font-family="DM Mono, ui-monospace, monospace" font-size="11" letter-spacing="1.6" fill="rgba(242,238,238,0.6)">{{r.label}}</text>
+</sc-for>
+<sc-for list="{{polys}}" as="p" hint-placeholder-count="30">
+<polygon points="{{p.pts}}" fill="{{p.fill}}" stroke="{{p.stroke}}" stroke-width="{{p.sw}}" stroke-linejoin="round"></polygon>
+</sc-for>
+<sc-for list="{{parts}}" as="d" hint-placeholder-count="6">
+<circle cx="{{d.x}}" cy="{{d.y}}" r="{{d.r}}" fill="{{d.fill}}" opacity="{{d.op}}"></circle>
+</sc-for>
+</svg>
+
+<div style="flex: 1; min-width: 0; border-left: 1px solid rgba(255,255,255,0.08); display: flex; flex-direction: column">
+<div style="padding: 10px 14px 6px; font-family: 'DM Mono', ui-monospace, monospace; font-size: 11px; letter-spacing: 0.16em; text-transform: uppercase; color: rgba(242,238,238,0.6)">Items</div>
+<div style="display: flex; flex-direction: column; gap: 2px; padding: 0 8px 10px; max-height: 360px; overflow-y: auto">
+<sc-for list="{{items}}" as="it" hint-placeholder-count="10">
+<button type="button" aria-pressed="{{it.selected}}" onClick="{{it.pick}}" style="font: inherit; text-align: left; display: flex; align-items: center; gap: 10px; min-height: 36px; padding: 6px 8px; border-radius: 6px; border: 1px solid {{it.ring}}; background: {{it.bg}}; color: {{it.fg}}; cursor: pointer">
+<span aria-hidden="true" style="flex: none; width: 10px; height: 10px; border-radius: 2px; background: {{it.colour}}; opacity: {{it.dim}}"></span>
+<span style="flex: 1; min-width: 0; font-size: 13px; line-height: 1.3; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">{{it.title}}</span>
+<span style="flex: none; font-family: 'DM Mono', ui-monospace, monospace; font-size: 11px; color: rgba(242,238,238,0.6)">{{it.tag}}</span>
+</button>
+</sc-for>
+</div>
+</div>
+</div>
+
+<div style="padding: 14px 20px 16px; border-top: 1px solid rgba(255,255,255,0.08); display: flex; justify-content: space-between; align-items: center; gap: 20px">
+<div style="display: flex; flex-direction: column; gap: 2px; min-width: 0">
+<div style="font-family: 'DM Mono', ui-monospace, monospace; font-size: 11px; letter-spacing: 0.16em; text-transform: uppercase; color: rgba(242,238,238,0.7)">{{sel.kindLabel}} / {{sel.unit}} / {{sel.horizon}}</div>
+<div style="font-size: 16px; font-weight: 500">{{sel.title}}</div>
+<div style="font-size: 13px; color: rgba(242,238,238,0.75)">{{sel.meta}}</div>
+</div>
+<sc-if value="{{sel.pending}}" hint-placeholder-val="{{ true }}">
+<div style="display: flex; gap: 8px; flex: none">
+<button type="button" onClick="{{sel.primaryRun}}" style="font: inherit; font-size: 13px; min-height: 36px; padding: 6px 14px; border-radius: 6px; border: 0; background: #F2EEEE; color: #171717; cursor: pointer">{{sel.primary}}</button>
+<button type="button" onClick="{{sel.secondaryRun}}" style="font: inherit; font-size: 13px; min-height: 36px; padding: 6px 14px; border-radius: 6px; border: 1px solid rgba(255,255,255,0.2); background: transparent; color: #F2EEEE; cursor: pointer">{{sel.secondary}}</button>
+<button type="button" onClick="{{sel.handRun}}" style="font: inherit; font-size: 13px; min-height: 36px; padding: 6px 14px; border-radius: 6px; border: 1px solid rgba(176,193,227,0.45); background: transparent; color: #C7D3EB; cursor: pointer">Hand to Ian</button>
+</div>
+</sc-if>
+<sc-if value="{{sel.resolved}}" hint-placeholder-val="{{ false }}">
+<div style="flex: none; font-size: 13px; color: #9EC2A1">{{sel.status}}</div>
+</sc-if>
+</div>
+</section>
+</sc-if>
+
+<button type="button" aria-label="{{avatarLabel}}" onClick="{{toggle}}" style="position: absolute; right: 32px; bottom: 28px; width: 150px; height: 116px; padding: 0; border: 0; background: transparent; cursor: pointer">
+<svg aria-hidden="true" width="150" height="116" viewBox="0 0 540 420">
+<sc-for list="{{polys}}" as="p" hint-placeholder-count="30">
+<polygon points="{{p.pts}}" fill="{{p.fill}}" stroke="{{p.fill}}" stroke-width="3" stroke-linejoin="round"></polygon>
+</sc-for>
+<sc-for list="{{parts}}" as="d" hint-placeholder-count="6">
+<circle cx="{{d.x}}" cy="{{d.y}}" r="7" fill="{{d.fill}}" opacity="{{d.op}}"></circle>
+</sc-for>
+</svg>
+</button>
+
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"motion":{"editor":"boolean","default":true},"turn":{"editor":"range","default":10,"min":0,"max":30,"step":1,"unit":"deg"},"$preview":{"width":1440,"height":900}}'>
+class Component extends DCLogic {
+constructor(props) {
+super(props);
+this.state = { t: 0, open: true, sel: 'n1', done: {}, snoozed: {}, handed: {} };
+this.raf = 0;
+}
+componentDidMount() {
+const start = performance.now();
+const tick = () => {
+if (this.props.motion ?? true) this.setState({ t: (performance.now() - start) / 1000 });
+this.raf = requestAnimationFrame(tick);
+};
+this.raf = requestAnimationFrame(tick);
+}
+componentWillUnmount() { cancelAnimationFrame(this.raf); }
+renderVals() {
+const t = this.state.t;
+const S = 64, HW = 25, TILT = 0.52, CX = 300, CY = 250, MAXH = 120;
+const UNITS = ['[CLIENT] delivery', 'Pipeline', 'Hiring', 'Internal', 'Admin'];
+const HOR = ['Later', 'This week', 'Now'];
+const KIND = {
+by: { c: [243, 169, 130], label: 'Owed by you', p: 'Done', s: 'Snooze', pm: 'Settled. Recorded on the ledger', sm: 'Snoozed until tomorrow 09:00' },
+to: { c: [176, 193, 227], label: 'Owed to you', p: 'Chase', s: 'Snooze', pm: 'Ian is drafting a chase for approval', sm: 'Snoozed until tomorrow 09:00' },
+prop: { c: [240, 185, 226], label: 'Proposal', p: 'Approve', s: 'Reject', pm: 'Approved. The executor will act', sm: 'Rejected. Counted against the rule' },
+alert: { c: [216, 140, 140], label: 'Alert', p: 'Acknowledge', s: 'Snooze', pm: 'Acknowledged. Alert closed', sm: 'Snoozed for one hour' }
+};
+const DATA = [
+{ id: 'n0', col: 0, row: 2, k: 'by', u: 0.85, title: 'Send the SOW notes', meta: 'To [PERSON], due 17:00 today' },
+{ id: 'n1', col: 1, row: 2, k: 'alert', u: 1.0, title: 'Risk language in client mail', meta: '[CLIENT], P1, raised 20 minutes ago' },
+{ id: 'n2', col: 2, row: 2, k: 'prop', u: 0.6, title: 'Confirm interview slot', meta: 'Proposal expires 18:00' },
+{ id: 'n3', col: 3, row: 2, k: 'to', u: 0.75, title: '[PERSON] owes the revised estimate', meta: 'Two working days overdue' },
+{ id: 'n4', col: 4, row: 2, k: 'prop', u: 0.3, n: 14, title: 'File 14 newsletters', meta: 'One bulk proposal covering 14 messages' },
+{ id: 'w0', col: 0, row: 1, k: 'by', u: 0.45, agent: true, title: 'Draft the workshop agenda', meta: 'Due Thursday. Ian is drafting' },
+{ id: 'w1', col: 1, row: 1, k: 'by', u: 0.4, n: 3, title: 'Pipeline review follow-ups', meta: '3 items, due this week' },
+{ id: 'w2', col: 2, row: 1, k: 'to', u: 0.35, n: 2, title: 'Candidate references', meta: '2 items owed to you this week' },
+{ id: 'w3', col: 3, row: 1, k: 'prop', u: 0.35, n: 4, title: 'Create Notion tasks from debrief', meta: '4 proposals from one meeting' },
+{ id: 'w4', col: 4, row: 1, k: 'by', u: 0.2, title: 'Submit expenses', meta: 'Due Friday' },
+{ id: 'l0', col: 0, row: 0, k: 'by', u: 0.2, n: 6, title: 'Quarterly review actions', meta: '6 items, next month' },
+{ id: 'l1', col: 1, row: 0, k: 'to', u: 0.25, title: '[CLIENT] security questionnaire', meta: 'Owed to you, due in two weeks' },
+{ id: 'l3', col: 3, row: 0, k: 'by', u: 0.2, n: 5, title: 'Vision v2 review comments', meta: '5 items, no date' }
+];
+const motion = this.props.motion ?? true;
+const turn = this.props.turn ?? 10;
+const yaw = (45 + (motion ? turn * Math.sin(t * 0.22) : 0)) * Math.PI / 180;
+const cy = Math.cos(yaw), sy = Math.sin(yaw);
+const proj = (x, z, h) => [CX + x * cy - z * sy, CY + (x * sy + z * cy) * TILT - h];
+const fmt = (pts) => pts.map((p) => p[0].toFixed(1) + ',' + p[1].toFixed(1)).join(' ');
+const rgb = (c, m) => { const g = 23; return 'rgb(' + c.map((v) => Math.round(g + (v - g) * m)).join(',') + ')'; };
+const clamp = (x) => Math.max(0, Math.min(1, x));
+const eo = (x) => 1 - Math.pow(1 - x, 3);
+const st = this.state;
+const CORN = [[-1, -1], [1, -1], [1, 1], [-1, 1]];
+const NORM = [[0, -1], [1, 0], [0, 1], [-1, 0]];
+const cells = [];
+for (let row = 0; row < 3; row++) for (let col = 0; col < 5; col++) {
+const x = (col - 2) * S, z = (row - 1) * S;
+const it = DATA.find((d) => d.col === col && d.row === row) || null;
+cells.push({ col, row, x, z, it, depth: x * sy + z * cy });
+}
+cells.sort((a, b) => a.depth - b.depth);
+const polys = [], parts = [];
+for (const c of cells) {
+const it = c.it;
+const base = CORN.map((k) => [c.x + k[0] * HW, c.z + k[1] * HW]);
+let h = 0, col = null, live = false;
+if (it) {
+const doneAt = st.done[it.id] ? st.done[it.id].at : undefined;
+const sink = doneAt === undefined ? 1 : 1 - eo(clamp((t - doneAt) / 0.7));
+const sn = st.snoozed[it.id] ? 0.45 : 1;
+const d = Math.hypot(c.col - 1, c.row - 2);
+const ripple = motion ? 4 * Math.sin(d * 0.8 - t * 2.6) : 0;
+h = Math.max(0, (14 + it.u * MAXH) * sn + ripple) * sink;
+col = KIND[it.k].c;
+live = sink > 0.02;
+}
+if (!live) {
+polys.push({ pts: fmt(base.map((p) => proj(p[0], p[1], 0))), fill: 'rgba(255,255,255,0.05)', stroke: 'rgba(255,255,255,0.14)', sw: 1 });
+continue;
+}
+const top = base.map((p) => proj(p[0], p[1], h));
+const bot = base.map((p) => proj(p[0], p[1], 0));
+for (let e = 0; e < 4; e++) {
+const n = NORM[e];
+if (n[0] * sy + n[1] * cy > 0) {
+const nx = n[0] * cy - n[1] * sy;
+const e2 = (e + 1) % 4;
+const f = rgb(col, 0.6 + 0.2 * (nx + 1) / 2);
+polys.push({ pts: fmt([top[e], top[e2], bot[e2], bot[e]]), fill: f, stroke: f, sw: 1 });
+}
+}
+const isAlert = it.k === 'alert';
+const pulse = isAlert && motion ? 0.5 + 0.5 * Math.sin(t * 5) : 1;
+const selected = st.sel === it.id;
+const tf = rgb(col, 0.96);
+polys.push({ pts: fmt(top), fill: tf, stroke: selected ? '#FFFFFF' : (isAlert ? 'rgba(242,238,238,' + (0.45 + 0.5 * pulse).toFixed(2) + ')' : tf), sw: selected ? 3 : (isAlert ? 2.5 : 1) });
+const working = (it.agent || st.handed[it.id]) && !st.done[it.id];
+if (working) {
+const tc = [(top[0][0] + top[2][0]) / 2, (top[0][1] + top[2][1]) / 2];
+for (let k = 0; k < 5; k++) {
+const ph = ((motion ? t : 0.4) * 0.32 + k * 0.2) % 1;
+parts.push({ x: (tc[0] + Math.sin(ph * 6 + k * 1.7) * 6).toFixed(1), y: (tc[1] - 8 - ph * 80).toFixed(1), r: k % 2 ? 2.2 : 3.2, fill: k % 2 ? '#F2EEEE' : '#B0C1E3', op: (Math.sin(Math.PI * ph) * 0.85).toFixed(2) });
+}
+}
+}
+const pad = S * 0.62;
+const plate = fmt([proj(-2 * S - pad, -S - pad, 0), proj(2 * S + pad, -S - pad, 0), proj(2 * S + pad, S + pad, 0), proj(-2 * S - pad, S + pad, 0)]);
+const rowLabels = HOR.map((label, row) => {
+const p = proj(-2 * S - pad - 6, (row - 1) * S, 0);
+return { label: label.toUpperCase(), x: p[0].toFixed(1), y: (p[1] + 4).toFixed(1) };
+});
+const mark = (key, id, msg) => () => {
+const next = Object.assign({}, this.state[key], { [id]: { at: this.state.t, msg: msg } });
+this.setState({ [key]: next });
+};
+const status = (it) => {
+if (st.done[it.id]) return st.done[it.id].msg;
+if (st.snoozed[it.id]) return st.snoozed[it.id].msg;
+if (st.handed[it.id]) return st.handed[it.id].msg;
+return '';
+};
+const order = DATA.slice().sort((a, b) => (b.row - a.row) || (b.u - a.u));
+const items = order.map((it) => {
+const s = status(it);
+const selected = st.sel === it.id;
+const settled = !!st.done[it.id];
+return {
+title: it.title,
+tag: it.n ? String(it.n) : HOR[it.row].split(' ')[0],
+colour: 'rgb(' + KIND[it.k].c.join(',') + ')',
+dim: settled ? 0.35 : 1,
+fg: settled ? 'rgba(242,238,238,0.55)' : '#F2EEEE',
+bg: selected ? 'rgba(255,255,255,0.08)' : 'transparent',
+ring: selected ? 'rgba(255,255,255,0.3)' : 'transparent',
+selected: selected ? 'true' : 'false',
+pick: () => this.setState({ sel: it.id })
+};
+});
+const cur = DATA.find((d) => d.id === st.sel) || DATA[0];
+const curStatus = status(cur);
+const K = KIND[cur.k];
+const sel = {
+title: cur.title,
+meta: cur.meta,
+kindLabel: K.label,
+unit: UNITS[cur.col],
+horizon: HOR[cur.row],
+primary: K.p,
+secondary: K.s,
+pending: !curStatus,
+resolved: !!curStatus,
+status: curStatus,
+primaryRun: cur.k === 'to' ? mark('handed', cur.id, K.pm) : mark('done', cur.id, K.pm),
+secondaryRun: cur.k === 'prop' ? mark('done', cur.id, K.sm) : mark('snoozed', cur.id, K.sm),
+handRun: mark('handed', cur.id, 'Handed to Ian. A proposal will follow')
+};
+const openItems = DATA.filter((d) => !st.done[d.id]);
+const openCount = openItems.reduce((a, d) => a + (d.n || 1), 0);
+const todayCount = openItems.filter((d) => d.row === 2).length;
+return {
+polys, parts, plate, rowLabels, items, sel,
+open: st.open,
+toggle: () => this.setState({ open: !this.state.open }),
+openCount, todayCount,
+avatarLabel: 'Ian, ' + openCount + ' open items. ' + (st.open ? 'Close the field' : 'Open the field')
+};
+}
+}
+</script>
+</body>
+</html>

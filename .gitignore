@@ -1,0 +1,26 @@
+# macOS
+.DS_Store
+
+# Xcode and SwiftPM
+DerivedData/
+build/
+*.xcuserstate
+xcuserdata/
+*.xcscmblueprint
+.build/
+.swiftpm/
+*.trace
+
+# Node (mock server)
+node_modules/
+dist/
+coverage/
+*.tsbuildinfo
+
+# Local configuration and secrets. Tokens live in the Keychain, never in a file.
+.env
+.env.*
+!.env.example
+
+# Logs
+*.log
