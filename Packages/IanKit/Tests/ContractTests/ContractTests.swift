@@ -34,9 +34,7 @@ extension Schemas.ItemDetail {
 }
 
 /// Decodes a fixture the way the client decodes a response: times are UTC with milliseconds.
-private func decodeFixture<Value: Decodable>(_ name: String, as type: Value.Type = Value.self)
-  throws -> Value
-{
+private func decodeFixture<Value: Decodable>(_ name: String) throws -> Value {
   let url = try #require(
     Bundle.module.url(forResource: name, withExtension: "json", subdirectory: "Fixtures"),
     "Fixtures/\(name).json is missing. Run scripts/generate-contract.sh."
