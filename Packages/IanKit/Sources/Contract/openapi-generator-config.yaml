@@ -1,0 +1,7 @@
+generate:
+  - types
+  - client
+accessModifier: public
+namingStrategy: idiomatic
+additionalFileComments:
+  - "swift-format-ignore-file"

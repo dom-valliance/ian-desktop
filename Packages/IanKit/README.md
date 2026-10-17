@@ -2,13 +2,13 @@
 
 All logic and views for Ian, as one Swift package. Swift 6 language mode with strict concurrency, macOS 14.
 
-Each folder under `Sources/` is one SwiftPM target. The `.gitkeep` files hold the folders until D1 adds the first source file; delete them then.
+Each folder under `Sources/` is one SwiftPM target.
 
 | Target | Holds | May import | Package |
 |---|---|---|---|
 | `Contract` | Types and client generated from `contract/ian-desktop.v1.yaml` by `swift-openapi-generator`. Nothing hand-written except the generator config | OpenAPIRuntime | D1, D3 |
 | `Auth` | Token providers: `dev-local` bearer for the mock, PKCE loopback for `lance-dev`, Keychain storage | Foundation, Security | D3 |
-| `Client` | HTTP through `swift-openapi-urlsession`, the SSE reader with `Last-Event-ID` replay and backoff, environment profiles | Contract, Auth | D3 |
+| `Client` | HTTP through `swift-openapi-urlsession`, the SSE reader with `Last-Event-ID` replay and backoff, environment profiles | Contract, Auth, OpenAPIRuntime, OpenAPIURLSession | D3 |
 | `Store` | Observable state, the reducer that applies a snapshot and each event, pending marks on actions | Contract, Client | D3 |
 | `Attention` | Local notifications, the attention ladder, suppression (camera, external meeting, quiet hours, user pause), the session heartbeat | Store | D4, D8 |
 | `Surface` | Orbit and Pillars renderers (`Canvas` in `TimelineView`), the window model (`NSPanel`s, menu bar extra) | Store, Attention | D4, D5 |

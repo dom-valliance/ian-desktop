@@ -1,0 +1,12 @@
+# Lint rules for ian-desktop.v1.yaml. Warnings fail the lint as errors do.
+# .redocly.lint-ignore.yaml exempts only StreamEvent from no-unused-components: its schemas
+# travel inside the text/event-stream body, which OpenAPI 3.1 cannot reference.
+extends:
+  - recommended-strict
+rules:
+  # An internal contract between two Valliance repositories; it carries no licence.
+  info-license: off
+  info-license-strict: off
+  # The mock on localhost is the default environment (ADR 0003).
+  no-server-example.com: off
+  operation-4xx-problem-details-rfc7807: error

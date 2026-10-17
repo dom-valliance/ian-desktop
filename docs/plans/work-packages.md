@@ -60,8 +60,8 @@ Build:
 - `mock/` as a pnpm package (`packageManager` field, Node 22): strict TypeScript, ESLint, Prettier, vitest, Fastify, Zod. Zod schemas generated from the contract; record the generator in the phase log.
 - Every endpoint in 5.2 under `/desktop/v1`, accepting any `Bearer dev-...` token and refusing others with `401`.
 - Fixtures for the seven scenarios in spec 7, invented, with `[CLIENT]` and `[PERSON]` placeholders: `quiet` (3 open), `normal` (about 18, one urgent), `overloaded` (about 42, above the median), `incident` (a P0 and the kill switch on), `offline` (drops the stream, refuses requests), `stale-client` (`426`), `external-meeting` (sets the meeting context).
-- The event stream: per-principal monotonic ids, 24 hours of replay from `Last-Event-ID`, `410` beyond the window, whole-object payloads, `heartbeat` every 25 seconds.
-- Actions that behave like Lance: settle moves the item and emits events; approve answers `202` with a correlation id, then emits `item.removed`; task Done raises a mock proposal; snooze takes `until`, chase takes `note`; a stale `version` answers `409` with the current item.
+- The event stream: per-principal monotonic ids, 24 hours of replay from `Last-Event-ID`, `410` for an id older than the window or newer than the latest event, whole-object payloads, item events before the `today.updated` and `views.updated` that reflect them, `heartbeat` every 25 seconds with no id and no replay (ADR 0009).
+- Actions that behave like Lance: every action answers `{ correlationId }` and at least one event on the item carries it; settle answers `200` and moves the item by its events; approve answers `202`, then emits `item.removed`; task Done answers `202` and raises a mock proposal; an action whose `input` is `until` or `note` takes that field; a stale `version` answers `409` with the current item.
 - `POST /__mock/scenario`, `POST /__mock/emit`, `POST /__mock/clock`, and `GET /__mock/sessions` (the heartbeats received, for D8). The CLI `pnpm mock emit alert --severity P1`.
 - `scripts/dev.sh`, first half: start the mock on 4317 and wait until it answers.
 
@@ -82,7 +82,8 @@ Build:
 - `Client`: every request through `URLSessionConfiguration.ephemeral`; environment profiles `mock` and `lance-dev` (base URL from E3, tenant id, the desktop client id and the Lance api scope as configuration, never literals in views); `-IanEnvironment` launch argument.
 - `Auth`: the `dev-local` token for the mock; Entra authorisation code with PKCE through the system browser and a loopback listener on a random `localhost` port; tokens in the Keychain as generic passwords; sign-out clears them.
 - The SSE reader: `Last-Event-ID` resumption, backoff with jitter up to 30 seconds, `410` triggers a snapshot refetch, 60-second snapshot polling after 60 seconds without the stream, stopping when it returns.
-- `Store`: an `@Observable`, `@MainActor` store; applies a snapshot, then events in id order; ignores a repeated id; replaces whole objects; marks an item pending on an action and clears the mark with an error on failure; handles `401`, `409`, `426` as spec 6.7 says; refuses to start below `minClientVersion` from `GET /me`.
+- `Store`: an `@Observable`, `@MainActor` store; applies a snapshot, then events in id order, `today.updated` and `views.updated` included; ignores a repeated id; replaces whole objects; marks an item pending on an action, clears the mark when an event carrying the action's `correlationId` arrives, and clears it with an error on failure; handles `401`, `409`, `426` as spec 6.7 says; refuses to start below `minClientVersion` from `GET /me`.
+- The OpenAPIRuntime configuration and the SSE decoding described in the AGENTS.md gotchas (UTC millisecond times, unknown event types skipped).
 - A temporary debug list in the menu bar extra showing open items and the data's age, removed in D5.
 
 Done when:
@@ -99,13 +100,14 @@ Read: spec sections 6.1, 6.5 and 6.8; ADRs 0004 to 0006; [design README](../desi
 
 Build:
 
+- Add `swift-snapshot-testing` to `Package.swift` for the snapshot test targets (deferred from D1, which had no snapshot test and no XCTest on its machine).
 - One window factory in `Surface` that sets `sharingType = .none` on everything it makes.
 - The Orbit panel per ADR 0005: borderless, non-activating, floating, all Spaces, full-screen auxiliary, click-through outside the avatar. Bottom-right of the main display with a 16-point inset; draggable to any corner, remembered in `UserDefaults`.
 - The Orbit renderer: `Canvas` in `TimelineView`, a pure function of the `/today` Orbit block, time and the motion setting, paused when hidden or suppressed.
 - Click toggles an empty expanded panel; hover shows the top item's title unless suppressed; right-click opens the menu bar extra's menu.
 - The menu bar extra with the count and Open, Pause me, Settings and Quit.
 - Suppression: the camera's "running somewhere" property through CoreMediaIO, `today.context.inExternalMeeting`, quiet hours, the user's pause.
-- The VoiceOver label from spec 6.1.
+- The VoiceOver label from spec 6.1, read from the Orbit block's `nowCount`, `load` and `urgentCount`.
 
 Done when:
 
@@ -141,11 +143,12 @@ Read: spec sections 5.3, 6.3 and 6.7; ADR 0001; the Context artboard for cards.
 
 Build:
 
-- Proposals grouped by action class, soonest expiry first, with summary, target system, decision tier, confidence and its source label, expiry, and Open in Lance.
-- Commitments with three tabs (Owed by me, Owed to me, To confirm) showing counterparty, due date, evidence quote and chase state.
-- Tasks grouped by horizon then unit, with a source badge and Open in source.
-- Alerts grouped by severity with P0 pinned.
-- One action component for every view: it draws `actions` in order, asks the `confirm` text when present, sends `until` for snooze and `note` for chase, marks the item pending, and shows a `409` change or an error on the item.
+- Every view draws the groups, order and sidebar counts in `views` as sent (ADR 0009); the client groups and sorts nothing.
+- Proposals in their action-class groups, with summary, target system label, decision tier, confidence and its source label, expiry, and Open in Lance.
+- Commitments in the three tabs (Owed by me, Owed to me, To confirm) showing counterparty, due date, evidence quote and chase state.
+- Tasks in their horizon sections and unit groups, with a source badge and Open in source.
+- Alerts in their severity groups, P0 first and pinned.
+- One action component for every view: it draws `actions` in order, asks the `confirm` text when present, asks for a time or a note when the action's `input` says so, marks the item pending, and shows a `409` change or an error on the item.
 - "Hand to Ian" with an optional instruction, shown only when `capabilities.handoff` is true.
 
 Done when:
@@ -178,13 +181,13 @@ Read: spec sections 4 (step 7), 6.5 and 6.6; AGENTS.md Q17; the Ladder artboard.
 
 Build:
 
-- The rung mapping from the spec 6.6 table (Q17), as one pure function.
+- The behaviour of each rung from the spec 6.6 table, driven by the item's `attention` from the server (Q17, ADR 0009), as one pure function.
 - Local notifications through `UNUserNotificationCenter`, with categories built from the item's actions. Urgent shows a banner with the item's actions and an eight-second whisper by the Orbit. Stop opens the expanded panel on the next pointer movement and always notifies. Text is hidden while suppressed; P0 still notifies.
 - The session heartbeat to `POST /sessions` every 60 seconds and on any change: device id, client version, active, suppressed, idle seconds.
 
 Done when:
 
-- Tests of the rung mapping for every row of the 6.6 table.
+- Tests of the behaviour for every rung of the 6.6 table.
 - A test shows notification content without item text while suppressed, and a P0 still delivered.
 - `GET /__mock/sessions` shows heartbeats at the right interval and on change.
 

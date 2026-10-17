@@ -12,7 +12,7 @@ What a person sees that they did not before, and in which scenario of the mock. 
 
 ## Verification
 
-Commands run and their results: `swift format lint`, `swift build`, `swift test`, `xcodebuild build`, and the mock's lint, typecheck and test when `mock/` changed.
+Commands run and their results: `swift format lint`, `swift build`, `swift test`, `scripts/check-generated.sh`, `xcodebuild build`, the contract lint when `contract/` changed, and the mock's lint, typecheck and test when `mock/` changed.
 
 ## Checklist
 

@@ -1,0 +1,19 @@
+{
+  "costCeilingGbp" : 15,
+  "global" : {
+    "mode" : "dry_run",
+    "paused" : false,
+    "pausedReason" : null
+  },
+  "liveEligible" : false,
+  "liveOpensAt" : "2026-10-23T08:00:00.000Z",
+  "mode" : "dry_run",
+  "paused" : false,
+  "pausedReason" : null,
+  "pushBudgetPerHour" : 3,
+  "quietHours" : {
+    "end" : "07:00",
+    "start" : "19:00"
+  },
+  "timeZone" : "Europe/London"
+}

@@ -1,0 +1,13 @@
+{
+  "capabilities" : {
+    "handoff" : true
+  },
+  "contractVersion" : "1.0.0",
+  "displayName" : "[PERSON]",
+  "minClientVersion" : "0.1.0",
+  "mode" : "dry_run",
+  "principalId" : "prin_01JAXQ0000PRINCIPAL0000001",
+  "serverTime" : "2026-10-16T08:00:00.000Z",
+  "status" : "active",
+  "timeZone" : "Europe/London"
+}

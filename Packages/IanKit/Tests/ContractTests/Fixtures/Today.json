@@ -1,0 +1,73 @@
+{
+  "context" : {
+    "inExternalMeeting" : false,
+    "quietHoursActive" : false
+  },
+  "field" : {
+    "cells" : [
+      {
+        "horizon" : "now",
+        "itemIds" : [
+          "prop_01JAXQ4Z7C5W6N0R2T8V9Y3K1M",
+          "cmt_01JAXQ5B2D7F9H1K3M5P7R9T1V"
+        ],
+        "kind" : "proposal",
+        "pressure" : 0.72,
+        "unitId" : "unit_client",
+        "working" : false
+      },
+      {
+        "horizon" : "later",
+        "itemIds" : [
+          "task_notion_0000000000000000000000000001"
+        ],
+        "kind" : "task",
+        "pressure" : 0.1,
+        "unitId" : "other",
+        "working" : true
+      }
+    ],
+    "units" : [
+      {
+        "id" : "unit_client",
+        "name" : "[CLIENT]"
+      },
+      {
+        "id" : "other",
+        "name" : "Other"
+      }
+    ]
+  },
+  "lists" : {
+    "later" : [
+      {
+        "counts" : [
+          {
+            "count" : 1,
+            "kind" : "task"
+          }
+        ],
+        "unitId" : "other"
+      }
+    ],
+    "now" : [
+      "prop_01JAXQ4Z7C5W6N0R2T8V9Y3K1M",
+      "cmt_01JAXQ5B2D7F9H1K3M5P7R9T1V"
+    ],
+    "week" : [
+
+    ]
+  },
+  "orbit" : {
+    "itemIds" : [
+      "prop_01JAXQ4Z7C5W6N0R2T8V9Y3K1M",
+      "cmt_01JAXQ5B2D7F9H1K3M5P7R9T1V"
+    ],
+    "load" : 3,
+    "median" : 12,
+    "nowCount" : 2,
+    "overflow" : 0,
+    "urgentCount" : 0,
+    "working" : true
+  }
+}

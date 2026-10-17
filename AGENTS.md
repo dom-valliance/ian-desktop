@@ -74,23 +74,25 @@ Checked against the Lance repository on 17 October 2026. The spec text is unchan
 | Q14 | Dock icon and app menu | Accessory app (`LSUIElement`), no Dock icon. The Orbit and the menu bar extra are the entry points |
 | Q15 | How the Xcode project is kept | `App/project.yml` with XcodeGen is the source; the generated `App/Ian.xcodeproj` is committed so a fresh clone opens without XcodeGen; CI fails if they drift. D1 records it as ADR 0007 |
 | Q16 | Colour of a field cell that holds items of several kinds | The server sends the cell's kind (the kind of its highest-pressure item). D1 puts `kind` on the field cell in the contract draft, so the client chooses nothing |
-| Q17 | Attention rung per item | The client maps an item to a rung with the spec 6.6 table (severity, kind, proposal expiry within 15 minutes). If the mapping grows past that table, add `attention` to `Item` as a MINOR change and move the rule to Lance |
+| Q17 | Attention rung per item | Settled in D1: the spec 6.6 table names triggers the client cannot see (risk language, a foreign decision attempt, the budget ceiling), so `Item.attention` carries the rung from Lance and the client maps nothing (ADR 0009) |
 
 ## Toolchain and commands
 
-Xcode 16 with Swift 6 in strict concurrency mode, macOS 14 minimum. Node 22 through nvm (`nvm use`), pnpm through corepack. Dependencies are the four Swift packages in spec section 2 and nothing else without an ADR.
+Xcode 26 (ADR 0008) with Swift 6 in strict concurrency mode, macOS 14 minimum. Node 22 through nvm (`nvm use`), pnpm through corepack. Dependencies are the four Swift packages in spec section 2 and nothing else without an ADR. Build tools that never ship (`swift-openapi-generator`, XcodeGen, and Yams for the `extract-examples` tool that turns the contract's examples into test fixtures) are pinned in `scripts/tools/Package.swift` and run through the scripts in `scripts/` (ADR 0007).
 
 Once D1 and D2 land, these are the checks. Every one must pass, judged by exit code, before a task is marked done:
 
 ```
-swift format lint --recursive --strict Packages App
-swift build --package-path Packages/IanKit
-swift test --package-path Packages/IanKit
+swift format lint --recursive --strict Packages App scripts
+swift build --package-path Packages/IanKit --force-resolved-versions
+swift test --package-path Packages/IanKit --force-resolved-versions
+scripts/check-generated.sh
 xcodebuild -project App/Ian.xcodeproj -scheme Ian -configuration Debug -destination 'platform=macOS' build
 pnpm --dir mock lint && pnpm --dir mock typecheck && pnpm --dir mock test
+pnpm --dir contract install --frozen-lockfile && pnpm --dir contract lint
 ```
 
-plus the contract lint command D1 defines. Read the workflows in `.github/workflows/` rather than this list when they differ; the workflows win.
+Until D2, the mock has only an empty `test`. Read the workflows in `.github/workflows/` rather than this list when they differ; the workflows win.
 
 ## Git and GitHub
 
@@ -114,7 +116,10 @@ Promoted here when the same lesson appears more than twice in `.claude/notes/`. 
 
 - A borderless `NSWindow` or `NSPanel` returns false from `canBecomeKey`. The Orbit panel must stay that way; the expanded client's panel overrides it so text fields take input.
 - `URLSession.shared` and the default configuration write responses to a disk cache. Build every session from `URLSessionConfiguration.ephemeral`.
-- `swift-openapi-generator`'s build plugin reads `openapi.yaml` and `openapi-generator-config.yaml` from the target's own folder. Reach `contract/ian-desktop.v1.yaml` through a symbolic link, or run the generator's CLI from a script and commit its output. D1 decides and the phase log records which.
+- The Swift contract types come from `scripts/generate-contract.sh`, which runs `swift-openapi-generator`'s CLI and writes `Packages/IanKit/Sources/Contract/Generated`. The output is committed and `scripts/check-generated.sh` fails CI on drift. Do not use the build plugin: Xcode asks to trust it, which breaks a fresh-clone `xcodebuild`.
+- `swift-openapi-generator` silently drops a property declared as `oneOf` a `$ref` and `null`. Make such a property optional and absent when it does not apply (ADR 0009); inline values can use `type: [string, 'null']`.
+- Contract times are UTC with milliseconds. Configure OpenAPIRuntime with the `.iso8601WithFractionalSeconds` date transcoder, and decode event `data` with a `JSONDecoder` whose date strategy matches; the default `.iso8601` rejects them.
+- `asDecodedServerSentEventsWithJSONData` throws on the first event it cannot decode, which ends the stream, and the generated `StreamEvent` rejects an unknown `type`. Use `asDecodedServerSentEvents()`, skip events whose `event` field is not a known type, and refetch the snapshot when a known type fails to decode.
 - The `lance-dev` profile reads Dom's real dev data. Keep it out of every test, snapshot and recording.
 
 ## Review guidelines

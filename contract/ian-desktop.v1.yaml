@@ -1,0 +1,1987 @@
+openapi: 3.1.0
+info:
+  title: Ian desktop api
+  version: 1.0.0
+  summary: The contract between the Ian desktop client and Lance's /desktop/v1 façade.
+  description: |
+    Version 1 of the contract between the Ian desktop client and Lance (ADR 0002). This
+    document is the source of truth: the Swift types are generated from it, the mock validates
+    every response against it, and Lance's façade is tested against a pinned tag of it.
+
+    The client is thin (ADR 0001). Every value it shows, every grouping, every order, every count
+    and every action an item offers comes from these responses. Where the client seems to need a
+    calculation, this document is missing a field. Departures from spec section 5 are recorded
+    in ADR 0009.
+
+    Conventions:
+
+    - Every path requires a bearer token.
+    - The client sends its version in `Desktop-Client-Version` on every request. The server
+      answers `426` when it is below `minClientVersion`. A request without the header is not
+      version-checked.
+    - Errors use `application/problem+json` (RFC 9457). `409` on an action means the item changed
+      since the client read it, and the body carries the current item.
+    - Times are UTC, ISO 8601 with milliseconds (`2026-10-16T08:00:00.000Z`), as JavaScript's
+      `toISOString` writes them. Quiet hours are local `HH:MM` times in the principal's time zone.
+    - Additive changes (a new optional field, a new endpoint, a new event type) raise the minor
+      version. Clients ignore fields and event types they do not know. A new value in an enum
+      is a breaking change and belongs in version 2.
+servers:
+  - url: http://localhost:4317/desktop/v1
+    description: The mock server, the default environment (ADR 0003)
+  - url: https://{apiHost}/desktop/v1
+    description: The Lance api façade (Lance packages DL1 to DL4)
+    variables:
+      apiHost:
+        default: ca-lance-api-dev.graygrass-c682ce2c.uksouth.azurecontainerapps.io
+        description: The Lance dev api host (AGENTS.md erratum E3)
+security:
+  - bearerAuth: []
+tags:
+  - name: principal
+    description: Who the principal is, and what this client may do.
+  - name: snapshot
+    description: Everything the client shows, in one call, with the cursor for the event stream.
+  - name: today
+    description: The Orbit, the Pillars field and the lists beside it.
+  - name: items
+    description: Proposals, commitments, tasks and alerts, as one item envelope.
+  - name: handoff
+    description: Hand an item to Ian with an optional instruction.
+  - name: agents
+    description: Watchers, agents and jobs acting for the principal.
+  - name: settings
+    description: The principal's settings, held by Lance.
+  - name: events
+    description: The server-sent event stream that moves the client's state.
+  - name: sessions
+    description: Session heartbeats, so Lance can decide where to deliver.
+paths:
+  /me:
+    get:
+      tags: [principal]
+      operationId: getMe
+      summary: Read the principal and the minimum client version
+      description: |
+        The first call after sign-in. When `minClientVersion` is above the client's version, the
+        client shows the upgrade state and stops (spec section 4, step 2).
+      parameters:
+        - $ref: '#/components/parameters/ClientVersion'
+      responses:
+        '200':
+          description: The principal.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Me'
+              examples:
+                me:
+                  $ref: '#/components/examples/Me'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '426':
+          $ref: '#/components/responses/UpgradeRequired'
+  /snapshot:
+    get:
+      tags: [snapshot]
+      operationId: getSnapshot
+      summary: Read everything the client shows, with the event cursor
+      description: |
+        Fills the store in one call. The client then opens `GET /events` with `cursor` as
+        `Last-Event-ID`, and refetches the snapshot when the stream answers `410`.
+      parameters:
+        - $ref: '#/components/parameters/ClientVersion'
+      responses:
+        '200':
+          description: The snapshot.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Snapshot'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '426':
+          $ref: '#/components/responses/UpgradeRequired'
+  /today:
+    get:
+      tags: [today]
+      operationId: getToday
+      summary: Read the Orbit block, the field block, the lists and the context
+      parameters:
+        - $ref: '#/components/parameters/ClientVersion'
+      responses:
+        '200':
+          description: Today.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Today'
+              examples:
+                today:
+                  $ref: '#/components/examples/Today'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '426':
+          $ref: '#/components/responses/UpgradeRequired'
+  /items:
+    get:
+      tags: [items]
+      operationId: listItems
+      summary: List items, filtered and paged
+      description: |
+        Items arrive in the server's order. The views draw their groups and order from `Views`;
+        this list serves filtering and paging.
+      parameters:
+        - $ref: '#/components/parameters/ClientVersion'
+        - name: kind
+          in: query
+          required: false
+          description: Only items of this kind.
+          schema:
+            $ref: '#/components/schemas/ItemKind'
+        - name: horizon
+          in: query
+          required: false
+          description: Only items in this horizon.
+          schema:
+            $ref: '#/components/schemas/Horizon'
+        - name: state
+          in: query
+          required: false
+          description: Which items to list. Defaults to `open`.
+          schema:
+            $ref: '#/components/schemas/ItemState'
+        - name: cursor
+          in: query
+          required: false
+          description: The `nextCursor` from the previous page.
+          schema:
+            type: string
+        - name: limit
+          in: query
+          required: false
+          description: Page size.
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 200
+            default: 50
+      responses:
+        '200':
+          description: One page of items.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ItemPage'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '426':
+          $ref: '#/components/responses/UpgradeRequired'
+  /items/{itemId}:
+    get:
+      tags: [items]
+      operationId: getItem
+      summary: Read one item with its full detail
+      parameters:
+        - $ref: '#/components/parameters/ClientVersion'
+        - $ref: '#/components/parameters/ItemId'
+      responses:
+        '200':
+          description: The item.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Item'
+              examples:
+                proposal:
+                  $ref: '#/components/examples/ProposalItem'
+                commitmentOwedByPrincipal:
+                  $ref: '#/components/examples/CommitmentByItem'
+                commitmentOwedToPrincipal:
+                  $ref: '#/components/examples/CommitmentToItem'
+                task:
+                  $ref: '#/components/examples/TaskItem'
+                alert:
+                  $ref: '#/components/examples/AlertItem'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '426':
+          $ref: '#/components/responses/UpgradeRequired'
+  /items/{itemId}/actions/{actionId}:
+    post:
+      tags: [items]
+      operationId: runItemAction
+      summary: Run one of the actions the item offers
+      description: |
+        `actionId` is an id from the item's `actions`, sent back unchanged. The client marks the
+        item pending and waits for the event that moves it; it never moves the item on this
+        response (ADR 0001). At least one event on the item carries the returned
+        `correlationId`; when it arrives, the pending mark clears. An action id that no longer
+        applies answers `409` with the current item, never a silent success.
+      parameters:
+        - $ref: '#/components/parameters/ClientVersion'
+        - $ref: '#/components/parameters/ItemId'
+        - name: actionId
+          in: path
+          required: true
+          description: An id from the item's `actions`.
+          schema:
+            type: string
+            minLength: 1
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ActionRequest'
+            examples:
+              settle:
+                summary: An action that takes no input
+                value:
+                  version: 4
+              snooze:
+                summary: An action whose input is `until`
+                value:
+                  version: 4
+                  until: '2026-10-19T08:00:00.000Z'
+              chase:
+                summary: An action whose input is `note`
+                value:
+                  version: 4
+                  note: Asking again before Friday's review.
+      responses:
+        '200':
+          description: The action completed. Its events follow.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Accepted'
+        '202':
+          description: |
+            The action was accepted and continues: approving hands the proposal to the executor,
+            and Done raises a `complete_task` proposal. Its events follow.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Accepted'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '426':
+          $ref: '#/components/responses/UpgradeRequired'
+  /handoff:
+    post:
+      tags: [handoff]
+      operationId: handOff
+      summary: Hand an item to Ian with an optional instruction
+      description: |
+        Offered only when `capabilities.handoff` is true. A server that does not offer it
+        answers `404`.
+      parameters:
+        - $ref: '#/components/parameters/ClientVersion'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/HandoffRequest'
+      responses:
+        '202':
+          description: Ian has the item. A proposal follows as an event carrying the correlation id.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Accepted'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '426':
+          $ref: '#/components/responses/UpgradeRequired'
+  /agents:
+    get:
+      tags: [agents]
+      operationId: getAgents
+      summary: Read the watchers, agents and jobs acting for the principal
+      parameters:
+        - $ref: '#/components/parameters/ClientVersion'
+      responses:
+        '200':
+          description: The agents and today's cost.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AgentsOverview'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '426':
+          $ref: '#/components/responses/UpgradeRequired'
+  /agents/{agentId}/pause:
+    post:
+      tags: [agents]
+      operationId: pauseAgent
+      summary: Pause an agent within the principal's own scope
+      parameters:
+        - $ref: '#/components/parameters/ClientVersion'
+        - $ref: '#/components/parameters/AgentId'
+      responses:
+        '200':
+          description: The agent after the change.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Agent'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '426':
+          $ref: '#/components/responses/UpgradeRequired'
+  /agents/{agentId}/resume:
+    post:
+      tags: [agents]
+      operationId: resumeAgent
+      summary: Resume an agent within the principal's own scope
+      parameters:
+        - $ref: '#/components/parameters/ClientVersion'
+        - $ref: '#/components/parameters/AgentId'
+      responses:
+        '200':
+          description: The agent after the change.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Agent'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '426':
+          $ref: '#/components/responses/UpgradeRequired'
+  /settings:
+    get:
+      tags: [settings]
+      operationId: getSettings
+      summary: Read the principal's settings
+      parameters:
+        - $ref: '#/components/parameters/ClientVersion'
+      responses:
+        '200':
+          description: The settings.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Settings'
+              examples:
+                settings:
+                  $ref: '#/components/examples/Settings'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '426':
+          $ref: '#/components/responses/UpgradeRequired'
+    patch:
+      tags: [settings]
+      operationId: updateSettings
+      summary: Change the principal's quiet hours, push budget, mode or own pause
+      description: |
+        Only the fields sent change. Switching `mode` to `live` is refused with `422` unless
+        `liveEligible` is true; the client also asks the principal to confirm first.
+      parameters:
+        - $ref: '#/components/parameters/ClientVersion'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SettingsPatch'
+      responses:
+        '200':
+          description: The settings after the change.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Settings'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '422':
+          $ref: '#/components/responses/Refused'
+        '426':
+          $ref: '#/components/responses/UpgradeRequired'
+  /events:
+    get:
+      tags: [events]
+      operationId: streamEvents
+      summary: Open the event stream
+      description: |
+        A server-sent event stream. Each message carries:
+
+        - `id`: an `EventId`, strictly increasing per principal. `heartbeat` carries no `id`.
+        - `event`: the event type, one of the `type` values of `StreamEvent`.
+        - `data`: one line of JSON, a `StreamEvent` whose `type` equals `event`.
+
+        Payloads carry whole objects, never patches. Events that change items come before the
+        `today.updated` and `views.updated` that reflect them; until those arrive, Today and the
+        views may still name an item that has just left, which the client draws leaving.
+
+        The server keeps 24 hours of events. On reconnect the client sends the last id it
+        applied in `Last-Event-ID` and receives every later event in order. An id the server
+        does not hold, older than the window or newer than its latest event, answers `410`, and
+        the client refetches the snapshot. `heartbeat` arrives every 25 seconds and is never
+        stored or replayed. Clients ignore event types they do not know.
+      parameters:
+        - $ref: '#/components/parameters/ClientVersion'
+        - name: Last-Event-ID
+          in: header
+          required: false
+          description: The id of the last event the client applied, or the snapshot's `cursor`.
+          schema:
+            $ref: '#/components/schemas/EventId'
+      responses:
+        '200':
+          description: The stream.
+          content:
+            text/event-stream:
+              schema:
+                type: string
+                description: Server-sent events whose `data` lines hold `StreamEvent` JSON.
+              example: |
+                id: 1042
+                event: item.removed
+                data: {"type":"item.removed","itemId":"cmt_01JAXQ5B2D7F9H1K3M5P7R9T1V","outcome":"Settled. Recorded on the ledger","correlationId":"corr_01JAXQ9E5G0J2L4N6Q8S0U2W4Y"}
+
+                event: heartbeat
+                data: {"type":"heartbeat","serverTime":"2026-10-16T08:00:25.000Z"}
+
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '410':
+          $ref: '#/components/responses/Gone'
+        '426':
+          $ref: '#/components/responses/UpgradeRequired'
+  /sessions:
+    post:
+      tags: [sessions]
+      operationId: recordSession
+      summary: Record a session heartbeat
+      description: |
+        Sent every 60 seconds and on any change. Lance uses it to deliver to the desktop while
+        it is active, and to Slack after ten idle minutes or when no session is alive (Lance
+        package DL5). The client only reports.
+      parameters:
+        - $ref: '#/components/parameters/ClientVersion'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SessionHeartbeat'
+      responses:
+        '204':
+          description: Recorded.
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '426':
+          $ref: '#/components/responses/UpgradeRequired'
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      description: |
+        `Bearer dev-local` against the mock. Against Lance, an Entra access token for the Lance
+        api scope, obtained with authorisation code and PKCE (spec section 8).
+  parameters:
+    ClientVersion:
+      name: Desktop-Client-Version
+      in: header
+      required: false
+      description: |
+        The client's version. The server answers `426` when it is below `minClientVersion`. A
+        request without it is not version-checked.
+      schema:
+        $ref: '#/components/schemas/Version'
+    ItemId:
+      name: itemId
+      in: path
+      required: true
+      description: An item id.
+      schema:
+        $ref: '#/components/schemas/ItemIdentifier'
+    AgentId:
+      name: agentId
+      in: path
+      required: true
+      description: An agent id.
+      schema:
+        type: string
+        minLength: 1
+  responses:
+    BadRequest:
+      description: The request is malformed. `detail` says which field and why.
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+    Unauthorized:
+      description: The token is missing, expired or not accepted. The client clears it and asks the principal to sign in.
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+    Forbidden:
+      description: The change is outside the principal's own scope.
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+    NotFound:
+      description: No such item, agent or capability for this principal.
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+    Conflict:
+      description: The item changed since the client read it. The body carries the current item, which replaces the client's copy.
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/ConflictProblem'
+    Gone:
+      description: '`Last-Event-ID` names an event the server does not hold. The client refetches the snapshot.'
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+    Refused:
+      description: The change is understood but refused, for example going live before the principal is eligible.
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+    UpgradeRequired:
+      description: The client is below the minimum version. The client shows the upgrade state with no data.
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/UpgradeRequiredProblem'
+  schemas:
+    Problem:
+      type: object
+      description: An RFC 9457 problem. `detail` says what to do next.
+      required: [type, title, status]
+      properties:
+        type:
+          type: string
+          format: uri-reference
+          description: A URI naming the problem type, or `about:blank`.
+        title:
+          type: string
+          description: A short summary of the problem type.
+        status:
+          type: integer
+          minimum: 100
+          maximum: 599
+        detail:
+          type: string
+          description: What happened in this case, and what the client or principal can do.
+        instance:
+          type: string
+          format: uri-reference
+    ConflictProblem:
+      description: A `409` problem carrying the current item.
+      allOf:
+        - $ref: '#/components/schemas/Problem'
+        - type: object
+          required: [item]
+          properties:
+            item:
+              $ref: '#/components/schemas/Item'
+    UpgradeRequiredProblem:
+      description: A `426` problem carrying the minimum client version.
+      allOf:
+        - $ref: '#/components/schemas/Problem'
+        - type: object
+          required: [minClientVersion]
+          properties:
+            minClientVersion:
+              $ref: '#/components/schemas/Version'
+    DateTime:
+      type: string
+      format: date-time
+      description: UTC, ISO 8601 with milliseconds, as JavaScript's `toISOString` writes it.
+      pattern: '^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}\.[0-9]{3}Z$'
+      examples: ['2026-10-16T08:00:00.000Z']
+    Version:
+      type: string
+      description: A semantic version, major.minor.patch.
+      pattern: '^[0-9]+\.[0-9]+\.[0-9]+$'
+      examples: ['0.1.0']
+    EventId:
+      type: string
+      description: A decimal event id, strictly increasing per principal.
+      pattern: '^[0-9]+$'
+      examples: ['1042']
+    CorrelationId:
+      type: string
+      minLength: 1
+      description: Lance's correlation id for an action and everything it caused.
+      examples: [corr_01JAXQ9E5G0J2L4N6Q8S0U2W4Y]
+    ItemIdentifier:
+      type: string
+      description: A stable item id, prefixed by kind.
+      pattern: '^(prop|cmt|task|alrt)_.+$'
+      examples: [prop_01JAXQ4Z7C5W6N0R2T8V9Y3K1M]
+    ItemKind:
+      type: string
+      description: |
+        `commitment_by` is owed by the principal; `commitment_to` is owed to the principal.
+      enum: [proposal, commitment_by, commitment_to, task, alert]
+    Horizon:
+      type: string
+      description: |
+        Computed by the server (spec 5.4). `now` is due today, overdue, P0 or P1, or a proposal
+        expiring today; `week` is due within seven days; everything else is `later`.
+      enum: [now, week, later]
+    Severity:
+      type: string
+      enum: [P0, P1, P2, P3]
+    Attention:
+      type: string
+      description: |
+        The item's rung on the attention ladder (spec 6.6), decided by the server. The server
+        sends the item again when its rung changes, for example when a proposal comes within 15
+        minutes of expiry.
+      enum: [ambient, needs_you, urgent, stop]
+    ItemState:
+      type: string
+      description: |
+        `open` is every open item except commitments awaiting confirmation; `to_confirm` is
+        those commitments.
+      enum: [open, to_confirm]
+    Unit:
+      type: object
+      description: A unit of work. Until units exist in Lance, the project, then the counterparty organisation, then Other (spec 5.4).
+      required: [id, name]
+      properties:
+        id:
+          type: string
+          minLength: 1
+        name:
+          type: string
+    ActionStyle:
+      type: string
+      enum: [primary, secondary, quiet]
+    ActionInput:
+      type: string
+      description: |
+        What the client asks for before sending the action. `until` sends `until` (a snooze);
+        `note` sends `note` (a chase); `none` sends neither.
+      enum: [none, until, note]
+    ItemAction:
+      type: object
+      description: A button the item offers. The client draws these in order and sends `id` back.
+      required: [id, label, style, confirm, input]
+      properties:
+        id:
+          type: string
+          minLength: 1
+        label:
+          type: string
+          minLength: 1
+        style:
+          $ref: '#/components/schemas/ActionStyle'
+        confirm:
+          type: [string, 'null']
+          description: When present, the question the client asks before sending the action.
+        input:
+          $ref: '#/components/schemas/ActionInput'
+    ItemLinks:
+      type: object
+      required: [lance, source]
+      properties:
+        lance:
+          type: string
+          format: uri
+          description: The item's page in the Lance web app.
+        source:
+          type: [string, 'null']
+          format: uri
+          description: The item in its system of record, when it has one.
+    Item:
+      type: object
+      description: |
+        The envelope every proposal, commitment, task and alert arrives in (spec 5.1). `detail`
+        carries the fields for the item's kind, and its `kind` equals the item's `kind`.
+      required:
+        - id
+        - kind
+        - title
+        - meta
+        - unit
+        - horizon
+        - pressure
+        - attention
+        - dueAt
+        - working
+        - version
+        - actions
+        - detail
+        - links
+      properties:
+        id:
+          $ref: '#/components/schemas/ItemIdentifier'
+        kind:
+          $ref: '#/components/schemas/ItemKind'
+        title:
+          type: string
+          description: Display text, already in the principal's voice.
+        meta:
+          type: string
+          description: One line, such as counterparty, due and source.
+        unit:
+          $ref: '#/components/schemas/Unit'
+        horizon:
+          $ref: '#/components/schemas/Horizon'
+        pressure:
+          type: number
+          minimum: 0
+          maximum: 1
+          description: Computed by the server (spec 5.4). Drives pillar height.
+        attention:
+          $ref: '#/components/schemas/Attention'
+        dueAt:
+          type: [string, 'null']
+          format: date-time
+          pattern: '^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}\.[0-9]{3}Z$'
+        severity:
+          $ref: '#/components/schemas/Severity'
+          description: Present for alerts only.
+        working:
+          type: boolean
+          description: An agent is acting on the item now.
+        version:
+          type: integer
+          minimum: 0
+          description: Sent back with an action, so a stale read answers `409`.
+        actions:
+          type: array
+          items:
+            $ref: '#/components/schemas/ItemAction'
+        detail:
+          $ref: '#/components/schemas/ItemDetail'
+        links:
+          $ref: '#/components/schemas/ItemLinks'
+    ItemDetail:
+      description: The fields for the item's kind (spec 5.3).
+      oneOf:
+        - $ref: '#/components/schemas/ProposalDetail'
+        - $ref: '#/components/schemas/CommitmentDetail'
+        - $ref: '#/components/schemas/TaskDetail'
+        - $ref: '#/components/schemas/AlertDetail'
+      discriminator:
+        propertyName: kind
+        mapping:
+          proposal: '#/components/schemas/ProposalDetail'
+          commitment_by: '#/components/schemas/CommitmentDetail'
+          commitment_to: '#/components/schemas/CommitmentDetail'
+          task: '#/components/schemas/TaskDetail'
+          alert: '#/components/schemas/AlertDetail'
+    PolicyDecision:
+      type: string
+      description: Lance's policy outcome. `propose` waits for the principal; `auto` runs; `forbid` is refused.
+      enum: [forbid, propose, auto]
+    DecisionTier:
+      type: string
+      description: The policy tier that produced the decision.
+      enum: [hard_floor, personal, organisation, fallback]
+    ConfidenceSource:
+      type: string
+      description: |
+        Where the confidence value came from (the Lev confidence-source rule, AGENTS.md erratum
+        E1). The client shows the label and never ranks one source above another.
+      enum: [lev_trusted, lev_untrusted, self_report]
+    Confidence:
+      type: object
+      required: [value, source]
+      properties:
+        value:
+          type: number
+          minimum: 0
+          maximum: 1
+        source:
+          $ref: '#/components/schemas/ConfidenceSource'
+    ProposalDetail:
+      type: object
+      required:
+        - kind
+        - actionClass
+        - actionClassLabel
+        - targetSystem
+        - targetSystemLabel
+        - summary
+        - policyDecision
+        - decisionTier
+        - expiresAt
+      properties:
+        kind:
+          type: string
+          enum: [proposal]
+        actionClass:
+          type: string
+          description: Lance's action class, such as `draft_email` or `complete_task`.
+        actionClassLabel:
+          type: string
+          description: The action class as the card shows it.
+        targetSystem:
+          type: string
+          description: The system the change lands in, such as `graph` or `notion`.
+        targetSystemLabel:
+          type: string
+          description: The target system as the card shows it.
+        summary:
+          type: string
+          description: A summary of the change. Editing it is out of scope; the `lance` link opens the editor.
+        policyDecision:
+          $ref: '#/components/schemas/PolicyDecision'
+        decisionTier:
+          $ref: '#/components/schemas/DecisionTier'
+        confidence:
+          $ref: '#/components/schemas/Confidence'
+          description: Absent when the proposal carries no confidence value.
+        expiresAt:
+          $ref: '#/components/schemas/DateTime'
+    Party:
+      type: object
+      description: A person or organisation the principal deals with.
+      required: [id, name]
+      properties:
+        id:
+          type: string
+          minLength: 1
+        name:
+          type: string
+    EvidenceSourceKind:
+      type: string
+      enum: [email, meeting, record]
+    EvidenceSource:
+      type: object
+      required: [kind, system, label, observedAt]
+      properties:
+        kind:
+          $ref: '#/components/schemas/EvidenceSourceKind'
+        system:
+          type: string
+          description: The system the evidence was read from, such as `graph` or `jamie`.
+        label:
+          type: string
+          description: The source as the card shows it.
+        observedAt:
+          type: [string, 'null']
+          format: date-time
+          pattern: '^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}\.[0-9]{3}Z$'
+    Evidence:
+      type: object
+      required: [quote, source]
+      properties:
+        quote:
+          type: string
+          description: The verbatim words the commitment was read from.
+        source:
+          $ref: '#/components/schemas/EvidenceSource'
+    ChaseState:
+      type: string
+      description: '`requested` means a chase draft is waiting as a proposal.'
+      enum: [not_chased, requested, chased]
+    Chase:
+      type: object
+      required: [state, count, lastChasedAt, nextChaseAt]
+      properties:
+        state:
+          $ref: '#/components/schemas/ChaseState'
+        count:
+          type: integer
+          minimum: 0
+        lastChasedAt:
+          type: [string, 'null']
+          format: date-time
+          pattern: '^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}\.[0-9]{3}Z$'
+        nextChaseAt:
+          type: [string, 'null']
+          format: date-time
+          pattern: '^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}\.[0-9]{3}Z$'
+    CommitmentDetail:
+      type: object
+      description: The direction is the kind; `commitment_by` is owed by the principal, `commitment_to` to the principal.
+      required: [kind, counterparty, evidence, chase, toConfirm]
+      properties:
+        kind:
+          type: string
+          enum: [commitment_by, commitment_to]
+        counterparty:
+          $ref: '#/components/schemas/Party'
+        evidence:
+          $ref: '#/components/schemas/Evidence'
+        chase:
+          $ref: '#/components/schemas/Chase'
+        toConfirm:
+          type: boolean
+          description: The commitment waits in the To confirm tab.
+    TaskSource:
+      type: string
+      enum: [notion, jamie]
+    Assignee:
+      type: object
+      required: [name, isPrincipal]
+      properties:
+        name:
+          type: [string, 'null']
+        isPrincipal:
+          type: boolean
+          description: The task is assigned to the principal.
+    TaskDetail:
+      type: object
+      description: The due date is the item's `dueAt`. Done raises a `complete_task` proposal.
+      required: [kind, source, assignee, status, project]
+      properties:
+        kind:
+          type: string
+          enum: [task]
+        source:
+          $ref: '#/components/schemas/TaskSource'
+        assignee:
+          $ref: '#/components/schemas/Assignee'
+        status:
+          type: string
+          description: The status as the source system names it.
+        project:
+          type: [string, 'null']
+    AlertDetail:
+      type: object
+      description: The severity is the item's `severity`.
+      required: [kind, alertKind, alertKindLabel, raisedAt, dedupeKey, relatedItemIds, explanation]
+      properties:
+        kind:
+          type: string
+          enum: [alert]
+        alertKind:
+          type: string
+          description: Lance's alert kind, such as `breaker_open` or `proposal_expiring`.
+        alertKindLabel:
+          type: string
+          description: The alert kind as the card shows it.
+        raisedAt:
+          $ref: '#/components/schemas/DateTime'
+        dedupeKey:
+          type: string
+        relatedItemIds:
+          type: array
+          items:
+            $ref: '#/components/schemas/ItemIdentifier'
+        explanation:
+          type: string
+    ItemPage:
+      type: object
+      required: [items, nextCursor]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/Item'
+        nextCursor:
+          type: [string, 'null']
+          description: Null on the last page.
+    ActionRequest:
+      type: object
+      required: [version]
+      properties:
+        version:
+          type: integer
+          minimum: 0
+          description: The item's `version` as the client read it.
+        until:
+          $ref: '#/components/schemas/DateTime'
+          description: Sent when the action's `input` is `until`.
+        note:
+          type: string
+          maxLength: 2000
+          description: Sent when the action's `input` is `note`.
+    Accepted:
+      type: object
+      required: [correlationId]
+      properties:
+        correlationId:
+          $ref: '#/components/schemas/CorrelationId'
+    HandoffRequest:
+      type: object
+      required: [itemId]
+      properties:
+        itemId:
+          $ref: '#/components/schemas/ItemIdentifier'
+        instruction:
+          type: string
+          maxLength: 2000
+    PrincipalStatus:
+      type: string
+      enum: [onboarding, active, paused, offboarded]
+    Mode:
+      type: string
+      enum: [dry_run, live]
+    Capabilities:
+      type: object
+      description: Feature flags for this client.
+      required: [handoff]
+      properties:
+        handoff:
+          type: boolean
+          description: '"Hand to Ian" is offered.'
+    Me:
+      type: object
+      required:
+        - principalId
+        - displayName
+        - status
+        - mode
+        - timeZone
+        - minClientVersion
+        - contractVersion
+        - capabilities
+        - serverTime
+      properties:
+        principalId:
+          type: string
+          minLength: 1
+        displayName:
+          type: string
+        status:
+          $ref: '#/components/schemas/PrincipalStatus'
+        mode:
+          $ref: '#/components/schemas/Mode'
+        timeZone:
+          type: string
+          description: An IANA time zone name.
+        minClientVersion:
+          $ref: '#/components/schemas/Version'
+        contractVersion:
+          $ref: '#/components/schemas/Version'
+          description: The contract version the server implements, from the tag it pins.
+        capabilities:
+          $ref: '#/components/schemas/Capabilities'
+        serverTime:
+          $ref: '#/components/schemas/DateTime'
+    OrbitBlock:
+      type: object
+      description: |
+        What the Orbit draws and says. The client never counts or sorts these (spec 5.4). The
+        VoiceOver label reads "Ian, `nowCount` need you now, `load` open, `urgentCount` urgent".
+      required: [itemIds, overflow, nowCount, urgentCount, load, median, working]
+      properties:
+        itemIds:
+          type: array
+          maxItems: 5
+          description: The satellites, `now` items in the server's order.
+          items:
+            $ref: '#/components/schemas/ItemIdentifier'
+        overflow:
+          type: integer
+          minimum: 0
+          description: The `now` items beyond the satellites, shown as "+n".
+        nowCount:
+          type: integer
+          minimum: 0
+          description: Every `now` item, the satellites and the overflow together.
+        urgentCount:
+          type: integer
+          minimum: 0
+          description: The items whose `attention` is `urgent` or `stop`.
+        load:
+          type: integer
+          minimum: 0
+          description: The count of open items.
+        median:
+          type: number
+          minimum: 1
+          description: The principal's 30-day median of daily open counts, floored at 1.
+        working:
+          type: boolean
+          description: Any item is being worked on; the core breathes.
+    FieldCell:
+      type: object
+      description: One pillar. Cells with no items are omitted.
+      required: [unitId, horizon, itemIds, pressure, kind, working]
+      properties:
+        unitId:
+          type: string
+          minLength: 1
+          description: One of `field.units`.
+        horizon:
+          $ref: '#/components/schemas/Horizon'
+        itemIds:
+          type: array
+          minItems: 1
+          description: In display order, highest pressure first. Selecting the pillar selects the first.
+          items:
+            $ref: '#/components/schemas/ItemIdentifier'
+        pressure:
+          type: number
+          minimum: 0
+          maximum: 1
+          description: The cell's aggregate pressure; the pillar's height.
+        kind:
+          $ref: '#/components/schemas/ItemKind'
+          description: The kind of the first item, which colours the pillar (AGENTS.md Q16).
+        working:
+          type: boolean
+          description: Any item in the cell is being worked on; light rises from the pillar.
+    FieldBlock:
+      type: object
+      description: The Pillars field. Columns are units, rows are horizons.
+      required: [units, cells]
+      properties:
+        units:
+          type: array
+          maxItems: 5
+          description: The columns, drawn left to right in this order. Other is last when present.
+          items:
+            $ref: '#/components/schemas/Unit'
+        cells:
+          type: array
+          items:
+            $ref: '#/components/schemas/FieldCell'
+    WeekGroup:
+      type: object
+      description: This week's items for one column, rolled up into one row.
+      required: [unitId, itemIds]
+      properties:
+        unitId:
+          type: string
+          minLength: 1
+          description: One of `field.units`.
+        itemIds:
+          type: array
+          minItems: 1
+          items:
+            $ref: '#/components/schemas/ItemIdentifier'
+    KindCount:
+      type: object
+      required: [kind, count]
+      properties:
+        kind:
+          $ref: '#/components/schemas/ItemKind'
+        count:
+          type: integer
+          minimum: 1
+    LaterGroup:
+      type: object
+      description: Later items for one column, as counts by kind, each linking to its view.
+      required: [unitId, counts]
+      properties:
+        unitId:
+          type: string
+          minLength: 1
+          description: One of `field.units`.
+        counts:
+          type: array
+          minItems: 1
+          items:
+            $ref: '#/components/schemas/KindCount'
+    TodayLists:
+      type: object
+      description: |
+        The lists below the field, in display order. Each `now` row matches the pillar whose
+        first item it is, each week group the column's week pillar, and each later group the
+        column's later pillar. The list is the accessible path to every item.
+      required: [now, week, later]
+      properties:
+        now:
+          type: array
+          description: Every `now` item, in display order.
+          items:
+            $ref: '#/components/schemas/ItemIdentifier'
+        week:
+          type: array
+          items:
+            $ref: '#/components/schemas/WeekGroup'
+        later:
+          type: array
+          items:
+            $ref: '#/components/schemas/LaterGroup'
+    TodayContext:
+      type: object
+      required: [inExternalMeeting, quietHoursActive]
+      properties:
+        inExternalMeeting:
+          type: boolean
+          description: The principal is in a meeting with people outside the organisation. Suppresses item text.
+        quietHoursActive:
+          type: boolean
+          description: The principal's quiet hours are in force. Suppresses item text.
+    Today:
+      type: object
+      description: |
+        Today covers open items, alerts included and commitments awaiting confirmation
+        excluded. Every item id names an item in the snapshot or in a later item event.
+      required: [orbit, field, lists, context]
+      properties:
+        orbit:
+          $ref: '#/components/schemas/OrbitBlock'
+        field:
+          $ref: '#/components/schemas/FieldBlock'
+        lists:
+          $ref: '#/components/schemas/TodayLists'
+        context:
+          $ref: '#/components/schemas/TodayContext'
+    ViewGroup:
+      type: object
+      description: A labelled group of items, in display order.
+      required: [id, label, itemIds]
+      properties:
+        id:
+          type: string
+          minLength: 1
+        label:
+          type: string
+        itemIds:
+          type: array
+          items:
+            $ref: '#/components/schemas/ItemIdentifier'
+    TaskSection:
+      type: object
+      description: One horizon of the Tasks view, grouped by unit.
+      required: [horizon, label, groups]
+      properties:
+        horizon:
+          $ref: '#/components/schemas/Horizon'
+        label:
+          type: string
+        groups:
+          type: array
+          items:
+            $ref: '#/components/schemas/ViewGroup'
+    CommitmentTabs:
+      type: object
+      description: The Commitments view's three tabs, each in display order.
+      required: [owedByMe, owedToMe, toConfirm]
+      properties:
+        owedByMe:
+          type: array
+          items:
+            $ref: '#/components/schemas/ItemIdentifier'
+        owedToMe:
+          type: array
+          items:
+            $ref: '#/components/schemas/ItemIdentifier'
+        toConfirm:
+          type: array
+          items:
+            $ref: '#/components/schemas/ItemIdentifier'
+    ViewCounts:
+      type: object
+      description: The number the sidebar shows beside each view.
+      required: [today, proposals, commitments, tasks, alerts, agents]
+      properties:
+        today:
+          type: integer
+          minimum: 0
+        proposals:
+          type: integer
+          minimum: 0
+        commitments:
+          type: integer
+          minimum: 0
+        tasks:
+          type: integer
+          minimum: 0
+        alerts:
+          type: integer
+          minimum: 0
+        agents:
+          type: integer
+          minimum: 0
+    Views:
+      type: object
+      description: |
+        How the Proposals, Commitments, Tasks and Alerts views group and order their items, and
+        the sidebar counts (spec 6.2 and 6.3). The client draws them as sent. Every item id
+        names an item in the snapshot or in a later item event.
+      required: [counts, proposals, commitments, tasks, alerts]
+      properties:
+        counts:
+          $ref: '#/components/schemas/ViewCounts'
+        proposals:
+          type: array
+          description: By action class, soonest expiry first within each group.
+          items:
+            $ref: '#/components/schemas/ViewGroup'
+        commitments:
+          $ref: '#/components/schemas/CommitmentTabs'
+        tasks:
+          type: array
+          description: By horizon, then unit.
+          items:
+            $ref: '#/components/schemas/TaskSection'
+        alerts:
+          type: array
+          description: By severity, P0 first and pinned.
+          items:
+            $ref: '#/components/schemas/ViewGroup'
+    AgentKind:
+      type: string
+      enum: [watcher, agent, job]
+    AgentState:
+      type: string
+      enum: [running, idle, paused, breaker_open, failed]
+    BreakerState:
+      type: string
+      enum: [closed, open, half_open]
+    Agent:
+      type: object
+      required:
+        - id
+        - name
+        - kind
+        - state
+        - lastRunAt
+        - nextRunAt
+        - costTodayGbp
+        - ceilingFraction
+        - pausable
+      properties:
+        id:
+          type: string
+          minLength: 1
+        name:
+          type: string
+        kind:
+          $ref: '#/components/schemas/AgentKind'
+        state:
+          $ref: '#/components/schemas/AgentState'
+        lastRunAt:
+          type: [string, 'null']
+          format: date-time
+          pattern: '^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}\.[0-9]{3}Z$'
+        nextRunAt:
+          type: [string, 'null']
+          format: date-time
+          pattern: '^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}\.[0-9]{3}Z$'
+        breaker:
+          $ref: '#/components/schemas/BreakerState'
+          description: Absent when the agent has no breaker.
+        costTodayGbp:
+          type: number
+          minimum: 0
+          description: This agent's cost today.
+        ceilingFraction:
+          type: number
+          minimum: 0
+          description: This agent's cost today as a share of the principal's daily ceiling.
+        pausable:
+          type: boolean
+          description: Pause and resume apply to this agent within the principal's own scope.
+    CostToday:
+      type: object
+      description: The principal's cost today. `ceilingGbp` is the same value as `Settings.costCeilingGbp`.
+      required: [costGbp, ceilingGbp, fraction]
+      properties:
+        costGbp:
+          type: number
+          minimum: 0
+        ceilingGbp:
+          type: number
+          minimum: 0
+        fraction:
+          type: number
+          minimum: 0
+          description: Today's cost as a share of the ceiling.
+    AgentsOverview:
+      type: object
+      required: [agents, costToday]
+      properties:
+        agents:
+          type: array
+          items:
+            $ref: '#/components/schemas/Agent'
+        costToday:
+          $ref: '#/components/schemas/CostToday'
+    QuietHours:
+      type: object
+      description: A daily window in the principal's time zone; it may cross midnight.
+      required: [start, end]
+      properties:
+        start:
+          type: string
+          pattern: '^([01][0-9]|2[0-3]):[0-5][0-9]$'
+        end:
+          type: string
+          pattern: '^([01][0-9]|2[0-3]):[0-5][0-9]$'
+    GlobalState:
+      type: object
+      description: The organisation's state. Read-only. `paused` is the kill switch.
+      required: [paused, pausedReason, mode]
+      properties:
+        paused:
+          type: boolean
+        pausedReason:
+          type: [string, 'null']
+        mode:
+          $ref: '#/components/schemas/Mode'
+    Settings:
+      type: object
+      description: |
+        The principal's settings. `timeZone`, `costCeilingGbp` and `global` are read-only here.
+      required:
+        - quietHours
+        - pushBudgetPerHour
+        - mode
+        - liveEligible
+        - liveOpensAt
+        - paused
+        - pausedReason
+        - timeZone
+        - costCeilingGbp
+        - global
+      properties:
+        quietHours:
+          $ref: '#/components/schemas/QuietHours'
+        pushBudgetPerHour:
+          type: integer
+          minimum: 0
+          maximum: 50
+          description: The most unsolicited notifications in a rolling hour, across every surface.
+        mode:
+          $ref: '#/components/schemas/Mode'
+        liveEligible:
+          type: boolean
+          description: The switch from `dry_run` to `live` is allowed now.
+        liveOpensAt:
+          type: [string, 'null']
+          format: date-time
+          pattern: '^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}\.[0-9]{3}Z$'
+          description: When `liveEligible` becomes true, if the server knows.
+        paused:
+          type: boolean
+          description: The principal's own pause.
+        pausedReason:
+          type: [string, 'null']
+        timeZone:
+          type: string
+          description: An IANA time zone name.
+        costCeilingGbp:
+          type: number
+          minimum: 0
+          description: The principal's daily cost ceiling.
+        global:
+          $ref: '#/components/schemas/GlobalState'
+    SettingsPatch:
+      type: object
+      description: The fields to change. At least one.
+      minProperties: 1
+      properties:
+        quietHours:
+          $ref: '#/components/schemas/QuietHours'
+        pushBudgetPerHour:
+          type: integer
+          minimum: 0
+          maximum: 50
+        mode:
+          $ref: '#/components/schemas/Mode'
+        paused:
+          type: boolean
+        pausedReason:
+          type: string
+          maxLength: 500
+          description: Recorded with a pause.
+    SessionHeartbeat:
+      type: object
+      required: [deviceId, clientVersion, active, suppressed, idleSeconds]
+      properties:
+        deviceId:
+          type: string
+          format: uuid
+          description: A random id generated at launch and held in memory for the life of the process; nothing is written to disk (ADR 0001).
+        clientVersion:
+          $ref: '#/components/schemas/Version'
+        active:
+          type: boolean
+        suppressed:
+          type: boolean
+        idleSeconds:
+          type: integer
+          minimum: 0
+    Snapshot:
+      type: object
+      required: [cursor, serverTime, today, views, items, agents, settings]
+      properties:
+        cursor:
+          $ref: '#/components/schemas/EventId'
+        serverTime:
+          $ref: '#/components/schemas/DateTime'
+        today:
+          $ref: '#/components/schemas/Today'
+        views:
+          $ref: '#/components/schemas/Views'
+        items:
+          type: array
+          description: |
+            Every open item of every kind, alerts and commitments awaiting confirmation included.
+            The views take their order from `views` and `today`, not from this list.
+          items:
+            $ref: '#/components/schemas/Item'
+        agents:
+          $ref: '#/components/schemas/AgentsOverview'
+        settings:
+          $ref: '#/components/schemas/Settings'
+    StreamEvent:
+      description: The `data` of one server-sent event. `type` equals the SSE `event` field.
+      oneOf:
+        - $ref: '#/components/schemas/ItemUpsertedEvent'
+        - $ref: '#/components/schemas/ItemRemovedEvent'
+        - $ref: '#/components/schemas/TodayUpdatedEvent'
+        - $ref: '#/components/schemas/ViewsUpdatedEvent'
+        - $ref: '#/components/schemas/AlertRaisedEvent'
+        - $ref: '#/components/schemas/AlertClearedEvent'
+        - $ref: '#/components/schemas/AgentUpdatedEvent'
+        - $ref: '#/components/schemas/SettingsUpdatedEvent'
+        - $ref: '#/components/schemas/ClientDeprecatedEvent'
+        - $ref: '#/components/schemas/HeartbeatEvent'
+      discriminator:
+        propertyName: type
+        mapping:
+          item.upserted: '#/components/schemas/ItemUpsertedEvent'
+          item.removed: '#/components/schemas/ItemRemovedEvent'
+          today.updated: '#/components/schemas/TodayUpdatedEvent'
+          views.updated: '#/components/schemas/ViewsUpdatedEvent'
+          alert.raised: '#/components/schemas/AlertRaisedEvent'
+          alert.cleared: '#/components/schemas/AlertClearedEvent'
+          agent.updated: '#/components/schemas/AgentUpdatedEvent'
+          settings.updated: '#/components/schemas/SettingsUpdatedEvent'
+          client.deprecated: '#/components/schemas/ClientDeprecatedEvent'
+          heartbeat: '#/components/schemas/HeartbeatEvent'
+    ItemUpsertedEvent:
+      type: object
+      description: An item was created or changed. The whole item replaces the client's copy.
+      required: [type, item]
+      properties:
+        type:
+          type: string
+          enum: [item.upserted]
+        item:
+          $ref: '#/components/schemas/Item'
+        correlationId:
+          $ref: '#/components/schemas/CorrelationId'
+          description: The action or hand-off that caused this event, when one did. Its pending mark clears.
+    ItemRemovedEvent:
+      type: object
+      description: An item left the open set. Its pillar sinks and its row leaves.
+      required: [type, itemId, outcome]
+      properties:
+        type:
+          type: string
+          enum: [item.removed]
+        itemId:
+          $ref: '#/components/schemas/ItemIdentifier'
+        outcome:
+          type: [string, 'null']
+          description: One line in the principal's voice saying what happened, such as "Settled. Recorded on the ledger".
+        correlationId:
+          $ref: '#/components/schemas/CorrelationId'
+          description: The action that caused this event, when one did. Its pending mark clears.
+    TodayUpdatedEvent:
+      type: object
+      description: Today changed. The whole block replaces the client's copy.
+      required: [type, today]
+      properties:
+        type:
+          type: string
+          enum: [today.updated]
+        today:
+          $ref: '#/components/schemas/Today'
+    ViewsUpdatedEvent:
+      type: object
+      description: The views' groups, order or counts changed. The whole object replaces the client's copy.
+      required: [type, views]
+      properties:
+        type:
+          type: string
+          enum: [views.updated]
+        views:
+          $ref: '#/components/schemas/Views'
+    AlertRaisedEvent:
+      type: object
+      description: An alert was raised or raised again. The whole alert item replaces the client's copy.
+      required: [type, item]
+      properties:
+        type:
+          type: string
+          enum: [alert.raised]
+        item:
+          $ref: '#/components/schemas/Item'
+        correlationId:
+          $ref: '#/components/schemas/CorrelationId'
+          description: The action that caused this event, when one did. Its pending mark clears.
+    AlertClearedEvent:
+      type: object
+      description: An alert was cleared and leaves the open set.
+      required: [type, itemId]
+      properties:
+        type:
+          type: string
+          enum: [alert.cleared]
+        itemId:
+          $ref: '#/components/schemas/ItemIdentifier'
+        correlationId:
+          $ref: '#/components/schemas/CorrelationId'
+          description: The action that caused this event, when one did. Its pending mark clears.
+    AgentUpdatedEvent:
+      type: object
+      description: An agent changed. The agent and today's cost replace the client's copies.
+      required: [type, agent, costToday]
+      properties:
+        type:
+          type: string
+          enum: [agent.updated]
+        agent:
+          $ref: '#/components/schemas/Agent'
+        costToday:
+          $ref: '#/components/schemas/CostToday'
+    SettingsUpdatedEvent:
+      type: object
+      description: The settings changed, from any surface. The whole object replaces the client's copy.
+      required: [type, settings]
+      properties:
+        type:
+          type: string
+          enum: [settings.updated]
+        settings:
+          $ref: '#/components/schemas/Settings'
+    ClientDeprecatedEvent:
+      type: object
+      description: The minimum client version rose. A client below it shows the upgrade state.
+      required: [type, minClientVersion, message]
+      properties:
+        type:
+          type: string
+          enum: [client.deprecated]
+        minClientVersion:
+          $ref: '#/components/schemas/Version'
+        message:
+          type: [string, 'null']
+    HeartbeatEvent:
+      type: object
+      description: Sent every 25 seconds, with no event id, so the client can tell a quiet stream from a dead one.
+      required: [type, serverTime]
+      properties:
+        type:
+          type: string
+          enum: [heartbeat]
+        serverTime:
+          $ref: '#/components/schemas/DateTime'
+  examples:
+    Me:
+      summary: A principal in dry run
+      value:
+        principalId: prin_01JAXQ0000PRINCIPAL0000001
+        displayName: '[PERSON]'
+        status: active
+        mode: dry_run
+        timeZone: Europe/London
+        minClientVersion: 0.1.0
+        contractVersion: 1.0.0
+        capabilities:
+          handoff: true
+        serverTime: '2026-10-16T08:00:00.000Z'
+    Settings:
+      summary: Default settings
+      value:
+        quietHours:
+          start: '19:00'
+          end: '07:00'
+        pushBudgetPerHour: 3
+        mode: dry_run
+        liveEligible: false
+        liveOpensAt: '2026-10-23T08:00:00.000Z'
+        paused: false
+        pausedReason: null
+        timeZone: Europe/London
+        costCeilingGbp: 15
+        global:
+          paused: false
+          pausedReason: null
+          mode: dry_run
+    Today:
+      summary: A quiet morning
+      value:
+        orbit:
+          itemIds:
+            - prop_01JAXQ4Z7C5W6N0R2T8V9Y3K1M
+            - cmt_01JAXQ5B2D7F9H1K3M5P7R9T1V
+          overflow: 0
+          nowCount: 2
+          urgentCount: 0
+          load: 3
+          median: 12
+          working: true
+        field:
+          units:
+            - id: unit_client
+              name: '[CLIENT]'
+            - id: other
+              name: Other
+          cells:
+            - unitId: unit_client
+              horizon: now
+              itemIds:
+                - prop_01JAXQ4Z7C5W6N0R2T8V9Y3K1M
+                - cmt_01JAXQ5B2D7F9H1K3M5P7R9T1V
+              pressure: 0.72
+              kind: proposal
+              working: false
+            - unitId: other
+              horizon: later
+              itemIds:
+                - task_notion_0000000000000000000000000001
+              pressure: 0.1
+              kind: task
+              working: true
+        lists:
+          now:
+            - prop_01JAXQ4Z7C5W6N0R2T8V9Y3K1M
+            - cmt_01JAXQ5B2D7F9H1K3M5P7R9T1V
+          week: []
+          later:
+            - unitId: other
+              counts:
+                - kind: task
+                  count: 1
+        context:
+          inExternalMeeting: false
+          quietHoursActive: false
+    ProposalItem:
+      summary: A proposal waiting for the principal
+      value:
+        id: prop_01JAXQ4Z7C5W6N0R2T8V9Y3K1M
+        kind: proposal
+        title: Send the revised scope to [CLIENT]
+        meta: '[CLIENT], draft email, expires at 11:30'
+        unit:
+          id: unit_client
+          name: '[CLIENT]'
+        horizon: now
+        pressure: 0.72
+        attention: needs_you
+        dueAt: null
+        working: false
+        version: 3
+        actions:
+          - id: approve
+            label: Approve
+            style: primary
+            confirm: null
+            input: none
+          - id: reject
+            label: Reject
+            style: secondary
+            confirm: Reject this proposal?
+            input: none
+        detail:
+          kind: proposal
+          actionClass: draft_email
+          actionClassLabel: Draft email
+          targetSystem: graph
+          targetSystemLabel: Outlook
+          summary: A reply to [PERSON] with the revised scope attached.
+          policyDecision: propose
+          decisionTier: personal
+          confidence:
+            value: 0.82
+            source: self_report
+          expiresAt: '2026-10-16T10:30:00.000Z'
+        links:
+          lance: https://lance.example.invalid/proposals/prop_01JAXQ4Z7C5W6N0R2T8V9Y3K1M
+          source: null
+    CommitmentByItem:
+      summary: A commitment the principal owes, due today
+      value:
+        id: cmt_01JAXQ5B2D7F9H1K3M5P7R9T1V
+        kind: commitment_by
+        title: Send [PERSON] the signed order form
+        meta: '[PERSON] at [CLIENT], due today'
+        unit:
+          id: unit_client
+          name: '[CLIENT]'
+        horizon: now
+        pressure: 0.64
+        attention: needs_you
+        dueAt: '2026-10-16T16:00:00.000Z'
+        working: false
+        version: 4
+        actions:
+          - id: settle
+            label: Settle
+            style: primary
+            confirm: null
+            input: none
+          - id: snooze
+            label: Snooze
+            style: quiet
+            confirm: null
+            input: until
+        detail:
+          kind: commitment_by
+          counterparty:
+            id: person_0001
+            name: '[PERSON]'
+          evidence:
+            quote: I will send the signed order form over by Friday.
+            source:
+              kind: email
+              system: graph
+              label: Email
+              observedAt: '2026-10-14T14:42:00.000Z'
+          chase:
+            state: not_chased
+            count: 0
+            lastChasedAt: null
+            nextChaseAt: null
+          toConfirm: false
+        links:
+          lance: https://lance.example.invalid/commitments/cmt_01JAXQ5B2D7F9H1K3M5P7R9T1V
+          source: null
+    CommitmentToItem:
+      summary: A commitment owed to the principal, waiting for confirmation
+      value:
+        id: cmt_01JAXQ6C3E8G0J2L4N6Q8S0U2W
+        kind: commitment_to
+        title: '[PERSON] owes the updated forecast'
+        meta: '[PERSON] at [CLIENT], due Tuesday'
+        unit:
+          id: unit_client
+          name: '[CLIENT]'
+        horizon: week
+        pressure: 0.35
+        attention: ambient
+        dueAt: '2026-10-20T16:00:00.000Z'
+        working: false
+        version: 1
+        actions:
+          - id: confirm
+            label: Confirm
+            style: primary
+            confirm: null
+            input: none
+          - id: chase
+            label: Chase
+            style: secondary
+            confirm: null
+            input: note
+        detail:
+          kind: commitment_to
+          counterparty:
+            id: person_0002
+            name: '[PERSON]'
+          evidence:
+            quote: We will have the updated forecast to you early next week.
+            source:
+              kind: meeting
+              system: jamie
+              label: Meeting
+              observedAt: '2026-10-15T09:15:00.000Z'
+          chase:
+            state: not_chased
+            count: 0
+            lastChasedAt: null
+            nextChaseAt: '2026-10-22T08:00:00.000Z'
+          toConfirm: true
+        links:
+          lance: https://lance.example.invalid/commitments/cmt_01JAXQ6C3E8G0J2L4N6Q8S0U2W
+          source: null
+    TaskItem:
+      summary: A task from Notion that an agent is working on
+      value:
+        id: task_notion_0000000000000000000000000001
+        kind: task
+        title: Draft the agenda for the [CLIENT] steering group
+        meta: Notion, no due date
+        unit:
+          id: other
+          name: Other
+        horizon: later
+        pressure: 0.1
+        attention: ambient
+        dueAt: null
+        working: true
+        version: 2
+        actions:
+          - id: done
+            label: Done
+            style: primary
+            confirm: null
+            input: none
+        detail:
+          kind: task
+          source: notion
+          assignee:
+            name: '[PERSON]'
+            isPrincipal: true
+          status: In Progress
+          project: null
+        links:
+          lance: https://lance.example.invalid/tasks/task_notion_0000000000000000000000000001
+          source: https://notion.example.invalid/0000000000000000000000000001
+    AlertItem:
+      summary: A P1 alert
+      value:
+        id: alrt_01JAXQ7D4F9H1K3M5P7R9T1V3X
+        kind: alert
+        title: The mail watcher has stopped
+        meta: P1, raised at 08:12
+        unit:
+          id: other
+          name: Other
+        horizon: now
+        pressure: 0.9
+        attention: urgent
+        dueAt: null
+        severity: P1
+        working: false
+        version: 1
+        actions:
+          - id: acknowledge
+            label: Acknowledge
+            style: primary
+            confirm: null
+            input: none
+          - id: snooze
+            label: Snooze
+            style: quiet
+            confirm: null
+            input: until
+        detail:
+          kind: alert
+          alertKind: watcher_failed
+          alertKindLabel: Watcher failed
+          raisedAt: '2026-10-16T07:12:00.000Z'
+          dedupeKey: watcher:graph-mail:inbox
+          relatedItemIds: []
+          explanation: The mail watcher has failed three times in a row; its breaker is open.
+        links:
+          lance: https://lance.example.invalid/alerts/alrt_01JAXQ7D4F9H1K3M5P7R9T1V3X
+          source: null

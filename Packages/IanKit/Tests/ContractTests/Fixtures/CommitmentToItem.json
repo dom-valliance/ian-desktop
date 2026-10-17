@@ -1,0 +1,59 @@
+{
+  "actions" : [
+    {
+      "confirm" : null,
+      "id" : "confirm",
+      "input" : "none",
+      "label" : "Confirm",
+      "style" : "primary"
+    },
+    {
+      "confirm" : null,
+      "id" : "chase",
+      "input" : "note",
+      "label" : "Chase",
+      "style" : "secondary"
+    }
+  ],
+  "attention" : "ambient",
+  "detail" : {
+    "chase" : {
+      "count" : 0,
+      "lastChasedAt" : null,
+      "nextChaseAt" : "2026-10-22T08:00:00.000Z",
+      "state" : "not_chased"
+    },
+    "counterparty" : {
+      "id" : "person_0002",
+      "name" : "[PERSON]"
+    },
+    "evidence" : {
+      "quote" : "We will have the updated forecast to you early next week.",
+      "source" : {
+        "kind" : "meeting",
+        "label" : "Meeting",
+        "observedAt" : "2026-10-15T09:15:00.000Z",
+        "system" : "jamie"
+      }
+    },
+    "kind" : "commitment_to",
+    "toConfirm" : true
+  },
+  "dueAt" : "2026-10-20T16:00:00.000Z",
+  "horizon" : "week",
+  "id" : "cmt_01JAXQ6C3E8G0J2L4N6Q8S0U2W",
+  "kind" : "commitment_to",
+  "links" : {
+    "lance" : "https://lance.example.invalid/commitments/cmt_01JAXQ6C3E8G0J2L4N6Q8S0U2W",
+    "source" : null
+  },
+  "meta" : "[PERSON] at [CLIENT], due Tuesday",
+  "pressure" : 0.35,
+  "title" : "[PERSON] owes the updated forecast",
+  "unit" : {
+    "id" : "unit_client",
+    "name" : "[CLIENT]"
+  },
+  "version" : 1,
+  "working" : false
+}

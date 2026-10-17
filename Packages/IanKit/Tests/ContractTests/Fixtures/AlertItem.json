@@ -1,0 +1,48 @@
+{
+  "actions" : [
+    {
+      "confirm" : null,
+      "id" : "acknowledge",
+      "input" : "none",
+      "label" : "Acknowledge",
+      "style" : "primary"
+    },
+    {
+      "confirm" : null,
+      "id" : "snooze",
+      "input" : "until",
+      "label" : "Snooze",
+      "style" : "quiet"
+    }
+  ],
+  "attention" : "urgent",
+  "detail" : {
+    "alertKind" : "watcher_failed",
+    "alertKindLabel" : "Watcher failed",
+    "dedupeKey" : "watcher:graph-mail:inbox",
+    "explanation" : "The mail watcher has failed three times in a row; its breaker is open.",
+    "kind" : "alert",
+    "raisedAt" : "2026-10-16T07:12:00.000Z",
+    "relatedItemIds" : [
+
+    ]
+  },
+  "dueAt" : null,
+  "horizon" : "now",
+  "id" : "alrt_01JAXQ7D4F9H1K3M5P7R9T1V3X",
+  "kind" : "alert",
+  "links" : {
+    "lance" : "https://lance.example.invalid/alerts/alrt_01JAXQ7D4F9H1K3M5P7R9T1V3X",
+    "source" : null
+  },
+  "meta" : "P1, raised at 08:12",
+  "pressure" : 0.9,
+  "severity" : "P1",
+  "title" : "The mail watcher has stopped",
+  "unit" : {
+    "id" : "other",
+    "name" : "Other"
+  },
+  "version" : 1,
+  "working" : false
+}
