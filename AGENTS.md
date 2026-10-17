@@ -78,14 +78,14 @@ Checked against the Lance repository on 17 October 2026. The spec text is unchan
 
 ## Toolchain and commands
 
-Xcode 26 (ADR 0008) with Swift 6 in strict concurrency mode, macOS 14 minimum. Node 22 through nvm (`nvm use`), pnpm through corepack. Dependencies are the four Swift packages in spec section 2 and nothing else without an ADR. Build tools that never ship (`swift-openapi-generator` and XcodeGen) are pinned in `scripts/tools/Package.swift` and run through the scripts in `scripts/`.
+Xcode 26 (ADR 0008) with Swift 6 in strict concurrency mode, macOS 14 minimum. Node 22 through nvm (`nvm use`), pnpm through corepack. Dependencies are the four Swift packages in spec section 2 and nothing else without an ADR. Build tools that never ship (`swift-openapi-generator`, XcodeGen, and Yams for the `extract-examples` tool that turns the contract's examples into test fixtures) are pinned in `scripts/tools/Package.swift` and run through the scripts in `scripts/` (ADR 0007).
 
 Once D1 and D2 land, these are the checks. Every one must pass, judged by exit code, before a task is marked done:
 
 ```
-swift format lint --recursive --strict Packages App
-swift build --package-path Packages/IanKit
-swift test --package-path Packages/IanKit
+swift format lint --recursive --strict Packages App scripts
+swift build --package-path Packages/IanKit --force-resolved-versions
+swift test --package-path Packages/IanKit --force-resolved-versions
 scripts/check-generated.sh
 xcodebuild -project App/Ian.xcodeproj -scheme Ian -configuration Debug -destination 'platform=macOS' build
 pnpm --dir mock lint && pnpm --dir mock typecheck && pnpm --dir mock test

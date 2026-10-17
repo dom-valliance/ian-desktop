@@ -17,7 +17,7 @@ Ian builds with Xcode 26 (Swift 6.2 or later). CI selects Xcode 26.6 on the `mac
 
 ## Consequences
 
-- Dependencies track their current releases, resolved and pinned in each `Package.resolved`.
+- Dependencies track their current releases. SwiftPM builds use the pins in `Packages/IanKit/Package.resolved` and `scripts/tools/Package.resolved`, enforced with `--force-resolved-versions`. Xcode ignores a local package's `Package.resolved` and keeps its own under `App/Ian.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/`; until the first Xcode build writes that file and it is committed, the app build resolves within IanKit's up-to-next-minor ranges.
 - The app still runs on macOS 14. Any API newer than macOS 14 needs an availability check; the compiler enforces it.
 - A developer needs Xcode 26, which runs on macOS 15.6 or later.
 - AGENTS.md and `.github/workflows/README.md` say Xcode 26. Spec section 2 is left as written; this ADR corrects it.

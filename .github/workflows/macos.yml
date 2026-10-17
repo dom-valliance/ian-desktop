@@ -33,13 +33,13 @@ jobs:
           swift format --version
 
       - name: Lint Swift formatting
-        run: swift format lint --recursive --strict Packages App
+        run: swift format lint --recursive --strict Packages App scripts
 
       - name: Build IanKit
-        run: swift build --package-path Packages/IanKit
+        run: swift build --package-path Packages/IanKit --force-resolved-versions
 
       - name: Test IanKit
-        run: swift test --package-path Packages/IanKit
+        run: swift test --package-path Packages/IanKit --force-resolved-versions
 
       - name: Check generated code is current
         run: scripts/check-generated.sh

@@ -9,7 +9,7 @@ AGENTS.md Q15 left open how the Xcode project is kept. A hand-edited `project.pb
 
 ## Decision
 
-`App/project.yml` is the source of the project. XcodeGen 2.46.0, pinned in the tools package `scripts/tools/Package.swift` and run with `scripts/generate-project.sh`, writes `App/Ian.xcodeproj`. The generated project is committed, so a fresh clone opens and builds in Xcode without XcodeGen. `scripts/check-generated.sh` regenerates it in the macOS workflow and fails when the result differs from the commit. The same tools package pins `swift-openapi-generator`, whose committed output is checked the same way.
+`App/project.yml` is the source of the project. XcodeGen 2.46.0, pinned in the tools package `scripts/tools/Package.swift` and run with `scripts/generate-project.sh`, writes `App/Ian.xcodeproj`. The generated project is committed, so a fresh clone opens and builds in Xcode without XcodeGen. `scripts/check-generated.sh` regenerates it in the macOS workflow and fails when the result differs from the commit. The same tools package pins `swift-openapi-generator`, whose committed output is checked the same way, and Yams 5.4.0 for `extract-examples`, a short tool that writes the contract's `components.examples` as JSON fixtures for `ContractTests`. Yams is already a dependency of both tools. Every script runs the tools with `--force-resolved-versions`, so a stale `Package.resolved` fails rather than re-resolving.
 
 ## Consequences
 
