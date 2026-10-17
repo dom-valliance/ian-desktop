@@ -1,0 +1,15 @@
+{
+  "name": "ian-desktop-contract",
+  "private": true,
+  "description": "Lint for the Ian desktop OpenAPI contract",
+  "packageManager": "pnpm@12.4.2",
+  "engines": {
+    "node": ">=22 <23"
+  },
+  "scripts": {
+    "lint": "REDOCLY_TELEMETRY=off REDOCLY_SUPPRESS_UPDATE_NOTICE=true redocly lint ian-desktop.v1.yaml --format stylish"
+  },
+  "devDependencies": {
+    "@redocly/cli": "2.57.0"
+  }
+}

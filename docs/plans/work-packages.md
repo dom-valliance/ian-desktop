@@ -178,13 +178,13 @@ Read: spec sections 4 (step 7), 6.5 and 6.6; AGENTS.md Q17; the Ladder artboard.
 
 Build:
 
-- The rung mapping from the spec 6.6 table (Q17), as one pure function.
+- The behaviour of each rung from the spec 6.6 table, driven by the item's `attention` from the server (Q17, ADR 0009), as one pure function.
 - Local notifications through `UNUserNotificationCenter`, with categories built from the item's actions. Urgent shows a banner with the item's actions and an eight-second whisper by the Orbit. Stop opens the expanded panel on the next pointer movement and always notifies. Text is hidden while suppressed; P0 still notifies.
 - The session heartbeat to `POST /sessions` every 60 seconds and on any change: device id, client version, active, suppressed, idle seconds.
 
 Done when:
 
-- Tests of the rung mapping for every row of the 6.6 table.
+- Tests of the behaviour for every rung of the 6.6 table.
 - A test shows notification content without item text while suppressed, and a P0 still delivered.
 - `GET /__mock/sessions` shows heartbeats at the right interval and on change.
 

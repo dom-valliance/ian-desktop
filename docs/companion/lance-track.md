@@ -34,6 +34,23 @@ az containerapp show -g rg-lance-dev -n ca-lance-api-dev --query properties.conf
 - **DL4.** Confidence travels with its source: `lev_trusted`, `lev_untrusted` or `self_report`. The Lev briefing's "ADR 0037" needs a new number in Lance, since 0036 and 0037 are taken by the commitments ADRs.
 - **DL6.** Pin a `contract-v1.MINOR.PATCH` tag. A Lance-side need for a new field starts as a pull request to `ian-desktop`, then a new tag, then the pin moves.
 
+## Gaps found while writing contract v1
+
+D1 read Lance on 17 October 2026 to match the contract's vocabulary (ADR 0009). These values are in the contract and not yet produced by Lance. File references are in Lance.
+
+- **DL1.** Lance has no problem+json helper; 4xx bodies are `{ "error": "..." }` (`apps/api/src/server.ts`). The façade needs one, plus `426` from the `Desktop-Client-Version` header (a request without it is not checked). `Me.displayName` and `Me.contractVersion` are new; today's `me` returns the UPN. `POST /handoff` answers `404` while `capabilities.handoff` is false. Times leave the façade as UTC with milliseconds, as `toISOString` writes them.
+- **DL2.** `/today` carries `lists` (the `now` ids in display order, then week and later groups keyed to field columns), `nowCount`, `urgentCount`, a `median` floored at 1, and each field cell's `working` beside `kind`. The snapshot carries `views`: sidebar counts and each view's ordered groups (Proposals by action class, soonest expiry first; Commitments in three tabs; Tasks by horizon then unit; Alerts by severity, P0 first).
+- **DL2, attention.** Every item carries `attention` (`ambient`, `needs_you`, `urgent`, `stop`), the spec 6.6 rung decided in Lance. The item is sent again when its rung changes, for example a proposal 15 minutes from expiry.
+- **DL3.** `item.removed` carries `outcome`, one line in the principal's voice. `agent.updated` carries today's cost with the agent. `views.updated` replaces the views whole. Item events precede the `today.updated` and `views.updated` that reflect them. `heartbeat` has no event id and is never replayed. A `Last-Event-ID` newer than the latest event, as well as one older than the window, answers `410`.
+- **DL4, proposals.** `decisionTier` is computed by `evaluate()` (`packages/policy/src/evaluate.ts`) but not persisted; the façade needs it stored. Confidence lives in `policy_decisions.input.confidence`, not on the proposal. `actionClassLabel` and `targetSystemLabel` are display text the façade writes.
+- **DL4, actions.** Every offered action carries `input` (`none`, `until`, `note`), and every item a `version` that the action call checks for `409`. Both `200` and `202` answer `{ correlationId }`, and at least one event on the item carries it. Alerts snooze as `mute` with whole hours, so the façade converts `until`. Commitments have no snooze today; offer it only once one exists.
+- **DL4, commitments.** `chase.lastChasedAt` has no column (only `chaseCount` and `nextChaseAt`). The evidence source's `label` is display text. Direction maps `outbound` to `commitment_by` and `inbound` to `commitment_to`; "To confirm" is status `unconfirmed`.
+- **DL4, tasks.** `project` is in the Notion payload (`projectIds`) but not in `TaskView`. `assignedToDom` becomes `assignee.isPrincipal`.
+- **DL4, alerts.** `relatedItemIds` has no column; derive it from `dedupeKey` or provenance. `raisedAt` is `firstSeen`. `alertKindLabel` is display text. Lance uses P0 to P2; the contract's P3 stays unused until Lance raises one.
+- **DL4, settings.** `liveEligible` and `liveOpensAt` exist only as the refusal in `assertLiveOpen` (`packages/ledger/src/control.ts`); the façade must expose them, and answer `422` to going live while not eligible.
+- **DL4, agents.** Lance has no per-agent pause (only `jobs.enabled`, through Slack), no next run for agents and no last run for jobs. A pause or resume on an agent whose `pausable` is false answers `403`. The contract has one ceiling, the principal's `cost_ceiling_gbp`; Lance's agents view reads `config.cost.dailyCeilingGbp` instead, so the façade must use the principal's.
+- **DL4, ledger.** No ledger payload carries `surface` today, and the decide path has no origin field (`packages/ledger/src/proposals.ts`). Adding `surface: 'desktop'` needs a place in each payload the façade writes.
+
 ## Fast-follow prerequisites (spec section 12)
 
 None of these blocks version 0. Each should be checked before the fast follow is planned.
