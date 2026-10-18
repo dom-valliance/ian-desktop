@@ -4,7 +4,7 @@ import os
 
 /// What the sync loop reports to the store, in the order it happens.
 public enum SyncUpdate: Sendable, Equatable {
-  /// `GET /me`, fetched once at the start. The store refuses to run below `minClientVersion`.
+  /// `GET /me`, fetched once at the start.
   case me(Components.Schemas.Me)
   /// A full snapshot, from the start, after a `410`, or from polling while the stream is down.
   case snapshot(Components.Schemas.Snapshot)
@@ -55,17 +55,23 @@ public struct SyncEngine: Sendable {
   }
 
   private let service: any DesktopService
+  private let appVersion: SemanticVersion
   private let clock: any SyncClock
   private let timing: Timing
   private let jitter: @Sendable () -> Double
 
+  /// - Parameter appVersion: The app's version. When `GET /me` reports a `minClientVersion`
+  ///   above it, the loop fails with `upgradeRequired` before it fetches any data (spec section 4,
+  ///   step 2).
   public init(
     service: any DesktopService,
+    appVersion: SemanticVersion,
     clock: any SyncClock = SystemSyncClock(),
     timing: Timing = Timing(),
     jitter: @escaping @Sendable () -> Double = { Double.random(in: 0...1) }
   ) {
     self.service = service
+    self.appVersion = appVersion
     self.clock = clock
     self.timing = timing
     self.jitter = jitter
@@ -74,7 +80,9 @@ public struct SyncEngine: Sendable {
   /// Runs until the consumer stops iterating or the loop fails for good.
   public func updates() -> AsyncStream<SyncUpdate> {
     let (stream, sink) = AsyncStream<SyncUpdate>.makeStream()
-    let run = SyncRun(service: service, clock: clock, timing: timing, jitter: jitter, sink: sink)
+    let run = SyncRun(
+      service: service, appVersion: appVersion, clock: clock, timing: timing, jitter: jitter,
+      sink: sink)
     let task = Task { await run.run() }
     sink.onTermination = { _ in task.cancel() }
     return stream
@@ -92,6 +100,7 @@ private actor SyncRun {
   private static let log = Logger(subsystem: "ai.valliance.ian.desktop", category: "sync")
 
   private let service: any DesktopService
+  private let appVersion: SemanticVersion
   private let clock: any SyncClock
   private let timing: SyncEngine.Timing
   private let jitter: @Sendable () -> Double
@@ -106,10 +115,12 @@ private actor SyncRun {
   private var resyncedLast = false
 
   init(
-    service: any DesktopService, clock: any SyncClock, timing: SyncEngine.Timing,
+    service: any DesktopService, appVersion: SemanticVersion, clock: any SyncClock,
+    timing: SyncEngine.Timing,
     jitter: @escaping @Sendable () -> Double, sink: AsyncStream<SyncUpdate>.Continuation
   ) {
     self.service = service
+    self.appVersion = appVersion
     self.clock = clock
     self.timing = timing
     self.jitter = jitter
@@ -161,7 +172,11 @@ private actor SyncRun {
 
   private func connect(connectedAt: inout Duration?) async throws {
     if needsMe {
-      sink.yield(.me(try await service.me()))
+      let me = try await service.me()
+      sink.yield(.me(me))
+      if let minimum = SemanticVersion(me.minClientVersion), minimum > appVersion {
+        throw DesktopError.upgradeRequired(minClientVersion: minimum.description)
+      }
       needsMe = false
     }
     if cursor == nil {

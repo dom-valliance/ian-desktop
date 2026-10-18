@@ -40,7 +40,9 @@ private struct Rig {
 
 private func start(service: ScriptedService, jitter: Double = 1) -> Rig {
   let clock = ManualClock()
-  let engine = SyncEngine(service: service, clock: clock, jitter: { jitter })
+  let engine = SyncEngine(
+    service: service, appVersion: SemanticVersion(major: 0, minor: 1, patch: 0), clock: clock,
+    jitter: { jitter })
   let collector = Collector()
   let stream = engine.updates()
   let task = Task { await collector.run(stream) }
@@ -324,4 +326,16 @@ private func retriesFirstSnapshot() async throws {
   #expect(await rig.waitFor("connected", isConnected))
   #expect(service.streamCalls == ["10"])
   #expect(await rig.collector.count(where: { if case .me = $0 { true } else { false } }) == 1)
+}
+
+@Test("refuses to fetch any data when me reports a minimum version above the app's")
+private func refusesBelowMinimumVersion() async throws {
+  let service = ScriptedService(me: Fixtures.me(minClientVersion: "0.2.0"))
+  let rig = start(service: service)
+  defer { rig.stop() }
+
+  #expect(
+    await rig.waitFor("failure") { $0 == .failed(.upgradeRequired(minClientVersion: "0.2.0")) })
+  #expect(service.snapshotCalls == 0)
+  #expect(service.streamCalls.isEmpty)
 }
