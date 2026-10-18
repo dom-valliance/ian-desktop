@@ -425,12 +425,12 @@ describe('authentication and headers', () => {
     expectContract('GET', '/me', reply, 200);
   });
 
-  it('answers 400 for a version header that is not a version, and 426 below the minimum', async () => {
+  it('does not version-check a malformed header, and answers 426 below the minimum', async () => {
     const h = await started({ scenario: 'stale-client' });
     const bad = await h.call('GET', '/desktop/v1/items', {
       headers: { 'desktop-client-version': 'new' },
     });
-    expect(bad.status).toBe(400);
+    expectContract('GET', '/items', bad, 200);
     const old = await h.call('GET', '/desktop/v1/items', {
       headers: { 'desktop-client-version': '98.9.9' },
     });

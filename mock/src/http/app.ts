@@ -134,13 +134,9 @@ export function buildMockServer(options: MockOptions = {}): MockServer {
         }
         const version = request.headers['desktop-client-version'];
         if (version === undefined) return;
+        // A malformed value is treated as absent: the contract does not define 400 everywhere.
         const parsed = zVersion.safeParse(version);
-        if (!parsed.success) {
-          return sendProblem(
-            reply,
-            new MockError(400, 'Bad request', 'Desktop-Client-Version must be major.minor.patch.'),
-          );
-        }
+        if (!parsed.success) return;
         const minimum = lance.currentMinClientVersion;
         if (compareVersions(parsed.data, minimum) < 0) {
           return sendProblem(
@@ -232,9 +228,11 @@ export function buildMockServer(options: MockOptions = {}): MockServer {
         raw.writeHead(200, {
           'content-type': 'text/event-stream',
           'cache-control': 'no-cache, no-transform',
+          'x-content-type-options': 'nosniff',
           connection: 'keep-alive',
         });
-        raw.flushHeaders();
+        // Bytes at once, so a client that waits for the first body bytes reports the stream live.
+        raw.write(': open\n\n');
         const write = (stored: StoredEvent): void => {
           raw.write(formatEvent(stored));
         };

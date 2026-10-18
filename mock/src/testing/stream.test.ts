@@ -179,6 +179,16 @@ describe('the event stream', () => {
     expect(deprecated?.data).toMatchObject({ minClientVersion: '99.0.0' });
   });
 
+  it('sends bytes and nosniff before any event or heartbeat', async () => {
+    const h = await started({ heartbeatIntervalMs: 60_000 });
+    const response = await fetch(`${h.origin}/desktop/v1/events`, { headers: AUTH });
+    expect(response.headers.get('x-content-type-options')).toBe('nosniff');
+    const reader = response.body?.getReader();
+    const first = (await reader?.read()) as { value: Uint8Array } | undefined;
+    expect(new TextDecoder().decode(first?.value)).toBe(': open\n\n');
+    await reader?.cancel();
+  });
+
   it('refuses a stream without a bearer token', async () => {
     const h = await started();
     const response = await fetch(`${h.origin}/desktop/v1/events`);
