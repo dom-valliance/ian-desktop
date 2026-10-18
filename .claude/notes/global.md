@@ -64,3 +64,10 @@ Append-only. Lessons from corrections during the Ian desktop build. The first en
 **Correction**: "Already device licensing." The Mac's own `mdmclient` log showed the real state: Intune had never sent `InstallApplication` until the assignment was re-saved and synced, and then the download started.
 **Rule**: Before recommending a configuration change, read the evidence the machine already holds (here `/usr/bin/log show` for `mdmclient` and `appstored`; note `log` is a zsh builtin) or ask for the current setting. Rank causes by what the evidence shows, not by how common they are.
 **Applies to**: global
+
+### [2026-10-18] Give Dom commands and screen positions, not Xcode vocabulary
+
+**Context**: Asking Dom to try the D1 app, Claude wrote "choose the `Ian` scheme and My Mac, then press ⌘R" and "you should see Ian in the menu bar".
+**Correction**: "I don't know what a scheme is and I can't see any menu bar showing." The app was running; its menu bar item was hidden from view, likely by a full menu bar on a notched MacBook or by being on another display.
+**Rule**: For a step Dom runs, give a terminal command where one exists (build, then `open` the app) instead of IDE terms, and say exactly where on screen the result appears and what can hide it. Second occurrence of the 2026-09-25 lesson "Say where and how to run a step"; a third promotes it to the AGENTS.md Gotchas.
+**Applies to**: global
