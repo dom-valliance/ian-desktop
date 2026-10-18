@@ -16,5 +16,6 @@ Numbers here are this repository's own. Lance's ADRs are cited as "Lance ADR NNN
 | 0008 | [Build with Xcode 26](0008-build-with-xcode-26.md) | Superseded by 0010 |
 | 0009 | [Contract v1 fills gaps in spec section 5](0009-contract-v1-fills-gaps-in-the-spec.md) | Accepted |
 | 0010 | [Build with Xcode 27.1](0010-build-with-xcode-27.md) | Accepted |
+| 0012 | [Test support library and declared imports](0012-test-support-and-declared-imports.md) | Accepted |
 
 Later numbers go to deviations as they arise.

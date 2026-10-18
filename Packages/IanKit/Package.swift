@@ -11,6 +11,7 @@ let package = Package(
     )
   ],
   dependencies: [
+    .package(url: "https://github.com/apple/swift-http-types", .upToNextMinor(from: "1.8.0")),
     .package(url: "https://github.com/apple/swift-openapi-runtime", .upToNextMinor(from: "1.13.1")),
     .package(
       url: "https://github.com/apple/swift-openapi-urlsession", .upToNextMinor(from: "1.3.2")),
@@ -19,7 +20,8 @@ let package = Package(
     .target(
       name: "Contract",
       dependencies: [
-        .product(name: "OpenAPIRuntime", package: "swift-openapi-runtime")
+        .product(name: "HTTPTypes", package: "swift-http-types"),
+        .product(name: "OpenAPIRuntime", package: "swift-openapi-runtime"),
       ],
       exclude: ["openapi-generator-config.yaml"]
     ),
@@ -29,6 +31,7 @@ let package = Package(
       dependencies: [
         "Contract",
         "Auth",
+        .product(name: "HTTPTypes", package: "swift-http-types"),
         .product(name: "OpenAPIRuntime", package: "swift-openapi-runtime"),
         .product(name: "OpenAPIURLSession", package: "swift-openapi-urlsession"),
       ]
