@@ -83,7 +83,8 @@ private func marksItemPending() async {
 
   await store.run(actionID: "done", on: "task_1")
 
-  #expect(store.pending["task_1"] == .init(actionID: "done", correlationID: "corr_1"))
+  #expect(
+    store.pending["task_1"] == .init(actionID: "done", correlationID: "corr_1", sentVersion: 3))
   #expect(store.state.items["task_1"]?.version == 3)
   #expect(service.actionCalls.map(\.version) == [3])
   #expect(service.actionCalls.map(\.actionID) == ["done"])
@@ -278,17 +279,196 @@ private func polledSnapshotReplacesData() async {
 private func snapshotDropsOrphanedMarks() async {
   let service = ScriptedService(
     snapshots: [
-      .success(Fixtures.snapshot(cursor: "10")),
+      .success(Fixtures.snapshot(cursor: "10", items: [Fixtures.itemJSON(id: "task_1")])),
       .success(Fixtures.snapshot(cursor: "50", items: [])),
     ])
-  service.planStreamFailure(.gone)
+  let feed = service.planStream()
   service.planStream()
   let store = makeStore(service)
   store.start()
   defer { store.stop() }
-  #expect(await waitUntil("snapshot") { store.state.lastEventID == 50 })
+  #expect(await waitUntil("live") { store.connection == .live })
+  await store.run(actionID: "done", on: "task_1")
+  #expect(store.pending["task_1"] != nil)
 
+  feed.finish(throwing: DesktopError.gone)
+
+  #expect(await waitUntil("snapshot") { store.state.lastEventID == 50 })
   #expect(store.pending.isEmpty)
+}
+
+@MainActor
+@Test("clears a pending mark when a snapshot holds a newer version of the item")
+private func snapshotClearsMarkOfMovedItem() async {
+  let service = ScriptedService(
+    snapshots: [
+      .success(
+        Fixtures.snapshot(cursor: "10", items: [Fixtures.itemJSON(id: "task_1", version: 3)])),
+      .success(
+        Fixtures.snapshot(cursor: "50", items: [Fixtures.itemJSON(id: "task_1", version: 4)])),
+    ])
+  let feed = service.planStream()
+  service.planStream()
+  let store = makeStore(service)
+  store.start()
+  defer { store.stop() }
+  #expect(await waitUntil("live") { store.connection == .live })
+  await store.run(actionID: "done", on: "task_1")
+
+  feed.yield(.undecodable)
+
+  #expect(await waitUntil("snapshot") { store.state.lastEventID == 50 })
+  #expect(store.pending.isEmpty)
+  #expect(store.state.items["task_1"]?.version == 4)
+}
+
+@MainActor
+@Test("keeps a pending mark when the snapshot holds the version the action was sent with")
+private func snapshotKeepsMarkAtSentVersion() async {
+  let service = ScriptedService(
+    snapshots: [
+      .success(
+        Fixtures.snapshot(cursor: "10", items: [Fixtures.itemJSON(id: "task_1", version: 3)])),
+      .success(
+        Fixtures.snapshot(cursor: "50", items: [Fixtures.itemJSON(id: "task_1", version: 3)])),
+    ])
+  let feed = service.planStream()
+  service.planStream()
+  let store = makeStore(service)
+  store.start()
+  defer { store.stop() }
+  #expect(await waitUntil("live") { store.connection == .live })
+  await store.run(actionID: "done", on: "task_1")
+
+  feed.yield(.undecodable)
+
+  #expect(await waitUntil("snapshot") { store.state.lastEventID == 50 })
+  #expect(store.pending["task_1"] != nil)
+}
+
+@MainActor
+@Test("applies nothing buffered behind client.deprecated, leaving no data in the store")
+private func deprecationMidBurstLeavesNoData() async {
+  let (store, _, feed) = await liveStore()
+  defer { store.stop() }
+
+  feed.yield(
+    .event(id: "11", Fixtures.event(Fixtures.clientDeprecatedJSON(minClientVersion: "0.2.0"))))
+  for id in 12..<40 {
+    feed.yield(
+      .event(
+        id: "\(id)", Fixtures.event(Fixtures.upsertedJSON(Fixtures.itemJSON(id: "task_\(id)")))))
+  }
+
+  #expect(await waitUntil("upgrade") { store.phase == .upgradeRequired(minimumVersion: "0.2.0") })
+  try? await Task.sleep(for: .milliseconds(50))
+  #expect(store.state == StoreState())
+}
+
+@MainActor
+@Test("keeps a newer item when a 409 problem body carries an older one")
+private func conflictDoesNotOverwriteNewerItem() async {
+  let (store, service, feed) = await liveStore(items: [Fixtures.itemJSON(id: "task_1", version: 3)])
+  defer { store.stop() }
+  service.planAction { _ in
+    feed.yield(
+      .event(
+        id: "11", Fixtures.event(Fixtures.upsertedJSON(Fixtures.itemJSON(id: "task_1", version: 8)))
+      ))
+    _ = await eventually("the event") {
+      await MainActor.run { store.state.items["task_1"]?.version == 8 }
+    }
+    throw DesktopError.conflict(item: Fixtures.item(id: "task_1", version: 5))
+  }
+
+  await store.run(actionID: "done", on: "task_1")
+
+  #expect(store.state.items["task_1"]?.version == 8)
+  #expect(store.notices["task_1"] == .changed)
+}
+
+@MainActor
+@Test("does not bring back an item an event removed when a 409 body names it")
+private func conflictDoesNotResurrectRemovedItem() async {
+  let (store, service, feed) = await liveStore()
+  defer { store.stop() }
+  service.planAction { _ in
+    feed.yield(removed("task_1", event: "11"))
+    _ = await eventually("the removal") {
+      await MainActor.run { store.state.items["task_1"] == nil }
+    }
+    throw DesktopError.conflict(item: Fixtures.item(id: "task_1", version: 9))
+  }
+
+  await store.run(actionID: "done", on: "task_1")
+
+  #expect(store.state.items["task_1"] == nil)
+}
+
+@MainActor
+@Test("starts one sign-in when two are requested at once")
+private func signInsDoNotOverlap() async {
+  let service = ScriptedService()
+  let (gate, release) = AsyncStream<Void>.makeStream()
+  service.planSignInHook { for await _ in gate { break } }
+  let store = makeStore(service)
+  defer { store.stop() }
+
+  let first = Task { await store.signIn() }
+  #expect(await waitUntil("the first sign-in") { store.isSigningIn })
+  await store.signIn()
+  release.yield()
+  await first.value
+
+  #expect(service.signIns == 1)
+  #expect(!store.isSigningIn)
+}
+
+@MainActor
+@Test("shows a failure retrying cannot fix, with its own message, instead of going offline")
+private func terminalFailureShowsMessage() async {
+  let service = ScriptedService()
+  service.planMe(.failure(.failed("The Keychain refused to store the sign-in.")))
+  let store = makeStore(service)
+  store.start()
+  defer { store.stop() }
+
+  #expect(
+    await waitUntil("message") {
+      store.phase == .signInRequired(message: "The Keychain refused to store the sign-in.")
+    })
+}
+
+@MainActor
+@Test("builds the mock store when no profile is named, reading the version from the bundle")
+private func makesMockStoreByDefault() {
+  let store = IanStore.make(
+    profileName: nil, info: [:], bundleIdentifier: "ai.valliance.ian.desktop.dev",
+    shortVersion: "0.3.1", openURL: { _ in })
+
+  #expect(store.profile == .mock)
+  #expect(store.appVersion == SemanticVersion(major: 0, minor: 3, patch: 1))
+}
+
+@MainActor
+@Test("builds the lance-dev store from the Info.plist settings")
+private func makesLanceDevStore() {
+  let store = IanStore.make(
+    profileName: "lance-dev", info: ["IanLanceTenantID": "tenant-1"],
+    bundleIdentifier: "ai.valliance.ian.desktop.dev", shortVersion: "0.1.0", openURL: { _ in })
+
+  #expect(store.profile.name == .lanceDev)
+}
+
+@MainActor
+@Test("falls back to the mock profile and version 0.0.0 when the name and version are unusable")
+private func makesMockStoreFromBadInput() {
+  let store = IanStore.make(
+    profileName: "production", info: [:], bundleIdentifier: "ai.valliance.ian.desktop",
+    shortVersion: nil, openURL: { _ in })
+
+  #expect(store.profile == .mock)
+  #expect(store.appVersion == SemanticVersion(major: 0, minor: 0, patch: 0))
 }
 
 @MainActor

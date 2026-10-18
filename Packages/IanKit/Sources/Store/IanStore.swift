@@ -36,6 +36,9 @@ public final class IanStore {
     public let actionID: String
     /// Nil until the server's answer arrives.
     public fileprivate(set) var correlationID: String?
+    /// The item's version when the action was sent. A snapshot holding a higher one means the
+    /// item moved on and the event that would have cleared the mark was missed.
+    public let sentVersion: Int
   }
 
   /// Something the principal should see on an item.
@@ -54,6 +57,8 @@ public final class IanStore {
   public private(set) var notices: [String: Notice] = [:]
   /// When the server last confirmed the data: a snapshot, an event or a heartbeat.
   public private(set) var lastUpdatedAt: Date?
+  /// A sign-in is open, in the browser or on its way, so a second one is not started.
+  public private(set) var isSigningIn = false
 
   public let profile: EnvironmentProfile
 
@@ -64,12 +69,14 @@ public final class IanStore {
   private static let rememberedCorrelations = 32
 
   private let service: any DesktopService
-  private let appVersion: SemanticVersion
+  public let appVersion: SemanticVersion
   private let clock: any SyncClock
   private let timing: SyncEngine.Timing
   private let jitter: @Sendable () -> Double
   private let now: @Sendable () -> Date
   private var syncTask: Task<Void, Never>?
+  /// Stamps each sync task, so updates a cancelled one had already buffered are not applied.
+  private var generation = 0
   private var signInAttempted = false
   /// Correlation ids from events that arrived while an action's answer was still in flight.
   private var earlyCorrelations: [String] = []
@@ -106,22 +113,26 @@ public final class IanStore {
     connection = .connecting
     let engine = SyncEngine(
       service: service, appVersion: appVersion, clock: clock, timing: timing, jitter: jitter)
+    generation += 1
+    let mine = generation
     syncTask = Task { [weak self] in
       for await update in engine.updates() {
-        guard let self else { return }
+        guard let self, self.generation == mine, !Task.isCancelled else { return }
         self.apply(update)
       }
     }
   }
 
   public func stop() {
-    syncTask?.cancel()
-    syncTask = nil
+    cancelSync()
     if phase == .running { phase = .stopped }
   }
 
   /// Signs in, which opens the system browser for `lance-dev`, then starts syncing.
   public func signIn() async {
+    guard !isSigningIn else { return }
+    isSigningIn = true
+    defer { isSigningIn = false }
     stop()
     do {
       try await service.signIn()
@@ -189,7 +200,10 @@ public final class IanStore {
   }
 
   private func dropPendingMarksForMissingItems() {
-    pending = pending.filter { state.items[$0.key] != nil }
+    pending = pending.filter { itemID, mark in
+      guard let item = state.items[itemID] else { return false }
+      return item.version <= mark.sentVersion
+    }
     notices = notices.filter { state.items[$0.key] != nil }
   }
 
@@ -223,7 +237,7 @@ public final class IanStore {
     }
 
     notices[itemID] = nil
-    pending[itemID] = Pending(actionID: actionID, correlationID: nil)
+    pending[itemID] = Pending(actionID: actionID, correlationID: nil, sentVersion: item.version)
     do {
       let correlationID = try await service.runAction(
         itemID: itemID, actionID: actionID, version: item.version, until: input.until,
@@ -251,7 +265,10 @@ public final class IanStore {
     }
     switch failure {
     case .conflict(let current):
-      state.items[current.id] = current
+      // Only a newer copy of an item still on screen replaces it; the problem body may be older
+      // than an event already applied, and a removed item stays removed.
+      guard let held = state.items[current.id] else { return }
+      if current.version > held.version { state.items[current.id] = current }
       notices[itemID] = .changed
     case .unauthorised, .upgradeRequired:
       handle(failure)
@@ -272,8 +289,12 @@ public final class IanStore {
       requireSignIn()
     case .upgradeRequired(let minimum):
       requireUpgrade(minimumVersion: minimum)
+    case .failed(let message):
+      cancelSync()
+      reset()
+      phase = .signInRequired(message: message)
     default:
-      Self.log.error("sync stopped: \(String(describing: error), privacy: .public)")
+      Self.log.error("sync stopped: \(error.kind, privacy: .public)")
     }
   }
 
@@ -281,8 +302,7 @@ public final class IanStore {
   /// sign-in itself, since the principal launched the app to use it. After that the principal
   /// asks, so a token the server keeps refusing cannot loop.
   private func requireSignIn() {
-    syncTask?.cancel()
-    syncTask = nil
+    cancelSync()
     reset()
     phase = .signInRequired(message: nil)
     let attemptSignIn = !signInAttempted
@@ -295,10 +315,15 @@ public final class IanStore {
   }
 
   private func requireUpgrade(minimumVersion: String?) {
-    syncTask?.cancel()
-    syncTask = nil
+    cancelSync()
     reset()
     phase = .upgradeRequired(minimumVersion: minimumVersion)
+  }
+
+  private func cancelSync() {
+    syncTask?.cancel()
+    syncTask = nil
+    generation += 1
   }
 
   private func reset() {
@@ -308,5 +333,50 @@ public final class IanStore {
     earlyCorrelations = []
     lastUpdatedAt = nil
     connection = .connecting
+  }
+}
+
+extension IanStore {
+  /// Builds the store the app runs: the profile the launch argument or saved setting names (or
+  /// `mock`), its token provider, the HTTP service and the app's version.
+  /// - Parameters:
+  ///   - profileName: The requested profile, or nil for `mock`. An unknown name logs and falls
+  ///     back to `mock`.
+  ///   - info: The Info.plist, carrying the `lance-dev` sign-in settings.
+  ///   - shortVersion: `CFBundleShortVersionString`.
+  ///   - openURL: Opens the sign-in page in the system browser. AppKit is the app's to import.
+  public static func make(
+    profileName: String?,
+    info: [String: Any],
+    bundleIdentifier: String,
+    shortVersion: String?,
+    openURL: @escaping @Sendable (URL) async -> Void
+  ) -> IanStore {
+    let profile: EnvironmentProfile
+    do {
+      profile = try EnvironmentProfile.resolve(requested: profileName, info: info)
+    } catch {
+      log.error("\(error.localizedDescription, privacy: .private) Starting on the mock profile.")
+      profile = .mock
+    }
+    let version =
+      shortVersion.flatMap(SemanticVersion.init) ?? SemanticVersion(major: 0, minor: 0, patch: 0)
+    let tokens = profile.makeTokenProvider(bundleIdentifier: bundleIdentifier, openURL: openURL)
+    let service = DesktopAPI(profile: profile, tokens: tokens, clientVersion: version.description)
+    return IanStore(service: service, profile: profile, appVersion: version)
+  }
+
+  /// The store for the running app, read from its bundle and `UserDefaults`.
+  public static func live(
+    bundle: Bundle = .main,
+    defaults: UserDefaults = .standard,
+    openURL: @escaping @Sendable (URL) async -> Void
+  ) -> IanStore {
+    make(
+      profileName: defaults.string(forKey: EnvironmentProfile.defaultsKey),
+      info: bundle.infoDictionary ?? [:],
+      bundleIdentifier: bundle.bundleIdentifier ?? "ai.valliance.ian.desktop",
+      shortVersion: bundle.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String,
+      openURL: openURL)
   }
 }

@@ -102,7 +102,10 @@ struct StoreIntegrationTests {
 
     try await mock.use(scenario: "offline")
     #expect(await settles("offline") { store.connection == .offline })
-    #expect(!store.state.items.isEmpty)
+    // D2's offline scenario closes open streams and destroys every /desktop/v1 connection, and
+    // loading it publishes the diff from the previous world first, so only presence of data
+    // is asserted, not which items remain.
+    #expect(store.state.today != nil)
     #expect(!store.actionsEnabled)
 
     try await mock.use(scenario: "normal")

@@ -20,8 +20,12 @@ struct DebugStatus: View {
       if let message {
         Text(message)
       }
-      Button("Sign in") {
-        Task { await store.signIn() }
+      if store.isSigningIn {
+        Text("Signing in")
+      } else {
+        Button("Sign in") {
+          Task { await store.signIn() }
+        }
       }
     }
   }
