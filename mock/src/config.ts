@@ -3,8 +3,8 @@ import { SCENARIOS } from './domain/types.js';
 import { zDateTime } from './generated/zod.gen.js';
 
 const zEnvironment = z.object({
-  PORT: z.coerce.number().int().min(0).max(65_535).default(4317),
-  HOST: z.string().min(1).default('127.0.0.1'),
+  MOCK_PORT: z.coerce.number().int().min(0).max(65_535).default(4317),
+  MOCK_HOST: z.string().min(1).default('127.0.0.1'),
   MOCK_SCENARIO: z.enum(SCENARIOS).default('normal'),
   MOCK_START_AT: zDateTime.optional(),
   MOCK_HEARTBEAT_INTERVAL_MS: z.coerce.number().int().positive().default(25_000),

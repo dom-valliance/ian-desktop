@@ -10,9 +10,9 @@ const { app } = buildMockServer({
   logLevel: config.LOG_LEVEL,
 });
 
-await app.listen({ host: config.HOST, port: config.PORT });
+await app.listen({ host: config.MOCK_HOST, port: config.MOCK_PORT });
 process.stdout.write(
-  `Mock listening on http://${config.HOST}:${String(config.PORT)}/desktop/v1 (scenario ${config.MOCK_SCENARIO})\n`,
+  `Mock listening on http://${config.MOCK_HOST}:${String(config.MOCK_PORT)}/desktop/v1 (scenario ${config.MOCK_SCENARIO})\n`,
 );
 
 for (const signal of ['SIGINT', 'SIGTERM'] as const) {
