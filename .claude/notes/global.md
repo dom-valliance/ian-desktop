@@ -57,3 +57,10 @@ Append-only. Lessons from corrections during the Ian desktop build. The first en
 **Correction**: "Isn't that just making the NFRs more tolerant?"
 **Rule**: When an acceptance target fails (spec 6.9 budgets included), recommend the change that fixes the cause. Propose changing a target only when it measures the wrong thing, and say plainly what the user would then experience.
 **Applies to**: global
+
+### [2026-10-18] Diagnose from the device's evidence before ranking a configuration fix
+
+**Context**: Xcode would not install on Dom's Intune-managed Mac. Claude's checklist ranked switching the VPP assignment from user to device licensing as the most likely cause, without evidence for it.
+**Correction**: "Already device licensing." The Mac's own `mdmclient` log showed the real state: Intune had never sent `InstallApplication` until the assignment was re-saved and synced, and then the download started.
+**Rule**: Before recommending a configuration change, read the evidence the machine already holds (here `/usr/bin/log show` for `mdmclient` and `appstored`; note `log` is a zsh builtin) or ask for the current setting. Rank causes by what the evidence shows, not by how common they are.
+**Applies to**: global
