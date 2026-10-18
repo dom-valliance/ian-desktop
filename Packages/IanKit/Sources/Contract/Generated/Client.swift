@@ -1777,6 +1777,11 @@ public struct Client: APIProtocol {
     /// - `event`: the event type, one of the `type` values of `StreamEvent`.
     /// - `data`: one line of JSON, a `StreamEvent` whose `type` equals `event`.
     ///
+    /// When a stream opens, the server writes the comment line `: open` at once, before any
+    /// replay, and sends `X-Content-Type-Options: nosniff`, so a client that waits for the
+    /// first bytes, or sniffs a `text/*` body, sees the stream live without waiting for the
+    /// first heartbeat.
+    ///
     /// Payloads carry whole objects, never patches. Events that change items come before the
     /// `today.updated` and `views.updated` that reflect them; until those arrive, Today and the
     /// views may still name an item that has just left, which the client draws leaving.

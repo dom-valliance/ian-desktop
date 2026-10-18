@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { MOCK_CONTRACT_VERSION } from '../domain/seeds.js';
 import { ContractValidator } from './contractValidator.js';
 
 const validator = new ContractValidator();
@@ -10,10 +11,16 @@ const validMe = {
   mode: 'dry_run',
   timeZone: 'Europe/London',
   minClientVersion: '0.1.0',
-  contractVersion: '1.0.0',
+  contractVersion: MOCK_CONTRACT_VERSION,
   capabilities: { handoff: true },
   serverTime: '2026-10-16T08:00:00.000Z',
 };
+
+describe('the contract version', () => {
+  it('is the version the mock reports in /me', () => {
+    expect(MOCK_CONTRACT_VERSION).toBe(validator.version);
+  });
+});
 
 describe('the contract validator', () => {
   it('accepts a body that satisfies the response schema', () => {

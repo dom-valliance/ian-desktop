@@ -49,6 +49,15 @@ export class ContractValidator {
   private readonly ajv: Ajv2020;
   private readonly compiled = new Map<string, ValidateFunction>();
 
+  /** The contract's `info.version`. */
+  get version(): string {
+    const info = this.document.info;
+    if (!isObject(info) || typeof info.version !== 'string') {
+      throw new Error('The contract has no info.version string.');
+    }
+    return info.version;
+  }
+
   constructor(path: string = CONTRACT_PATH) {
     this.document = parse(readFileSync(path, 'utf8')) as JsonObject;
     this.ajv = new Ajv2020({ strict: true, strictTypes: false, allErrors: true });
