@@ -11,7 +11,7 @@ Each entry records:
 
 | Package | Status |
 |---|---|
-| D1 | Built; waiting on the first CI run (`xcodebuild`) and the merge tag |
+| D1 | Done, 18 October 2026 |
 | D2 | Not started |
 | D3 | Not started |
 | D4 | Not started |
@@ -79,3 +79,21 @@ A committed CLI run, not the build plugin. `scripts/generate-contract.sh` runs `
   - D2 validates with `discriminator` as an annotation, and asserts `item.kind == item.detail.kind` and that every `unitId` is in `field.units` (`contract/README.md`).
   - D3 follows the AGENTS.md gotchas on the date transcoder and on decoding the event stream.
   - Lance's façade has the gaps listed in [docs/companion/lance-track.md](../companion/lance-track.md).
+
+#### Completion, 18 October 2026
+
+- Merged as pull request #1, merge commit `6d91427` on `main`. The pull request's `macOS`, `Mock` and `Contract` checks passed (reported by Dom), so the first `Done when` item holds on GitHub's `macos-26` runner with Xcode 26.6 and no Apple account.
+- `contract-v1.0.0` tags `6d91427` and is pushed. `git diff feat/d1-foundations origin/main` is empty, so the tag carries exactly the reviewed tree.
+- On branch `chore/xcode-27`, ADR 0010 moves the build to Xcode 27.1 (27A9275) and supersedes ADR 0008. From a fresh clone of that branch at `e1d6dad`, on macOS 27.0.1 with Xcode 27.1 and no Apple account signed in to Xcode:
+
+| Command | Exit |
+|---|---|
+| `swift format lint --recursive --strict Packages App scripts` | 0 |
+| `swift build --package-path Packages/IanKit --force-resolved-versions` | 0 |
+| `swift test --package-path Packages/IanKit --force-resolved-versions` | 0: 5 tests, 13 cases, no extra flags |
+| `scripts/check-generated.sh` | 0 |
+| `xcodebuild -project App/Ian.xcodeproj -scheme Ian -configuration Debug -destination 'platform=macOS' -onlyUsePackageVersionsFromResolvedFile build` | 0, `BUILD SUCCEEDED` |
+| `pnpm install --frozen-lockfile` then `pnpm lint`, in `contract/` | 0, 0 |
+| `pnpm install --frozen-lockfile` then `pnpm test`, in `mock/` | 0, 0 |
+
+- The follow-up on the app's pins is closed by ADR 0010: Xcode 27.1 wrote no `Package.resolved` for the app, so `scripts/generate-project.sh` copies IanKit's into the project. A probe with `swift-collections` pinned to 1.7.2 showed Xcode resolving 1.7.2, so the copy is honoured.
