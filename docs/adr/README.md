@@ -13,7 +13,8 @@ Numbers here are this repository's own. Lance's ADRs are cited as "Lance ADR NNN
 | 0005 | [Window model](0005-window-model.md) | Accepted |
 | 0006 | [Privacy on screen](0006-privacy-on-screen.md) | Accepted |
 | 0007 | [XcodeGen keeps the Xcode project](0007-xcodegen-keeps-the-project.md) | Accepted |
-| 0008 | [Build with Xcode 26](0008-build-with-xcode-26.md) | Accepted |
+| 0008 | [Build with Xcode 26](0008-build-with-xcode-26.md) | Superseded by 0010 |
 | 0009 | [Contract v1 fills gaps in spec section 5](0009-contract-v1-fills-gaps-in-the-spec.md) | Accepted |
+| 0010 | [Build with Xcode 27.1](0010-build-with-xcode-27.md) | Accepted |
 
 Later numbers go to deviations as they arise.

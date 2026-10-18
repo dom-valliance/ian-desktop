@@ -14,7 +14,7 @@ concurrency:
 
 jobs:
   build:
-    runs-on: macos-26
+    runs-on: xcode-27
     timeout-minutes: 30
     steps:
       - name: Check out the repository
@@ -22,9 +22,9 @@ jobs:
         with:
           persist-credentials: false
 
-      # Xcode 26 is the build floor (ADR 0008).
-      - name: Select Xcode 26.6
-        run: sudo xcode-select -s /Applications/Xcode_26.6.app/Contents/Developer
+      # The same Xcode build developers use, 27.1 (27A9275) (ADR 0010).
+      - name: Select Xcode 27.1
+        run: sudo xcode-select -s /Applications/Xcode_27.1.app/Contents/Developer
 
       - name: Print toolchain versions
         run: |
@@ -45,4 +45,4 @@ jobs:
         run: scripts/check-generated.sh
 
       - name: Build the app
-        run: xcodebuild -project App/Ian.xcodeproj -scheme Ian -configuration Debug -destination 'platform=macOS' build
+        run: xcodebuild -project App/Ian.xcodeproj -scheme Ian -configuration Debug -destination 'platform=macOS' -onlyUsePackageVersionsFromResolvedFile build

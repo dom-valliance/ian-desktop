@@ -3,7 +3,7 @@
 set -euo pipefail
 
 if ! command -v swift >/dev/null 2>&1; then
-  echo "swift not found. Install Xcode 26 (Swift 6.2 or later, ADR 0008) and re-run." >&2
+  echo "swift not found. Install Xcode 27 (ADR 0010) and re-run." >&2
   exit 1
 fi
 
