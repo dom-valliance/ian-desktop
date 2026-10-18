@@ -14,7 +14,8 @@ public enum SyncUpdate: Sendable, Equatable {
   case event(id: String?, Components.Schemas.StreamEvent)
   /// The stream is down. The loop keeps trying, and polls the snapshot after a minute.
   case disconnected
-  /// The loop stopped for a reason retrying cannot fix: `unauthorised` or `upgradeRequired`.
+  /// The loop stopped for a reason retrying cannot fix: `unauthorised`, `upgradeRequired`, or
+  /// `failed`, such as a Keychain refusal.
   case failed(DesktopError)
 }
 
@@ -113,6 +114,8 @@ private actor SyncRun {
   private var poller: Task<Void, Never>?
   private var lastActivity: Duration = .zero
   private var resyncedLast = false
+  /// True while a connection attempt is fetching its own snapshot.
+  private var fetchingSnapshot = false
 
   init(
     service: any DesktopService, appVersion: SemanticVersion, clock: any SyncClock,
@@ -141,7 +144,7 @@ private actor SyncRun {
         return
       } catch let error as DesktopError {
         switch error {
-        case .unauthorised, .upgradeRequired:
+        case .unauthorised, .upgradeRequired, .failed:
           sink.yield(.failed(error))
           return
         case .gone:
@@ -150,12 +153,12 @@ private actor SyncRun {
         default:
           break
         }
-        Self.log.info("sync lost: \(String(describing: error), privacy: .public)")
+        Self.log.info("sync lost: \(error.kind, privacy: .public)")
       } catch SyncSignal.refetch {
         cursor = nil
         if retryAtOnce() { continue }
       } catch {
-        Self.log.info("sync lost: \(error.localizedDescription, privacy: .public)")
+        Self.log.info("sync lost: \(error.localizedDescription, privacy: .private)")
       }
       if Task.isCancelled { return }
       if let connectedAt, await clock.now() - connectedAt >= timing.stableAfter { attempt = 0 }
@@ -180,6 +183,8 @@ private actor SyncRun {
       needsMe = false
     }
     if cursor == nil {
+      fetchingSnapshot = true
+      defer { fetchingSnapshot = false }
       let snapshot = try await service.snapshot()
       cursor = snapshot.cursor
       sink.yield(.snapshot(snapshot))
@@ -233,8 +238,9 @@ private actor SyncRun {
     if !isDown {
       isDown = true
       sink.yield(.disconnected)
-      startPolling()
     }
+    // Polling waits for `/me` to pass the version check, so a refused client never reads data.
+    if poller == nil && !needsMe { startPolling() }
     let delay = timing.backoff.delay(attempt: attempt, jitter: jitter())
     attempt += 1
     try? await clock.sleep(for: delay)
@@ -257,8 +263,12 @@ private actor SyncRun {
   }
 
   private func adopt(_ snapshot: Components.Schemas.Snapshot) {
-    // A snapshot fetched before the stream returned is older than the events since.
-    guard isDown else { return }
+    // A snapshot fetched before the stream returned, or while a connection attempt fetched its
+    // own, is older than what the loop holds. So is one with a lower cursor.
+    guard isDown, !fetchingSnapshot else { return }
+    if let held = cursor.flatMap(UInt64.init), let polled = UInt64(snapshot.cursor), polled < held {
+      return
+    }
     cursor = snapshot.cursor
     sink.yield(.snapshot(snapshot))
   }

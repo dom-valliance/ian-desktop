@@ -281,8 +281,8 @@ private func postsAction() async throws {
   #expect(fields["note"] == nil)
 }
 
-@Test("replaces the item from a 409 problem body")
-private func mapsConflict() async throws {
+@Test("maps 409 to a conflict that carries the item as the server now holds it")
+private func mapsConflictWithCurrentItem() async throws {
   let service = api { _ in
     .problem(
       "{\"type\":\"about:blank\",\"title\":\"Changed\",\"status\":409,\"item\":"
@@ -349,4 +349,22 @@ private func streamGone() async {
   }
 
   await #expect(throws: DesktopError.gone) { try await service.stream(lastEventID: "1") }
+}
+
+@Test("knows exactly the event types the contract's StreamEvent declares")
+private func knownTypesMatchContract() {
+  typealias Schemas = Components.Schemas
+  let declared = Set(
+    Schemas.ItemUpsertedEvent._TypePayload.allCases.map(\.rawValue)
+      + Schemas.ItemRemovedEvent._TypePayload.allCases.map(\.rawValue)
+      + Schemas.TodayUpdatedEvent._TypePayload.allCases.map(\.rawValue)
+      + Schemas.ViewsUpdatedEvent._TypePayload.allCases.map(\.rawValue)
+      + Schemas.AlertRaisedEvent._TypePayload.allCases.map(\.rawValue)
+      + Schemas.AlertClearedEvent._TypePayload.allCases.map(\.rawValue)
+      + Schemas.AgentUpdatedEvent._TypePayload.allCases.map(\.rawValue)
+      + Schemas.SettingsUpdatedEvent._TypePayload.allCases.map(\.rawValue)
+      + Schemas.ClientDeprecatedEvent._TypePayload.allCases.map(\.rawValue)
+      + Schemas.HeartbeatEvent._TypePayload.allCases.map(\.rawValue))
+
+  #expect(StreamMessageDecoder.knownTypes == declared)
 }

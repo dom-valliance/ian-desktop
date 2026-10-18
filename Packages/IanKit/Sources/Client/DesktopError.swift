@@ -23,6 +23,23 @@ public enum DesktopError: Error, Equatable, Sendable {
   case failed(String)
 }
 
+extension DesktopError {
+  /// The case name alone, safe to log: the payloads can carry item text.
+  public var kind: String {
+    switch self {
+    case .unauthorised: "unauthorised"
+    case .upgradeRequired: "upgradeRequired"
+    case .conflict: "conflict"
+    case .gone: "gone"
+    case .offline: "offline"
+    case .rejected: "rejected"
+    case .unexpectedStatus: "unexpectedStatus"
+    case .unreadableResponse: "unreadableResponse"
+    case .failed: "failed"
+    }
+  }
+}
+
 extension DesktopError: LocalizedError {
   public var errorDescription: String? {
     switch self {

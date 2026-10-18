@@ -30,6 +30,8 @@ public final class ScriptedService: DesktopService, @unchecked Sendable {
   private var _signOuts = 0
   private var _signIns = 0
   private var signInFailure: (any Error)?
+  private var snapshotHook: (@Sendable (Int) async -> Void)?
+  private var signInHook: (@Sendable () async -> Void)?
 
   public init(
     me: Components.Schemas.Me = Fixtures.me(),
@@ -71,6 +73,17 @@ public final class ScriptedService: DesktopService, @unchecked Sendable {
     lock.withLock { actionResult = result }
   }
 
+  /// Runs after a snapshot call has taken its planned result and before it returns, with the
+  /// call's number from 1. Lets a test hold one call while others complete.
+  public func planSnapshotHook(_ hook: @escaping @Sendable (Int) async -> Void) {
+    lock.withLock { snapshotHook = hook }
+  }
+
+  /// Runs inside `signIn`, so a test can hold a sign-in open.
+  public func planSignInHook(_ hook: @escaping @Sendable () async -> Void) {
+    lock.withLock { signInHook = hook }
+  }
+
   public func planSignInFailure(_ error: any Error) {
     lock.withLock { signInFailure = error }
   }
@@ -82,10 +95,12 @@ public final class ScriptedService: DesktopService, @unchecked Sendable {
 
   /// Answers with each planned snapshot in turn, then repeats the last.
   public func snapshot() async throws -> Components.Schemas.Snapshot {
-    let result = lock.withLock {
+    let (result, number, hook) = lock.withLock {
       _snapshotCalls += 1
-      return snapshotResults.count > 1 ? snapshotResults.removeFirst() : snapshotResults[0]
+      let next = snapshotResults.count > 1 ? snapshotResults.removeFirst() : snapshotResults[0]
+      return (next, _snapshotCalls, snapshotHook)
     }
+    await hook?(number)
     return try result.get()
   }
 
@@ -116,10 +131,11 @@ public final class ScriptedService: DesktopService, @unchecked Sendable {
   }
 
   public func signIn() async throws {
-    let failure = lock.withLock {
+    let (failure, hook) = lock.withLock {
       _signIns += 1
-      return signInFailure
+      return (signInFailure, signInHook)
     }
+    await hook?()
     if let failure { throw failure }
   }
 

@@ -262,32 +262,6 @@ private func pollsWhileOffline() async throws {
   #expect(await rig.collector.count(where: isSnapshot) == 3)
 }
 
-@Test("starts over from the polled snapshot's cursor when the stream returns")
-private func resumesFromPolledCursor() async throws {
-  let service = ScriptedService(
-    snapshots: [
-      .success(Fixtures.snapshot(cursor: "10")), .success(Fixtures.snapshot(cursor: "40")),
-    ])
-  let first = service.planStream()
-  service.planStreamFailure(.offline)
-  service.planStream()
-  let rig = start(service: service)
-  defer { rig.stop() }
-  #expect(await rig.waitFor("connected", isConnected))
-  first.finish(throwing: DesktopError.offline)
-  #expect(await rig.waitFor("disconnected", isDisconnected))
-
-  await rig.clock.advance(by: .seconds(60))
-  #expect(await eventually("the poll") { service.snapshotCalls == 2 })
-  #expect(await eventually("the next retry") { await rig.clock.requestedSleeps.count >= 4 })
-  await rig.clock.advance(by: .seconds(10))
-
-  #expect(await rig.waitForCount(2, isConnected))
-  // The retry in the same step as the poll may see either cursor; the one after it must see 40.
-  #expect(service.streamCalls.first == "10")
-  #expect(service.streamCalls.last == "40")
-}
-
 @Test("stops with unauthorised and does not retry")
 private func stopsOnUnauthorised() async throws {
   let service = ScriptedService()
@@ -338,4 +312,91 @@ private func refusesBelowMinimumVersion() async throws {
     await rig.waitFor("failure") { $0 == .failed(.upgradeRequired(minClientVersion: "0.2.0")) })
   #expect(service.snapshotCalls == 0)
   #expect(service.streamCalls.isEmpty)
+}
+
+@Test("ignores a polled snapshot whose cursor is below the one the loop holds")
+private func ignoresPolledSnapshotWithLowerCursor() async throws {
+  let service = ScriptedService(
+    snapshots: [
+      .success(Fixtures.snapshot(cursor: "10")), .success(Fixtures.snapshot(cursor: "5")),
+    ])
+  let first = service.planStream()
+  service.planStreamFailure(.offline)
+  service.planStreamFailure(.offline)
+  let rig = start(service: service)
+  defer { rig.stop() }
+  #expect(await rig.waitFor("connected", isConnected))
+  first.finish(throwing: DesktopError.offline)
+  #expect(await rig.waitFor("disconnected", isDisconnected))
+  #expect(
+    await eventually("the poll timer") { await rig.clock.requestedSleeps.contains(.seconds(60)) })
+
+  await rig.clock.advance(by: .seconds(60))
+
+  #expect(await eventually("the poll") { service.snapshotCalls == 2 })
+  #expect(await rig.collector.count(where: isSnapshot) == 1)
+}
+
+@Test("does not poll for a snapshot while me has not passed the version check")
+private func doesNotPollBeforeMePasses() async throws {
+  let service = ScriptedService()
+  service.planMe(.failure(.offline))
+  let rig = start(service: service)
+  defer { rig.stop() }
+  #expect(await rig.waitFor("disconnected", isDisconnected))
+
+  for _ in 0..<3 {
+    await rig.clock.advance(by: .seconds(60))
+    try? await Task.sleep(for: .milliseconds(20))
+  }
+
+  #expect(service.snapshotCalls == 0)
+  #expect(!(await rig.clock.requestedSleeps.contains(.seconds(60))))
+}
+
+@Test("drops a polled snapshot that lands while a connection attempt fetches its own")
+private func dropsPolledSnapshotDuringConnect() async throws {
+  let service = ScriptedService(
+    snapshots: [
+      .success(Fixtures.snapshot(cursor: "10")), .success(Fixtures.snapshot(cursor: "50")),
+      .success(Fixtures.snapshot(cursor: "99")),
+    ])
+  let first = service.planStream()
+  service.planStreamFailure(.gone)
+  service.planStream()
+  let (gate, release) = AsyncStream<Void>.makeStream()
+  service.planSnapshotHook { number in
+    if number == 2 { for await _ in gate { break } }
+  }
+  let rig = start(service: service)
+  defer { rig.stop() }
+  #expect(await rig.waitFor("connected", isConnected))
+  first.finish(throwing: DesktopError.offline)
+  #expect(await rig.waitFor("disconnected", isDisconnected))
+  #expect(
+    await eventually("the poll timer") { await rig.clock.requestedSleeps.contains(.seconds(60)) })
+  await rig.clock.advance(by: .seconds(1))
+  #expect(await eventually("the connection's snapshot") { service.snapshotCalls == 2 })
+
+  await rig.clock.advance(by: .seconds(60))
+  #expect(await eventually("the poll's snapshot") { service.snapshotCalls == 3 })
+  release.yield()
+
+  #expect(await rig.waitForCount(2, isConnected))
+  #expect(service.streamCalls.last == "50")
+  #expect(await rig.collector.count(where: isSnapshot) == 2)
+}
+
+@Test("stops on a failure retrying cannot fix, such as a Keychain refusal")
+private func stopsOnTerminalFailure() async throws {
+  let service = ScriptedService()
+  service.planMe(.failure(.failed("The Keychain refused to store the sign-in.")))
+  let rig = start(service: service)
+  defer { rig.stop() }
+
+  #expect(
+    await rig.waitFor("failure") {
+      $0 == .failed(.failed("The Keychain refused to store the sign-in."))
+    })
+  #expect(await eventually("the loop ends") { await rig.collector.finished })
 }
