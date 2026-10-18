@@ -2,12 +2,12 @@
 
 | Script | Does |
 |---|---|
-| `dev.sh` | Starts the mock and opens the app against it. D2 starts the mock and waits for it; D3 adds the app |
+| `dev.sh` | Starts the mock on port 4317, waits until it answers, then builds the app and opens it against the mock. `--mock-only` starts only the mock |
 | `generate-contract.sh` | Regenerates `Packages/IanKit/Sources/Contract/Generated` and the JSON fixtures in `Packages/IanKit/Tests/ContractTests/Fixtures` from `contract/ian-desktop.v1.yaml`. The fixtures are the contract's `components.examples` |
 | `generate-project.sh` | Regenerates `App/Ian.xcodeproj` from `App/project.yml`, and copies IanKit's `Package.resolved` into it, because Xcode ignores a local package's pins |
 | `check-generated.sh` | Runs both generators and fails if any generated file differs from what is committed. CI runs it |
 
-`dev.sh` starts the mock on port 4317, waits for it to answer, then builds and opens the app against it. Acceptance (spec section 11) requires a fresh clone to show the `normal` scenario within ten seconds of running it. Built across D2 and D3.
+Acceptance (spec section 11) requires a fresh clone to show the `normal` scenario within ten seconds of running `dev.sh`, once the app is built. The first build takes a few minutes; D9 measures the ten seconds.
 
 The generators run from `scripts/tools`, a package that pins `swift-openapi-generator` and XcodeGen, so every machine and CI use the same versions.
 
