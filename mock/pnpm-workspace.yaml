@@ -1,0 +1,6 @@
+# Two weeks, in minutes: a release must be this old before pnpm installs it, directly or not.
+minimumReleaseAge: 20160
+allowBuilds:
+  # tsx and vitest run TypeScript through esbuild, which needs its platform
+  # binary installed by the postinstall script.
+  esbuild: true

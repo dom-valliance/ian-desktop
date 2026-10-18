@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: Ian desktop api
-  version: 1.0.0
+  version: 1.0.1
   summary: The contract between the Ian desktop client and Lance's /desktop/v1 façade.
   description: |
     Version 1 of the contract between the Ian desktop client and Lance (ADR 0002). This
@@ -435,6 +435,11 @@ paths:
         - `id`: an `EventId`, strictly increasing per principal. `heartbeat` carries no `id`.
         - `event`: the event type, one of the `type` values of `StreamEvent`.
         - `data`: one line of JSON, a `StreamEvent` whose `type` equals `event`.
+
+        When a stream opens, the server writes the comment line `: open` at once, before any
+        replay, and sends `X-Content-Type-Options: nosniff`, so a client that waits for the
+        first bytes, or sniffs a `text/*` body, sees the stream live without waiting for the
+        first heartbeat.
 
         Payloads carry whole objects, never patches. Events that change items come before the
         `today.updated` and `views.updated` that reflect them; until those arrive, Today and the

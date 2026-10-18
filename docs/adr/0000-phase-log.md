@@ -12,7 +12,7 @@ Each entry records:
 | Package | Status |
 |---|---|
 | D1 | Done, 18 October 2026 |
-| D2 | Not started |
+| D2 | Done, 18 October 2026 |
 | D3 | Not started |
 | D4 | Not started |
 | D5 | Not started |
@@ -97,3 +97,50 @@ A committed CLI run, not the build plugin. `scripts/generate-contract.sh` runs `
 | `pnpm install --frozen-lockfile` then `pnpm test`, in `mock/` | 0, 0 |
 
 - The follow-up on the app's pins is closed by ADR 0010: Xcode 27.1 wrote no `Package.resolved` for the app, so `scripts/generate-project.sh` copies IanKit's into the project. A probe with `swift-collections` pinned to 1.7.2 showed Xcode resolving 1.7.2, so the copy is honoured.
+
+### D2. Mock server
+
+- Date: 18 October 2026
+- Branch: `feat/d2-mock`, from `main` at `9efcaf9`. Commits `ee2d606..6c153da`, plus this entry; `40cbfe9` before them is a notes entry.
+- Machine: macOS 27.0.1, Xcode 27.1 (27A9275), Node 22.23.2, pnpm 12.4.2.
+
+#### Commands and exit codes
+
+| Command | Exit |
+|---|---|
+| `pnpm install --frozen-lockfile` in `mock/` | 0, and the lockfile passes the two-week `minimumReleaseAge` policy |
+| `pnpm --dir mock lint` (ESLint, then Prettier) | 0 |
+| `pnpm --dir mock typecheck` | 0 |
+| `pnpm --dir mock test` | 0: 142 tests in 7 files |
+| `pnpm generate` in `mock/`, then `git diff --exit-code -- src/generated` and an empty `git status --porcelain -- src/generated` | 0 |
+| `pnpm install --frozen-lockfile` then `pnpm lint`, in `contract/` | 0, 0 |
+| `scripts/check-generated.sh`, `swift format lint`, `swift build` and `swift test` for IanKit, after the contract patch | 0 each |
+| `scripts/dev.sh` | Mock answered `GET /me` 1.4 seconds after start |
+| `scripts/dev.sh` again on the same port | 1, with "something already answers on 127.0.0.1:4317" |
+| D3's integration suite against this mock (`IAN_MOCK_URL=http://localhost:4317 swift test --filter Integration`, from the D3 branch) | 0: 3 tests in 0.94 seconds |
+
+#### Done when
+
+1. Lint, typecheck and test pass: above.
+2. Every endpoint in every scenario is called and each response validated against the contract: `endpoints.test.ts` calls all 14 operations in `quiet`, `normal`, `overloaded`, `incident`, `external-meeting` and `stale-client`, drains and validates every stream event, and asserts that every `operationId` was covered. `offline` is tested for refused connections. The invariants the schema cannot express (`item.kind` equals `detail.kind`, every `unitId` in `field.units`, every id in Today and Views in the snapshot, severity on alerts only) are checked per scenario.
+3. A client disconnects, five events are emitted, and reconnecting with `Last-Event-ID` receives the five in order; an id past the replay window, newer than the latest, or from an earlier process receives `410`: `stream.test.ts`.
+
+#### Choices recorded
+
+- Zod schemas are generated from the contract by `@hey-api/openapi-ts` 0.99.0 with its Zod plugin (Zod 4.6.5), committed under `mock/src/generated`, and drift-checked in `mock.yml`. Request bodies, path and query parameters and the version header are parsed with them.
+- Responses are validated in tests by an independent Ajv 2020 validator over the contract itself (`mock/src/testing/contractValidator.ts`), with `discriminator` and `example` as annotations.
+- The mock is a small in-memory Lance: it derives horizon, pressure, attention, the Orbit, the field, the lists and the views from seed items and a frozen mock clock that moves only through `POST /__mock/clock`. The pressure formula is documented in `mock/src/domain/derive.ts`; Lance's is its own.
+- Event ids start from the wall clock at process start, so an id from an earlier process answers `410`. Actions are held in flight until their last event, so a second action meanwhile answers `409`. `POST /__mock/capabilities` turns hand-off off, so `/handoff` answers `404` as Lance will.
+- Placeholders are `[CLIENT A]` to `[CLIENT D]` and `[PERSON A]` to `[PERSON D]`, so the field has distinct columns.
+- A malformed `Desktop-Client-Version` is treated as absent rather than answered with `400`, which the contract does not define on every operation.
+
+#### Spec section 11 criteria evidenced
+
+- The contract is the single source: the mock's tests validate every response and event against the contract, and its request schemas are generated from it.
+- The stream recovers, server side: replay from `Last-Event-ID`, and `410` beyond the window. The client side is D3's.
+
+#### ADRs, deviations and what is left
+
+- No ADR. Contract 1.0.1, a description-only patch: a stream opens with the comment line `: open` and `X-Content-Type-Options: nosniff`, because the Swift client showed the stream live only at the first 25-second heartbeat without it. Tag `contract-v1.0.1` after the merge. The same rule is in Lance's DL3 note.
+- `scripts/dev.sh` has its first half. D3 adds building and opening the app at the marked place.
+- Reviewed by an Opus review against REVIEW.md: 1 Blocking (this entry), 5 Should fix and 7 Suggestions, all fixed.

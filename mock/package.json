@@ -7,6 +7,31 @@
     "node": ">=22 <23"
   },
   "scripts": {
-    "test": "node --test"
+    "dev": "tsx watch src/main.ts",
+    "start": "tsx src/main.ts",
+    "lint": "eslint . && prettier --check .",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "test": "vitest run",
+    "generate": "tsx scripts/generate.ts",
+    "mock": "tsx src/cli.ts"
+  },
+  "dependencies": {
+    "fastify": "5.12.5",
+    "zod": "4.6.5"
+  },
+  "devDependencies": {
+    "@eslint/js": "10.0.1",
+    "@hey-api/openapi-ts": "0.99.0",
+    "@types/node": "22.19.1",
+    "ajv": "8.20.0",
+    "ajv-formats": "3.0.1",
+    "eslint": "10.11.0",
+    "globals": "17.12.0",
+    "prettier": "3.9.8",
+    "tsx": "4.23.13",
+    "typescript": "6.0.3",
+    "typescript-eslint": "8.70.0",
+    "vitest": "5.0.1",
+    "yaml": "2.9.1"
   }
 }

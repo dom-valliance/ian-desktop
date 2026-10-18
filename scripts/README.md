@@ -2,7 +2,7 @@
 
 | Script | Does |
 |---|---|
-| `dev.sh` | Starts the mock and opens the app against it. Arrives in D2 and D3 |
+| `dev.sh` | Starts the mock and opens the app against it. D2 starts the mock and waits for it; D3 adds the app |
 | `generate-contract.sh` | Regenerates `Packages/IanKit/Sources/Contract/Generated` and the JSON fixtures in `Packages/IanKit/Tests/ContractTests/Fixtures` from `contract/ian-desktop.v1.yaml`. The fixtures are the contract's `components.examples` |
 | `generate-project.sh` | Regenerates `App/Ian.xcodeproj` from `App/project.yml`, and copies IanKit's `Package.resolved` into it, because Xcode ignores a local package's pins |
 | `check-generated.sh` | Runs both generators and fails if any generated file differs from what is committed. CI runs it |
