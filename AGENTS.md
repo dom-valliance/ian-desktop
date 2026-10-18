@@ -92,7 +92,9 @@ pnpm --dir mock lint && pnpm --dir mock typecheck && pnpm --dir mock test
 pnpm --dir contract install --frozen-lockfile && pnpm --dir contract lint
 ```
 
-`scripts/dev.sh` starts the mock on port 4317 (`MOCK_PORT` and `MOCK_HOST` change it) and waits until it answers; `mock/README.md` lists the scenarios and the `pnpm --dir mock mock` commands for emitting events, moving the clock and switching capabilities. Read the workflows in `.github/workflows/` rather than this list when they differ; the workflows win.
+`scripts/dev.sh` starts the mock on port 4317 (`MOCK_PORT` and `MOCK_HOST` change it), waits until it answers, then builds the app and opens it against the mock (`--mock-only` stops after the mock); `mock/README.md` lists the scenarios and the `pnpm --dir mock mock` commands for emitting events, moving the clock and switching capabilities. The Swift integration tests run only against a live mock: `scripts/dev.sh --mock-only`, then `IAN_MOCK_URL=http://localhost:4317 swift test --package-path Packages/IanKit --force-resolved-versions --filter Integration`; without the variable they are skipped. Read the workflows in `.github/workflows/` rather than this list when they differ; the workflows win.
+
+The app chooses its environment from the launch argument `-IanEnvironment mock|lance-dev`, then the saved setting, then `mock`. The `lance-dev` tenant id, desktop client id and api scope are the build settings `IAN_LANCE_TENANT_ID`, `IAN_LANCE_CLIENT_ID` and `IAN_LANCE_SCOPE` in `App/project.yml`, carried into the app through `App/Info.plist`. The last two stay empty until Lance DL1 registers them, and sign-in says so.
 
 ## Git and GitHub
 
