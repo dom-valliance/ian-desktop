@@ -45,10 +45,26 @@ let package = Package(
       ],
       resources: [.copy("Fixtures")]
     ),
-    .target(name: "TestSupport", path: "Tests/TestSupport"),
+    .target(
+      name: "TestSupport",
+      dependencies: [
+        "Auth", "Client", "Contract",
+        .product(name: "OpenAPIRuntime", package: "swift-openapi-runtime"),
+      ],
+      path: "Tests/TestSupport"
+    ),
     .testTarget(name: "AuthTests", dependencies: ["Auth", "TestSupport"]),
-    .testTarget(name: "ClientTests", dependencies: ["Client"]),
-    .testTarget(name: "StoreTests", dependencies: ["Store"]),
+    .testTarget(
+      name: "ClientTests",
+      dependencies: [
+        "Auth", "Client", "Contract", "TestSupport",
+        .product(name: "OpenAPIRuntime", package: "swift-openapi-runtime"),
+      ]
+    ),
+    .testTarget(
+      name: "StoreTests",
+      dependencies: ["Client", "Contract", "Store", "TestSupport"]
+    ),
     .testTarget(name: "AttentionTests", dependencies: ["Attention"]),
     .testTarget(name: "SurfaceTests", dependencies: ["Surface"]),
     .testTarget(name: "FeaturesTests", dependencies: ["Features"]),
