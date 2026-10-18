@@ -9,7 +9,6 @@ export interface StoredEvent {
 }
 
 export const REPLAY_WINDOW_MS = DAY_MS;
-const FIRST_EVENT_ID = 1000;
 
 /**
  * One principal's event log. Ids rise by one, 24 hours of events are replayable by the mock clock,
@@ -17,12 +16,22 @@ const FIRST_EVENT_ID = 1000;
  */
 export class EventLog {
   private readonly events: { id: number; at: Date; event: StreamEvent }[] = [];
-  private lastId = FIRST_EVENT_ID;
+  private lastId: number;
   /** The highest id that has aged out. A client holding less than this has missed events. */
-  private prunedThrough = FIRST_EVENT_ID;
+  private prunedThrough: number;
   private readonly subscribers = new Set<(stored: StoredEvent) => void>();
 
-  constructor(private readonly clock: MockClock) {}
+  /**
+   * Ids start at the wall clock in milliseconds, so an id from an earlier process is below this
+   * one's window and answers 410 instead of replaying the wrong history.
+   */
+  constructor(
+    private readonly clock: MockClock,
+    firstEventId: number = Date.now(),
+  ) {
+    this.lastId = firstEventId;
+    this.prunedThrough = firstEventId;
+  }
 
   latestId(): number {
     return this.lastId;

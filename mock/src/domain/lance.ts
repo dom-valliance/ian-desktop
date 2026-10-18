@@ -90,6 +90,14 @@ export class MockLance {
   private silent = false;
   private counter = NEW_ITEM_BASE;
   private readonly pending = new Set<Promise<void>>();
+  /** Items with an accepted action whose events have not all been sent. */
+  private readonly inFlight = new Set<string>();
+  /** Raised when a scenario loads, so steps scheduled for the old world do nothing. */
+  private generation = 0;
+  /** The version each departed item last had, so a returning id never restarts at 1. */
+  private readonly lastVersion = new Map<string, number>();
+  private snoozedAlerts: { record: ItemRecord; until: Date }[] = [];
+  private handoffOffered = true;
 
   constructor(options: LanceOptions) {
     this.clock = options.clock;
@@ -109,6 +117,10 @@ export class MockLance {
     return this.minClientVersion;
   }
 
+  setHandoffOffered(offered: boolean): void {
+    this.handoffOffered = offered;
+  }
+
   /** Resolves when every event an earlier action scheduled has been sent. */
   async idle(): Promise<void> {
     while (this.pending.size > 0) await Promise.all([...this.pending]);
@@ -124,7 +136,7 @@ export class MockLance {
       timeZone: this.settings.timeZone,
       minClientVersion: this.minClientVersion,
       contractVersion: MOCK_CONTRACT_VERSION,
-      capabilities: { handoff: true },
+      capabilities: { handoff: this.handoffOffered },
       serverTime: this.clock.now().toISOString(),
     };
   }
@@ -188,6 +200,9 @@ export class MockLance {
 
   loadScenario(scenario: Scenario): void {
     this.scenarioName = scenario;
+    this.generation += 1;
+    this.inFlight.clear();
+    this.snoozedAlerts = [];
     const now = this.clock.now();
     const world = worldFor(scenario, now);
     const before = this.records;
@@ -210,7 +225,8 @@ export class MockLance {
         next.set(id, existing);
         continue;
       }
-      record.version = existing ? existing.version + 1 : 1;
+      const prior = existing?.version ?? this.lastVersion.get(id);
+      record.version = prior === undefined ? 1 : prior + 1;
       next.set(id, record);
       this.publishItem(record, undefined, existing === undefined && record.kind === 'alert');
     }
@@ -305,6 +321,9 @@ export class MockLance {
     if (!record) throw new MockError(404, 'Not found', `No open item has the id ${itemId}.`);
     const stale = (detail: string): MockError =>
       new MockError(409, 'Item changed', detail, { item: this.render(record) });
+    if (this.inFlight.has(itemId)) {
+      throw stale('An action on this item is still being settled. Wait for its events.');
+    }
     if (body.version !== record.version) {
       throw stale(`The item is at version ${record.version}, not ${body.version}. Read it again.`);
     }
@@ -322,9 +341,7 @@ export class MockLance {
     const correlationId = `corr_01MOCK${String(++this.counter).padStart(12, '0')}`;
     const accepted = (status: 200 | 202): ActionAccepted => ({ status, correlationId });
     const run = (...steps: (() => void)[]): void => {
-      steps.forEach((step, index) => {
-        this.schedule(index + 1, step);
-      });
+      this.runSteps(record, steps);
     };
     const finish =
       (step: () => void): (() => void) =>
@@ -339,6 +356,7 @@ export class MockLance {
           run(
             () => {
               record.working = true;
+              record.actions = [];
               this.republish(record, correlationId);
               this.publishAggregates();
             },
@@ -368,6 +386,9 @@ export class MockLance {
       case 'alert':
         run(
           finish(() => {
+            if (actionId === 'snooze' && body.until !== undefined) {
+              this.snoozedAlerts.push({ record, until: new Date(body.until) });
+            }
             this.publishRemoved(record, undefined, correlationId);
           }),
         );
@@ -376,33 +397,37 @@ export class MockLance {
   }
 
   handOff(itemId: string, instruction: string | undefined): ActionAccepted {
+    if (!this.handoffOffered) {
+      throw new MockError(404, 'Not found', 'This server does not offer Hand to Ian.');
+    }
     const record = this.records.get(itemId);
     if (!record) throw new MockError(404, 'Not found', `No open item has the id ${itemId}.`);
     const correlationId = `corr_01MOCK${String(++this.counter).padStart(12, '0')}`;
-    this.schedule(1, () => {
-      record.working = true;
-      this.republish(record, correlationId);
-      this.publishAggregates();
-    });
-    this.schedule(2, () => {
-      if (!this.records.has(record.id)) return;
-      record.working = false;
-      this.republish(record, correlationId);
-      const id = this.newId('prop');
-      const proposal = proposalRecord(id, {
-        title: `Ian's next step for: ${record.title}`,
-        summary: instruction ?? 'Ian prepared a next step for this item.',
-        actionClass: 'draft_email',
-        actionClassLabel: 'Draft email',
-        targetSystem: 'graph',
-        targetSystemLabel: 'Outlook',
-        unit: record.unit,
-        expiresAt: new Date(this.clock.now().getTime() + 6 * HOUR_MS),
-      });
-      this.records.set(id, proposal);
-      this.publishItem(proposal, correlationId, false);
-      this.publishAggregates();
-    });
+    this.runSteps(record, [
+      () => {
+        record.working = true;
+        this.republish(record, correlationId);
+        this.publishAggregates();
+      },
+      () => {
+        record.working = false;
+        this.republish(record, correlationId);
+        const id = this.newId('prop');
+        const proposal = proposalRecord(id, {
+          title: `Ian's next step for: ${record.title}`,
+          summary: instruction ?? 'Ian prepared a next step for this item.',
+          actionClass: 'draft_email',
+          actionClassLabel: 'Draft email',
+          targetSystem: 'graph',
+          targetSystemLabel: 'Outlook',
+          unit: record.unit,
+          expiresAt: new Date(this.clock.now().getTime() + 6 * HOUR_MS),
+        });
+        this.records.set(id, proposal);
+        this.publishItem(proposal, correlationId, false);
+        this.publishAggregates();
+      },
+    ]);
     return { status: 202, correlationId };
   }
 
@@ -606,6 +631,26 @@ export class MockLance {
     return `${prefix}_01MOCK${String(++this.counter).padStart(12, '0')}`;
   }
 
+  /**
+   * Sends an accepted action's events after the response. The item stays in flight until the last
+   * step, and a step does nothing once the item has changed hands or a scenario has loaded.
+   */
+  private runSteps(record: ItemRecord, steps: (() => void)[]): void {
+    this.inFlight.add(record.id);
+    const generation = this.generation;
+    steps.forEach((step, index) => {
+      const last = index === steps.length - 1;
+      this.schedule(index + 1, () => {
+        if (generation !== this.generation) return;
+        try {
+          if (this.records.get(record.id) === record) step();
+        } finally {
+          if (last) this.inFlight.delete(record.id);
+        }
+      });
+    });
+  }
+
   private schedule(multiple: number, step: () => void): void {
     const job = new Promise<void>((resolve) => {
       setTimeout(() => {
@@ -690,6 +735,7 @@ export class MockLance {
     correlationId: string | undefined,
   ): void {
     if (!this.records.has(record.id)) return;
+    this.lastVersion.set(record.id, record.version);
     this.records.delete(record.id);
     this.published.items.delete(record.id);
     const withCorrelation = correlationId === undefined ? {} : { correlationId };
@@ -724,6 +770,13 @@ export class MockLance {
 
   private reconcile(): void {
     const now = this.clock.now().getTime();
+    const awake = this.snoozedAlerts.filter((entry) => entry.until.getTime() <= now);
+    this.snoozedAlerts = this.snoozedAlerts.filter((entry) => entry.until.getTime() > now);
+    for (const { record } of awake) {
+      record.version = (this.lastVersion.get(record.id) ?? record.version) + 1;
+      this.records.set(record.id, record);
+      this.publishItem(record, undefined, true);
+    }
     for (const record of [...this.records.values()]) {
       if (record.detail.kind === 'proposal' && Date.parse(record.detail.expiresAt) <= now) {
         this.removeProposal(record, 'Expired. Nothing was sent.', undefined, false);

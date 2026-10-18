@@ -619,7 +619,8 @@ export function worldFor(scenario: Scenario, now: Date): ScenarioWorld {
     nextRunAt: incident ? null : at(0.1).toISOString(),
     costTodayGbp: Math.round(cost * scale * 100) / 100,
     ceilingFraction: Math.round(((cost * scale) / 15) * 1000) / 1000,
-    pausable: true,
+    // The kill switch overrides the principal's own scope.
+    pausable: !incident,
     ...overrides,
   });
   const agents: Agent[] = [

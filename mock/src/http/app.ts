@@ -17,7 +17,13 @@ import {
   zVersion,
 } from '../generated/zod.gen.js';
 import { defaultStart } from '../config.js';
-import { parseWith, zClockRequest, zEmitRequest, zScenarioRequest } from './mockApi.js';
+import {
+  parseWith,
+  zCapabilitiesRequest,
+  zClockRequest,
+  zEmitRequest,
+  zScenarioRequest,
+} from './mockApi.js';
 import { sendProblem } from './problem.js';
 
 export interface MockOptions {
@@ -293,6 +299,12 @@ export function buildMockServer(options: MockOptions = {}): MockServer {
     return lance.moveClock(
       'set' in body ? { set: new Date(body.set) } : { advanceMs: body.advanceSeconds * 1000 },
     );
+  });
+
+  app.post('/__mock/capabilities', (request) => {
+    const { handoff } = parseWith(zCapabilitiesRequest, request.body);
+    lance.setHandoffOffered(handoff);
+    return { handoff };
   });
 
   app.get('/__mock/sessions', () => ({ sessions: lance.sessions }));

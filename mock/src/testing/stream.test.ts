@@ -63,14 +63,22 @@ describe('the event stream', () => {
     expectContract('GET', '/events', reply, 410);
   });
 
-  it('keeps an id that is the newest to have aged out, and replays what follows', async () => {
+  it('keeps an id that is the newest to have aged out, and replays what follows in order', async () => {
     const h = await started();
     const cursor = await cursorOf(h);
     await emitNote(h, 1);
     await h.call('POST', '/__mock/clock', { auth: false, body: { advanceSeconds: 25 * 3600 } });
     const stream = await openStream(h, { lastEventId: String(cursor + 1) });
     expect(stream.status).toBe(200);
+    const replayed = await stream.next(50, 500);
     stream.close();
+    // Advancing a day expires proposals, so there is something to replay, and none of it is
+    // the event the client already holds.
+    expect(replayed.length).toBeGreaterThan(0);
+    const ids = replayed.map((event) => Number(event.id));
+    expect(ids.every((id) => id > cursor + 1)).toBe(true);
+    expect(ids).toEqual([...ids].sort((a, b) => a - b));
+    expect(replayed.map((event) => event.event)).toContain('item.removed');
   });
 
   it('answers 410 for an id newer than the latest event', async () => {
@@ -191,8 +199,7 @@ describe('the event stream', () => {
 
   it('refuses a stream without a bearer token', async () => {
     const h = await started();
-    const response = await fetch(`${h.origin}/desktop/v1/events`);
-    expect(response.status).toBe(401);
-    expect(AUTH.authorization).toMatch(/^Bearer dev-/);
+    const reply = await h.call('GET', '/desktop/v1/events', { auth: false });
+    expectContract('GET', '/events', reply, 401);
   });
 });

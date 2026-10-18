@@ -14,6 +14,7 @@ export const USAGE = `Usage: pnpm mock <command>
   scenario <quiet|normal|overloaded|incident|offline|stale-client|external-meeting>
   clock set <UTC time such as 2026-10-16T09:30:00.000Z>
   clock advance <30s|15m|2h|1d>
+  capabilities handoff <on|off>
   sessions
   state
 
@@ -120,6 +121,13 @@ export function parseCommand(argv: string[]): MockRequest {
         };
       }
       throw new UsageError('clock takes "set <time>" or "advance <duration>".');
+    }
+    case 'capabilities': {
+      const [value] = rest;
+      if (subject === 'handoff' && (value === 'on' || value === 'off')) {
+        return { method: 'POST', path: '/__mock/capabilities', body: { handoff: value === 'on' } };
+      }
+      throw new UsageError('capabilities takes "handoff on" or "handoff off".');
     }
     case 'sessions':
       return { method: 'GET', path: '/__mock/sessions' };

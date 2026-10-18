@@ -40,3 +40,5 @@ export function parseWith<Schema extends z.ZodType>(
     .join('; ');
   throw new MockError(400, 'Bad request', detail);
 }
+
+export const zCapabilitiesRequest = z.object({ handoff: z.boolean() });

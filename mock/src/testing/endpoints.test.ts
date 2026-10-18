@@ -73,13 +73,15 @@ async function exerciseEveryEndpoint(harness: Harness, scenario: Scenario): Prom
   const agents = await call('GET', '/desktop/v1/agents');
   expectContract('GET', '/agents', agents, 200);
   mark('getAgents');
+  // While the kill switch is on no agent is pausable, and pause and resume answer 403.
   const pausable = snapshot.agents.agents.find((agent) => agent.pausable);
-  if (!pausable) throw new Error('no pausable agent');
-  const paused = await call('POST', `/desktop/v1/agents/${pausable.id}/pause`);
-  expectContract('POST', '/agents/{agentId}/pause', paused, 200);
+  const agentId = pausable?.id ?? snapshot.agents.agents[0]?.id ?? 'none';
+  const outcome = pausable ? 200 : 403;
+  const paused = await call('POST', `/desktop/v1/agents/${agentId}/pause`);
+  expectContract('POST', '/agents/{agentId}/pause', paused, outcome);
   mark('pauseAgent');
-  const resumed = await call('POST', `/desktop/v1/agents/${pausable.id}/resume`);
-  expectContract('POST', '/agents/{agentId}/resume', resumed, 200);
+  const resumed = await call('POST', `/desktop/v1/agents/${agentId}/resume`);
+  expectContract('POST', '/agents/{agentId}/resume', resumed, outcome);
   mark('resumeAgent');
 
   const settings = await call('GET', '/desktop/v1/settings');
@@ -135,11 +137,17 @@ async function exerciseEveryEndpoint(harness: Harness, scenario: Scenario): Prom
   mark('runItemAction');
   await harness.server.lance.idle();
 
-  const received = await stream.next(1);
+  // Drain everything the exercise caused; every event must be valid and ids must rise.
+  const received = await stream.next(200, 400);
   expect(received.length).toBeGreaterThan(0);
+  let lastId = Number(snapshot.cursor);
   for (const event of received) {
-    const checked = validator.validateSchema('StreamEvent', event.data);
-    expect(checked.errors).toEqual([]);
+    expect(validator.validateSchema('StreamEvent', event.data).errors).toEqual([]);
+    expect((event.data as { type: string }).type).toBe(event.event);
+    if (event.id !== null) {
+      expect(Number(event.id)).toBeGreaterThan(lastId);
+      lastId = Number(event.id);
+    }
   }
   stream.close();
 
