@@ -29,7 +29,7 @@ D1 adds three workflows. Dom owns the GitHub side (Lance ADR 0007 applies here t
 4. `pnpm install --frozen-lockfile` in `mock/`
 5. `pnpm lint` in `mock/`
 6. `pnpm typecheck` in `mock/`
-7. `pnpm generate`, then `git diff --exit-code -- src/generated`, in `mock/`; fails when the committed Zod schemas differ from what the contract generates
+7. `pnpm generate`, then `git diff --exit-code -- src/generated` and an empty `git status --porcelain -- src/generated`, in `mock/`; fails when the committed Zod schemas differ from what the contract generates, or a file is new
 8. `pnpm test` in `mock/`
 
 `contract.yml`, in order:

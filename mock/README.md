@@ -71,7 +71,7 @@ Pressure, from 0 to 1 and rounded to two places:
 
 ## Events and the stream
 
-`GET /desktop/v1/events` numbers events from 1001, replays 24 hours by the mock clock from `Last-Event-ID`, and answers `410` for an id older than the window, newer than the latest event, or not a number. `heartbeat` carries no id and is never stored.
+`GET /desktop/v1/events` numbers events from the wall clock in milliseconds at process start (so an id from before a restart answers `410`), replays 24 hours by the mock clock from `Last-Event-ID`, and answers `410` for an id older than the window, newer than the latest event, or not a number. `heartbeat` carries no id and is never stored.
 
 `POST /__mock/emit` takes one of:
 
@@ -96,7 +96,7 @@ Every action answers `{ correlationId }`; the events it causes follow the respon
 | Task       | done                          | `202`  | `item.upserted` without Done, then a `complete_task` proposal; approving it removes the task |
 | Alert      | acknowledge, snooze (`until`) | `200`  | `alert.cleared`                                                                              |
 
-A stale `version`, or an action the item does not offer, answers `409` with the current item. `POST /handoff` marks the item working, then raises a proposal; both carry the correlation id. Agents pause and resume within scope (`403` when `pausable` is false) and emit `agent.updated`. `PATCH /settings` refuses `mode: live` with `422` unless `liveEligible`, and emits `settings.updated`.
+A stale `version`, an action the item does not offer, or a second action while the first one's events are still to come, answers `409` with the current item. Loading a scenario cancels pending steps. An id that returns after a scenario switch continues from its highest version so far. Hand-off is offered by default (spec Q8). `POST /__mock/capabilities` with `{ "handoff": false }` withdraws it until set again, even across scenarios: `/me` says so and `POST /handoff` answers `404`, as Lance will. `POST /handoff` marks the item working, then raises a proposal; both carry the correlation id. Agents pause and resume within scope (`403` when `pausable` is false) and emit `agent.updated`. `PATCH /settings` refuses `mode: live` with `422` unless `liveEligible`, and emits `settings.updated`.
 
 ## Sessions
 
@@ -113,6 +113,7 @@ pnpm --dir mock mock emit event '{"type":"heartbeat","serverTime":"2026-10-16T09
 pnpm --dir mock mock scenario incident
 pnpm --dir mock mock clock advance 15m
 pnpm --dir mock mock clock set 2026-10-16T22:00:00.000Z
+pnpm --dir mock mock capabilities handoff off
 pnpm --dir mock mock sessions
 pnpm --dir mock mock state
 ```

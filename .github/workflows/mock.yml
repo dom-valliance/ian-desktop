@@ -49,6 +49,7 @@ jobs:
         run: |
           pnpm generate
           git diff --exit-code -- src/generated
+          test -z "$(git status --porcelain -- src/generated)"
 
       - name: Test
         working-directory: mock
