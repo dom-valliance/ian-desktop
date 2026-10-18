@@ -4,7 +4,7 @@ D1 adds three workflows. Dom owns the GitHub side (Lance ADR 0007 applies here t
 
 | Workflow | Runs | On |
 |---|---|---|
-| `macos.yml` | Swift format lint, `swift build` and `swift test` for IanKit, the generated-code check, `xcodebuild build` for the app | `macos-26` runner with Xcode 26.6 (ADR 0008) |
+| `macos.yml` | Swift format lint, `swift build` and `swift test` for IanKit, the generated-code check, `xcodebuild build` for the app | `xcode-27` runner with Xcode 27.1, build 27A9275 (ADR 0010) |
 | `mock.yml` | `pnpm install --frozen-lockfile` and test in `mock/`; D2 adds lint and typecheck | Ubuntu 24.04 |
 | `contract.yml` | `pnpm install --frozen-lockfile` and OpenAPI lint of `contract/ian-desktop.v1.yaml` | Ubuntu 24.04 |
 
@@ -13,13 +13,13 @@ D1 adds three workflows. Dom owns the GitHub side (Lance ADR 0007 applies here t
 `macos.yml`, in order:
 
 1. Check out the repository.
-2. Select Xcode 26.6 with `xcode-select`.
+2. Select Xcode 27.1 with `xcode-select`.
 3. Print `xcodebuild -version`, `swift --version` and `swift format --version`, so a formatting difference against a developer's toolchain can be diagnosed.
-4. `swift format lint --recursive --strict Packages App`
-5. `swift build --package-path Packages/IanKit`
-6. `swift test --package-path Packages/IanKit`
-7. `scripts/check-generated.sh`, which regenerates the contract code and the Xcode project and fails on drift.
-8. `xcodebuild -project App/Ian.xcodeproj -scheme Ian -configuration Debug -destination 'platform=macOS' build`
+4. `swift format lint --recursive --strict Packages App scripts`
+5. `swift build --package-path Packages/IanKit --force-resolved-versions`
+6. `swift test --package-path Packages/IanKit --force-resolved-versions`
+7. `scripts/check-generated.sh`, which regenerates the contract code, its fixtures, the Xcode project and the project's copy of IanKit's pins, and fails on drift.
+8. `xcodebuild -project App/Ian.xcodeproj -scheme Ian -configuration Debug -destination 'platform=macOS' -onlyUsePackageVersionsFromResolvedFile build`
 
 `mock.yml`, in order:
 

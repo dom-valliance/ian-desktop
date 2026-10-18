@@ -78,7 +78,7 @@ Checked against the Lance repository on 17 October 2026. The spec text is unchan
 
 ## Toolchain and commands
 
-Xcode 26 (ADR 0008) with Swift 6 in strict concurrency mode, macOS 14 minimum. Node 22 through nvm (`nvm use`), pnpm through corepack. Dependencies are the four Swift packages in spec section 2 and nothing else without an ADR. Build tools that never ship (`swift-openapi-generator`, XcodeGen, and Yams for the `extract-examples` tool that turns the contract's examples into test fixtures) are pinned in `scripts/tools/Package.swift` and run through the scripts in `scripts/` (ADR 0007).
+Xcode 27.1 (ADR 0010) with Swift 6 in strict concurrency mode, macOS 14 minimum. Node 22 through nvm (`nvm use`), pnpm through corepack. Dependencies are the four Swift packages in spec section 2 and nothing else without an ADR. Build tools that never ship (`swift-openapi-generator`, XcodeGen, and Yams for the `extract-examples` tool that turns the contract's examples into test fixtures) are pinned in `scripts/tools/Package.swift` and run through the scripts in `scripts/` (ADR 0007).
 
 Once D1 and D2 land, these are the checks. Every one must pass, judged by exit code, before a task is marked done:
 
@@ -87,7 +87,7 @@ swift format lint --recursive --strict Packages App scripts
 swift build --package-path Packages/IanKit --force-resolved-versions
 swift test --package-path Packages/IanKit --force-resolved-versions
 scripts/check-generated.sh
-xcodebuild -project App/Ian.xcodeproj -scheme Ian -configuration Debug -destination 'platform=macOS' build
+xcodebuild -project App/Ian.xcodeproj -scheme Ian -configuration Debug -destination 'platform=macOS' -onlyUsePackageVersionsFromResolvedFile build
 pnpm --dir mock lint && pnpm --dir mock typecheck && pnpm --dir mock test
 pnpm --dir contract install --frozen-lockfile && pnpm --dir contract lint
 ```
@@ -117,6 +117,8 @@ Promoted here when the same lesson appears more than twice in `.claude/notes/`. 
 - A borderless `NSWindow` or `NSPanel` returns false from `canBecomeKey`. The Orbit panel must stay that way; the expanded client's panel overrides it so text fields take input.
 - `URLSession.shared` and the default configuration write responses to a disk cache. Build every session from `URLSessionConfiguration.ephemeral`.
 - The Swift contract types come from `scripts/generate-contract.sh`, which runs `swift-openapi-generator`'s CLI and writes `Packages/IanKit/Sources/Contract/Generated`. The output is committed and `scripts/check-generated.sh` fails CI on drift. Do not use the build plugin: Xcode asks to trust it, which breaks a fresh-clone `xcodebuild`.
+- Xcode ignores a local package's `Package.resolved`. `scripts/generate-project.sh` copies IanKit's into `App/Ian.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/`, so a dependency change is resolved in `Packages/IanKit` and then regenerated, never resolved in Xcode.
+- Keep `.swift-format` to the keys that differ from the default. A full `dump-configuration` from one swift-format version fails to load in the next, which adds required keys.
 - `swift-openapi-generator` silently drops a property declared as `oneOf` a `$ref` and `null`. Make such a property optional and absent when it does not apply (ADR 0009); inline values can use `type: [string, 'null']`.
 - Contract times are UTC with milliseconds. Configure OpenAPIRuntime with the `.iso8601WithFractionalSeconds` date transcoder, and decode event `data` with a `JSONDecoder` whose date strategy matches; the default `.iso8601` rejects them.
 - `asDecodedServerSentEventsWithJSONData` throws on the first event it cannot decode, which ends the stream, and the generated `StreamEvent` rejects an unknown `type`. Use `asDecodedServerSentEvents()`, skip events whose `event` field is not a known type, and refetch the snapshot when a known type fails to decode.

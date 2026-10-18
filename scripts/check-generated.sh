@@ -8,13 +8,14 @@ cd "$scripts_dir/.."
 "$scripts_dir/generate-contract.sh"
 "$scripts_dir/generate-project.sh"
 
-# XcodeGen writes these three project paths. Xcode itself writes Package.resolved and workspace
-# checks under project.xcworkspace/xcshareddata on a developer's first build, so those stay out.
+# The project paths XcodeGen writes, and the app's copy of IanKit's pins. Xcode may add workspace
+# checks under project.xcworkspace/xcshareddata on a developer's build, so the rest stays out.
 drift="$(git status --porcelain -- \
   Packages/IanKit/Sources/Contract/Generated \
   Packages/IanKit/Tests/ContractTests/Fixtures \
   App/Ian.xcodeproj/project.pbxproj \
   App/Ian.xcodeproj/project.xcworkspace/contents.xcworkspacedata \
+  App/Ian.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved \
   App/Ian.xcodeproj/xcshareddata)"
 if [[ -n "$drift" ]]; then
   echo "Generated files are out of date:" >&2

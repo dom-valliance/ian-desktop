@@ -1,7 +1,7 @@
 # 0008. Build with Xcode 26
 
 Date: 2026-10-17
-Status: Accepted
+Status: Superseded by 0010
 
 ## Context
 
