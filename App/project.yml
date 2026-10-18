@@ -34,6 +34,14 @@ targets:
         GENERATE_INFOPLIST_FILE: YES
         INFOPLIST_KEY_CFBundleDisplayName: Ian
         INFOPLIST_KEY_LSUIElement: YES
+        # The lance-dev sign-in settings (AGENTS.md erratum E2). The tenant id is from Lance's
+        # entra-setup runbook. The client id and scope stay empty until Lance package DL1
+        # registers "Ian Desktop (dev)" and exposes the api scope; docs/companion/lance-track.md.
+        IAN_LANCE_TENANT_ID: ac995b50-b931-4d4b-b0ea-c0617e8141f9
+        IAN_LANCE_CLIENT_ID: ""
+        IAN_LANCE_SCOPE: ""
+        # Xcode only copies known INFOPLIST_KEY_ names, so Info.plist maps these into the bundle.
+        INFOPLIST_FILE: Info.plist
       configs:
         Debug:
           PRODUCT_BUNDLE_IDENTIFIER: ai.valliance.ian.desktop.dev

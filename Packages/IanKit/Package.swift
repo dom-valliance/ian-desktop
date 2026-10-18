@@ -11,6 +11,7 @@ let package = Package(
     )
   ],
   dependencies: [
+    .package(url: "https://github.com/apple/swift-http-types", .upToNextMinor(from: "1.8.0")),
     .package(url: "https://github.com/apple/swift-openapi-runtime", .upToNextMinor(from: "1.13.1")),
     .package(
       url: "https://github.com/apple/swift-openapi-urlsession", .upToNextMinor(from: "1.3.2")),
@@ -19,7 +20,8 @@ let package = Package(
     .target(
       name: "Contract",
       dependencies: [
-        .product(name: "OpenAPIRuntime", package: "swift-openapi-runtime")
+        .product(name: "HTTPTypes", package: "swift-http-types"),
+        .product(name: "OpenAPIRuntime", package: "swift-openapi-runtime"),
       ],
       exclude: ["openapi-generator-config.yaml"]
     ),
@@ -29,6 +31,7 @@ let package = Package(
       dependencies: [
         "Contract",
         "Auth",
+        .product(name: "HTTPTypes", package: "swift-http-types"),
         .product(name: "OpenAPIRuntime", package: "swift-openapi-runtime"),
         .product(name: "OpenAPIURLSession", package: "swift-openapi-urlsession"),
       ]
@@ -45,9 +48,26 @@ let package = Package(
       ],
       resources: [.copy("Fixtures")]
     ),
-    .testTarget(name: "AuthTests", dependencies: ["Auth"]),
-    .testTarget(name: "ClientTests", dependencies: ["Client"]),
-    .testTarget(name: "StoreTests", dependencies: ["Store"]),
+    .target(
+      name: "TestSupport",
+      dependencies: [
+        "Auth", "Client", "Contract",
+        .product(name: "OpenAPIRuntime", package: "swift-openapi-runtime"),
+      ],
+      path: "Tests/TestSupport"
+    ),
+    .testTarget(name: "AuthTests", dependencies: ["Auth", "TestSupport"]),
+    .testTarget(
+      name: "ClientTests",
+      dependencies: [
+        "Auth", "Client", "Contract", "TestSupport",
+        .product(name: "OpenAPIRuntime", package: "swift-openapi-runtime"),
+      ]
+    ),
+    .testTarget(
+      name: "StoreTests",
+      dependencies: ["Client", "Contract", "Store", "TestSupport"]
+    ),
     .testTarget(name: "AttentionTests", dependencies: ["Attention"]),
     .testTarget(name: "SurfaceTests", dependencies: ["Surface"]),
     .testTarget(name: "FeaturesTests", dependencies: ["Features"]),

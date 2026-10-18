@@ -89,7 +89,7 @@ Build:
 Done when:
 
 - Unit tests cover the reducer (order, repeats, replacement, removal, pending and error marks) and the SSE parser, using a stubbed `URLProtocol`.
-- An integration test run with the mock up (`scripts/dev.sh` first half, then `swift test --filter Integration`) shows the `normal` scenario arriving, an emitted event applied, and recovery after the stream is killed.
+- An integration test run with the mock up (`scripts/dev.sh --mock-only`, then `IAN_MOCK_URL=http://localhost:4317 swift test --package-path Packages/IanKit --filter Integration`; without the variable the suite is skipped) shows the `normal` scenario arriving, an emitted event applied, and recovery after the stream is killed.
 - With the `lance-dev` profile the app opens the browser for sign-in and, until Lance DL1 lands, fails with a message naming the missing scope (E2).
 
 ## D4. Window model, Orbit, menu bar extra, suppression
@@ -126,7 +126,7 @@ Build:
 
 - The expanded panel, 1,040 by 720 points by default and 880 by 600 at least, anchored above the Orbit's corner, closing on Escape. A sidebar of the seven views with counts; the header names the environment when it is not `mock` and the data's age when stale; the last view is remembered.
 - Today: the Pillars field per the design README, with the Now list and its actions below, This week as rolled-up groups and Later as counts linking to their views. Selecting a pillar selects its row and the reverse.
-- Pillars sink when the server's event arrives; Reduce Motion replaces growth with a fade; rendering stops when the panel hides.
+- Pillars sink when the server's event arrives; Reduce Motion replaces growth with a fade; rendering stops when the panel hides. D3's store deletes an item on `item.removed`, so D5 adds a short-lived record of removed items with their `outcome` line for the sinking pillar and the settled row.
 - Remove the D3 debug list.
 
 Done when:
@@ -164,7 +164,7 @@ Read: spec sections 6.3 (Agents) and 6.4; ADR 0003.
 
 Build:
 
-- Agents: a table of watchers, agents and jobs with state, last run, next run, cost today and share of the ceiling; pause and resume within the principal's own scope; a read-only banner when the global kill switch is on.
+- Agents: a table of watchers, agents and jobs with state, last run, next run, cost today and share of the ceiling; pause and resume within the principal's own scope; a read-only banner when the global kill switch is on. D3's store appends an agent first seen in `agent.updated` at the end of its list, so D7 decides with the server how a new agent is ordered.
 - Settings, client side, in `UserDefaults`: corner, motion, notification level per rung, the two suppression toggles, launch at login (best effort through `SMAppService`), environment profile (changing it signs out and clears the store), sign out, and diagnostics (app version, contract version, event lag, last snapshot time, copy report with ids only).
 - Settings, principal side, through `PATCH /settings`: quiet hours, push budget, own pause, and mode, whose dry-run-to-live switch is enabled only when the server reports eligibility and asks for confirmation. Time zone, cost ceiling and global state are read-only.
 

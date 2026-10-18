@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# Starts the mock server on port 4317 and waits until it answers. D3 adds building and opening
-# the app below. The mock stops when this script exits.
+# Starts the mock server on port 4317, waits until it answers, then builds the app and opens it
+# against the mock. `--mock-only` starts only the mock. The mock stops when this script exits.
 set -euo pipefail
 
 repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -12,6 +12,13 @@ fail() {
   echo "dev.sh: $*" >&2
   exit 1
 }
+
+mock_only=0
+case "${1:-}" in
+  "") ;;
+  --mock-only) mock_only=1 ;;
+  *) fail "unknown option '$1'. Run with no option, or with --mock-only to start only the mock." ;;
+esac
 
 node_major() {
   node --version 2>/dev/null | sed -E 's/^v([0-9]+).*/\1/'
@@ -45,11 +52,13 @@ log_file="$(mktemp -t ian-mock.XXXXXX)"
 MOCK_PORT="$port" MOCK_HOST="$host" node --import tsx src/main.ts >"$log_file" 2>&1 &
 mock_pid=$!
 
-# Show the mock's log when this script fails, so a crash is never deleted unseen.
+# Show the mock's log when the mock itself has died, so a crash is never deleted unseen.
 cleanup() {
   local status=$?
+  local mock_died=0
+  kill -0 "$mock_pid" 2>/dev/null || mock_died=1
   kill "$mock_pid" 2>/dev/null || true
-  if [[ $status -ne 0 && $status -ne 130 && $status -ne 143 ]]; then
+  if [[ $mock_died -eq 1 && $status -ne 0 && $status -ne 130 && $status -ne 143 ]]; then
     echo "dev.sh: the mock's log follows." >&2
     cat "$log_file" >&2
   fi
@@ -72,6 +81,27 @@ done
 
 echo "Mock listening on http://$host:$port/desktop/v1 (scenario ${MOCK_SCENARIO:-normal})."
 
-# D3: build the app and open it against this mock here (spec section 11, scripts/README.md).
+if [[ $mock_only -eq 1 ]]; then
+  echo "Mock only. Press Ctrl-C to stop it."
+elif [[ "$port" != "4317" ]]; then
+  echo "The app's mock profile expects port 4317, so it is not opened against port $port."
+else
+  xcodebuild -version >/dev/null 2>&1 ||
+    fail "Xcode 27 is needed to build the app (ADR 0010). Install it, run 'sudo xcode-select -s /Applications/Xcode.app/Contents/Developer', then run this script again."
+  derived_data="$repo_root/build/DerivedData"
+  build_log="$(mktemp -t ian-build.XXXXXX)"
+  echo "Building the app. The first build takes a few minutes."
+  if ! xcodebuild -project "$repo_root/App/Ian.xcodeproj" -scheme Ian -configuration Debug \
+    -destination 'platform=macOS' -onlyUsePackageVersionsFromResolvedFile \
+    -derivedDataPath "$derived_data" build >"$build_log" 2>&1; then
+    tail -n 30 "$build_log" >&2
+    rm -f "$build_log"
+    fail "the app did not build. The last lines of its build log are above."
+  fi
+  rm -f "$build_log"
+  open "$derived_data/Build/Products/Debug/Ian.app"
+  echo "Ian is open: the word \"Ian\" at the right of the menu bar, on every display. On a laptop"
+  echo "with a full menu bar it can sit hidden behind the camera notch. Press Ctrl-C to stop the mock."
+fi
 
 wait "$mock_pid"

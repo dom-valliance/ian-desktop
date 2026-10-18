@@ -13,7 +13,7 @@ Each entry records:
 |---|---|
 | D1 | Done, 18 October 2026 |
 | D2 | Done, 18 October 2026 |
-| D3 | Not started |
+| D3 | Done, 18 October 2026 |
 | D4 | Not started |
 | D5 | Not started |
 | D6 | Not started |
@@ -144,3 +144,48 @@ A committed CLI run, not the build plugin. `scripts/generate-contract.sh` runs `
 - No ADR. Contract 1.0.1, a description-only patch: a stream opens with the comment line `: open` and `X-Content-Type-Options: nosniff`, because the Swift client showed the stream live only at the first 25-second heartbeat without it. Tag `contract-v1.0.1` after the merge. The same rule is in Lance's DL3 note.
 - `scripts/dev.sh` has its first half. D3 adds building and opening the app at the marked place.
 - Reviewed by an Opus review against REVIEW.md: 1 Blocking (this entry), 5 Should fix and 7 Suggestions, all fixed.
+
+### D3. Client core
+
+- Date: 18 October 2026
+- Branch: `feat/d3-client-core`, rebased onto `feat/d2-mock` at `f5d054d` so the two merge in order. Commits `a2197cd..71cd2c2`, plus this entry.
+- Machine: macOS 27.0.1, Xcode 27.1 (27A9275), Swift 6.4, Node 22.23.2, pnpm 12.4.2.
+
+#### Commands and exit codes
+
+| Command | Exit |
+|---|---|
+| `swift format lint --recursive --strict Packages App scripts` | 0 |
+| `swift build --package-path Packages/IanKit --force-resolved-versions` | 0 |
+| `swift test --package-path Packages/IanKit --force-resolved-versions` | 0: 122 tests (Store 50, Client 42, Auth 25, Contract 5); the 3 integration tests skip without `IAN_MOCK_URL` |
+| `scripts/check-generated.sh` | 0 |
+| `xcodebuild -project App/Ian.xcodeproj -scheme Ian -configuration Debug -destination 'platform=macOS' -onlyUsePackageVersionsFromResolvedFile -derivedDataPath build/DerivedData build` | 0, `BUILD SUCCEEDED` |
+| `scripts/dev.sh --mock-only`, then `IAN_MOCK_URL=http://localhost:4317 swift test --package-path Packages/IanKit --force-resolved-versions --filter Integration` | 0: 3 tests in 0.97 seconds |
+| `scripts/dev.sh` from the branch | Installed the mock's packages, started the mock, built the app and opened it; the app held an established connection to the mock on port 4317 |
+| `pnpm --dir mock lint`, `typecheck` and `test`; the contract lint | 0 each (142 mock tests), inherited from D2 |
+
+#### Done when
+
+1. Unit tests cover the reducer (order, repeated ids, whole-object replacement, removal, pending marks set and cleared by correlation id, error marks, `409`, `426`, `client.deprecated`, the minimum version) and the event stream with a stubbed `URLProtocol` on an ephemeral session (parsing, unknown types skipped, `Last-Event-ID`, `410` refetch, backoff bounds, polling after 60 seconds and stopping when the stream returns, with an injected clock).
+2. With the mock up, the integration suite shows the `normal` scenario arriving live, an emitted event applied, and recovery after the stream is killed: 3 passed.
+3. With the `lance-dev` profile, sign-in fails with a message naming the missing setting and Lance DL1 (erratum E2), tested in `AuthTests`. Deviation: it fails before the browser opens, not after, because the desktop public client "Ian Desktop (dev)" is not registered until DL1, so `IAN_LANCE_CLIENT_ID` and `IAN_LANCE_SCOPE` are empty. Once they are set, the same flow opens the browser and maps Entra's `invalid_scope` to the same message.
+
+#### Choices recorded
+
+- `Client` holds the environment profiles, the generated client over an ephemeral `URLSessionTransport` with the `.iso8601WithFractionalSeconds` transcoder, a middleware adding `Authorization` and `Desktop-Client-Version`, and the `SyncEngine`: `/me` first, then the snapshot, then the stream from its cursor; a silence limit of 55 seconds; backoff from 1 to 30 seconds with jitter; snapshot polling after 60 seconds without the stream.
+- `Auth` holds the `dev-local` provider and Entra authorisation code with PKCE (S256), `state` checked, a loopback listener bound to 127.0.0.1 on a random port, refresh shared by concurrent callers, and tokens in the Keychain as one generic password per profile.
+- `Store` is one `@Observable`, `@MainActor` store over a pure reducer. A pending mark records the version it was sent with and clears on its correlation event, or on a snapshot that shows the item moved or gone. Sync tasks carry a generation, so nothing applies after a reset.
+- The only `UserDefaults` key is `IanEnvironment`, read and never written: the spec 6.4 environment profile.
+- The menu bar shows a temporary readout until D5: the environment when it is not `mock`, the open count from the server's `orbit.load`, the data's age, and the connection, sign-in or upgrade state. It shows no item titles, since suppression arrives in D4.
+- ADR 0012 records the `TestSupport` library target and the declared imports (swift-http-types, Network, CryptoKit, Observation, os).
+
+#### Spec section 11 criteria evidenced
+
+- The stream recovers: killing the stream and restoring it applies the events that follow; `410` refetches the snapshot; offline keeps the data with its age.
+- The client holds no logic: the store sorts, counts and groups nothing it receives; the open count is the server's `load`.
+- The app runs locally with no Apple setup, in part: `scripts/dev.sh` builds and opens the app against the mock. D9 times the ten seconds.
+
+#### What is left
+
+- Reviewed by an Opus review against REVIEW.md: 1 Blocking (this entry), 8 Should fix and 13 Suggestions; all fixed except three left for later packages, now in the plan: a record of removed items for D5, the order of a new agent for D7, and the readout showing a count rather than a list.
+- A pending mark has no timeout; the contract has no signal for an action that never settles. Revisit if one is seen in use.
