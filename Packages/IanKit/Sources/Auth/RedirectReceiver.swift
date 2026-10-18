@@ -29,6 +29,8 @@ public struct LoopbackRedirectReceiver: RedirectReceiver {
   ) async throws -> RedirectResult {
     let parameters = NWParameters.tcp
     parameters.requiredInterfaceType = .loopback
+    // Only 127.0.0.1, so nothing off this Mac can reach the listener.
+    parameters.requiredLocalEndpoint = .hostPort(host: .ipv4(.loopback), port: .any)
     let listener: NWListener
     do {
       listener = try NWListener(using: parameters)
@@ -43,13 +45,15 @@ public struct LoopbackRedirectReceiver: RedirectReceiver {
     listener.stateUpdateHandler = { stateSink.yield($0) }
     listener.newConnectionHandler = { connection in
       Self.serve(connection, on: queue) { target in
-        guard let port = listener.port else { return false }
-        guard let url = URL(string: "http://localhost:\(port.rawValue)\(target)"),
-          Self.isRedirect(url)
-        else { return false }
-        callbackSink.yield(url)
-        callbackSink.finish()
-        return true
+        guard let port = listener.port,
+          let url = URL(string: "http://localhost:\(port.rawValue)\(target)")
+        else { return .notFound }
+        let reply = Self.reply(for: url)
+        if reply != .notFound {
+          callbackSink.yield(url)
+          callbackSink.finish()
+        }
+        return reply
       }
     }
     listener.start(queue: queue)
@@ -87,7 +91,7 @@ public struct LoopbackRedirectReceiver: RedirectReceiver {
       switch state {
       case .ready:
         if let port = listener.port { return port }
-      case .failed(let error):
+      case .failed(let error), .waiting(let error):
         throw AuthError.listenerFailed(error.localizedDescription)
       case .cancelled:
         throw CancellationError()
@@ -101,18 +105,20 @@ public struct LoopbackRedirectReceiver: RedirectReceiver {
   /// Reads the request line, hands its target to `accept`, and answers the browser.
   private static func serve(
     _ connection: NWConnection, on queue: DispatchQueue,
-    accept: @escaping @Sendable (String) -> Bool
+    accept: @escaping @Sendable (String) -> Reply
   ) {
     connection.start(queue: queue)
     connection.receive(minimumIncompleteLength: 1, maximumLength: 8192) { data, _, _, _ in
       let target = data.flatMap { String(data: $0, encoding: .utf8) }.flatMap(requestTarget)
-      let accepted = target.map(accept) ?? false
-      let body =
-        accepted
-        ? "Ian has your sign-in. You can close this tab and return to the app."
-        : "Nothing to see here."
+      let reply = target.map(accept) ?? .notFound
+      let body: String
+      switch reply {
+      case .signedIn: body = "Ian has your sign-in. You can close this tab and return to the app."
+      case .failed: body = "Sign-in failed. Close this tab and return to Ian for the reason."
+      case .notFound: body = "Nothing to see here."
+      }
       let response =
-        "HTTP/1.1 \(accepted ? "200 OK" : "404 Not Found")\r\n"
+        "HTTP/1.1 \(reply == .notFound ? "404 Not Found" : "200 OK")\r\n"
         + "Content-Type: text/plain; charset=utf-8\r\n"
         + "Content-Length: \(body.utf8.count)\r\n"
         + "Cache-Control: no-store\r\nConnection: close\r\n\r\n\(body)"
@@ -120,6 +126,12 @@ public struct LoopbackRedirectReceiver: RedirectReceiver {
         content: Data(response.utf8),
         completion: .contentProcessed { _ in connection.cancel() })
     }
+  }
+
+  enum Reply: Equatable {
+    case signedIn
+    case failed
+    case notFound
   }
 
   /// The target of a `GET` request line, such as `/?code=abc&state=xyz`.
@@ -131,9 +143,10 @@ public struct LoopbackRedirectReceiver: RedirectReceiver {
   }
 
   /// A redirect carries a result. Browsers also ask for `/favicon.ico`, which is ignored.
-  private static func isRedirect(_ url: URL) -> Bool {
+  static func reply(for url: URL) -> Reply {
     let names = URLComponents(url: url, resolvingAgainstBaseURL: false)?
       .queryItems?.map(\.name)
-    return names?.contains("code") == true || names?.contains("error") == true
+    if names?.contains("error") == true { return .failed }
+    return names?.contains("code") == true ? .signedIn : .notFound
   }
 }

@@ -7,11 +7,14 @@ public struct StubResponse: Sendable {
   public var body: Data
   /// When set, the request fails with this error after the body is delivered.
   public var failure: URLError?
+  /// Seconds to wait before answering, so a test can act while the request is in flight.
+  public var delay: TimeInterval
 
   public init(
     status: Int = 200, headers: [String: String] = [:], body: Data = Data(),
-    failure: URLError? = nil
+    failure: URLError? = nil, delay: TimeInterval = 0
   ) {
+    self.delay = delay
     self.status = status
     self.headers = headers
     self.body = body
@@ -37,6 +40,10 @@ public struct StubResponse: Sendable {
 /// Answers requests from a closure, so tests exercise real `URLSession` code with no network.
 /// Each session carries its own id in a header, so tests can run in parallel and the handler sees
 /// requests for any host.
+///
+/// `@unchecked Sendable` because `URLProtocol` is a class URLSession creates and drives on its
+/// own queues, and delayed answers cross to a global queue. Instances keep no state of their own;
+/// the one shared mutable value, `handlers`, is guarded by `lock`.
 public final class StubURLProtocol: URLProtocol, @unchecked Sendable {
   public typealias Handler = @Sendable (URLRequest) -> StubResponse
 
@@ -70,6 +77,16 @@ public final class StubURLProtocol: URLProtocol, @unchecked Sendable {
       return
     }
     let stubbed = handler(request)
+    if stubbed.delay > 0 {
+      DispatchQueue.global().asyncAfter(deadline: .now() + stubbed.delay) {
+        self.deliver(stubbed, to: url)
+      }
+    } else {
+      deliver(stubbed, to: url)
+    }
+  }
+
+  private func deliver(_ stubbed: StubResponse, to url: URL) {
     let response = HTTPURLResponse(
       url: url, statusCode: stubbed.status, httpVersion: "HTTP/1.1", headerFields: stubbed.headers)!
     client?.urlProtocol(self, didReceive: response, cacheStoragePolicy: .notAllowed)

@@ -56,6 +56,8 @@ public struct KeychainTokenStore: TokenStore {
     if update == errSecSuccess { return }
     guard update == errSecItemNotFound else { throw AuthError.keychain(update) }
 
+    // An unsigned build uses the file-based login keychain, which ignores the accessibility
+    // class below and never syncs. No `kSecAttrSynchronizable` is set, so tokens stay on this Mac.
     var attributes = baseQuery
     attributes[kSecValueData] = data
     attributes[kSecAttrAccessible] = kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly

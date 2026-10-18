@@ -14,6 +14,8 @@ public actor EntraTokenProvider: TokenProvider {
   private let openURL: @Sendable (URL) async -> Void
   private let now: @Sendable () -> Date
   private var refreshing: Task<String, any Error>?
+  /// Raised by `signOut`, so a refresh already in flight does not save tokens after it.
+  private var epoch = 0
 
   /// - Parameters:
   ///   - session: Must come from `URLSessionConfiguration.ephemeral` (AGENTS.md non-negotiable 5).
@@ -42,7 +44,7 @@ public actor EntraTokenProvider: TokenProvider {
     if let refreshing { return try await refreshing.value }
     let task = Task { try await refresh(tokens) }
     refreshing = task
-    defer { refreshing = nil }
+    defer { if refreshing == task { refreshing = nil } }
     return try await task.value
   }
 
@@ -69,6 +71,7 @@ public actor EntraTokenProvider: TokenProvider {
   }
 
   public func signOut() async {
+    epoch += 1
     refreshing?.cancel()
     refreshing = nil
     try? store.clear()
@@ -94,16 +97,21 @@ public actor EntraTokenProvider: TokenProvider {
       try? store.clear()
       throw AuthError.signInRequired
     }
+    let startedIn = epoch
     do {
       var refreshed = try await requestTokens([
         ("grant_type", "refresh_token"),
         ("refresh_token", refreshToken),
       ])
       refreshed.refreshToken = refreshed.refreshToken ?? refreshToken
+      guard startedIn == epoch else { throw AuthError.signInRequired }
       try store.save(refreshed)
       return refreshed.accessToken
     } catch AuthError.refused(let code, _) where code == "invalid_grant" {
       try? store.clear()
+      throw AuthError.signInRequired
+    } catch AuthError.signInRequired {
+      if startedIn == epoch { try? store.clear() }
       throw AuthError.signInRequired
     }
   }
@@ -154,6 +162,8 @@ extension AuthError {
   /// Maps an Entra error to the message the principal needs. Entra signals a scope the api does
   /// not expose as `invalid_scope`, or as an AADSTS code in the description.
   static func fromEntra(code: String, detail: String?, scope: String) -> AuthError {
+    let reauthenticate = ["interaction_required", "login_required", "consent_required"]
+    if reauthenticate.contains(code) { return .signInRequired }
     let scopeCodes = ["AADSTS70011", "AADSTS500011", "AADSTS650053", "AADSTS65005"]
     if code == "invalid_scope" || code == "invalid_resource"
       || scopeCodes.contains(where: { detail?.contains($0) == true })

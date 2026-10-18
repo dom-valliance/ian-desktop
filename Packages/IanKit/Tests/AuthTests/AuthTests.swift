@@ -131,7 +131,7 @@ private func namesMissingScope() {
   #expect(error == .notConfigured(missing: [.clientID, .scope]))
   let message = error?.errorDescription ?? ""
   #expect(message.contains("IAN_LANCE_SCOPE"))
-  #expect(message.contains("IAN_LANCE_CLIENT_ID"))
+  #expect(message.contains("IAN_LANCE_CLIENT_ID, IAN_LANCE_SCOPE are empty"))
   #expect(message.contains("DL1"))
 }
 
@@ -340,4 +340,84 @@ private final class RequestLog: @unchecked Sendable {
   private var items: [String] = []
   func append(_ item: String) { lock.withLock { items.append(item) } }
   var all: [String] { lock.withLock { items } }
+}
+
+@Test("says is for one empty setting and are for several")
+private func agreesVerbWithCount() {
+  #expect(
+    AuthError.notConfigured(missing: [.scope]).errorDescription?.contains(
+      "IAN_LANCE_SCOPE is empty")
+      == true)
+  #expect(
+    AuthError.notConfigured(missing: [.clientID, .scope]).errorDescription?.contains("are empty")
+      == true)
+}
+
+@Test("sends one refresh request when two callers ask for a token that needs refreshing")
+private func concurrentCallersShareOneRefresh() async throws {
+  let store = InMemoryTokenStore(
+    tokens: StoredTokens(
+      accessToken: "old", refreshToken: "refresh-1", expiresAt: Date(timeIntervalSince1970: 0)))
+  let requests = RequestLog()
+  let harness = harness(store: store, at: Date(timeIntervalSince1970: 1_000)) { request in
+    requests.append(bodyText(of: request))
+    return StubResponse(
+      status: 200, headers: ["Content-Type": "application/json"],
+      body: Data(#"{"access_token":"new","expires_in":3600}"#.utf8), delay: 0.05)
+  }
+
+  async let first = harness.provider.token()
+  async let second = harness.provider.token()
+
+  #expect(try await [first, second] == ["new", "new"])
+  #expect(requests.all.count == 1)
+}
+
+@Test("does not save tokens from a refresh that finishes after sign-out")
+private func refreshAfterSignOutSavesNothing() async throws {
+  let store = InMemoryTokenStore(
+    tokens: StoredTokens(
+      accessToken: "old", refreshToken: "refresh-1", expiresAt: Date(timeIntervalSince1970: 0)))
+  let requests = RequestLog()
+  let harness = harness(store: store, at: Date(timeIntervalSince1970: 1_000)) { request in
+    requests.append(bodyText(of: request))
+    return StubResponse(
+      status: 200, headers: ["Content-Type": "application/json"],
+      body: Data(#"{"access_token":"new","expires_in":3600}"#.utf8), delay: 0.2)
+  }
+
+  let refreshing = Task { try await harness.provider.token() }
+  #expect(await eventually("the refresh request") { requests.all.count == 1 })
+  await harness.provider.signOut()
+
+  await #expect(throws: (any Error).self) { try await refreshing.value }
+  #expect(try store.load() == nil)
+}
+
+@Test("asks for sign-in when Entra says interaction, login or consent is required")
+private func reauthenticationErrorsRequireSignIn() async {
+  for code in ["interaction_required", "login_required", "consent_required"] {
+    let store = InMemoryTokenStore(
+      tokens: StoredTokens(
+        accessToken: "old", refreshToken: "refresh-1", expiresAt: Date(timeIntervalSince1970: 0)))
+    let harness = harness(store: store, at: Date(timeIntervalSince1970: 1_000)) { _ in
+      .json("{\"error\":\"\(code)\"}", status: 400)
+    }
+
+    await #expect(throws: AuthError.signInRequired) { try await harness.provider.token() }
+  }
+}
+
+@Test("answers a redirect that carries an error with a failure page, and ignores other requests")
+private func classifiesRedirects() {
+  #expect(
+    LoopbackRedirectReceiver.reply(for: URL(string: "http://localhost:1/?code=a&state=b")!)
+      == .signedIn)
+  #expect(
+    LoopbackRedirectReceiver.reply(
+      for: URL(string: "http://localhost:1/?error=access_denied&state=b")!)
+      == .failed)
+  #expect(
+    LoopbackRedirectReceiver.reply(for: URL(string: "http://localhost:1/favicon.ico")!) == .notFound
+  )
 }

@@ -39,7 +39,8 @@ extension AuthError: LocalizedError {
         ? " Lance has not exposed an api scope yet; Lance package DL1 adds it and registers "
           + "the Ian Desktop (dev) client (docs/companion/lance-track.md)."
         : ""
-      return "Sign-in to Lance dev is not set up: \(names) is empty in App/project.yml."
+      let verb = missing.count == 1 ? "is" : "are"
+      return "Sign-in to Lance dev is not set up: \(names) \(verb) empty in App/project.yml."
         + scopeNote + " Use the mock profile with -IanEnvironment mock until then."
     case .signInRequired:
       return "Sign in to continue."
