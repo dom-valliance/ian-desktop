@@ -45,7 +45,8 @@ let package = Package(
       ],
       resources: [.copy("Fixtures")]
     ),
-    .testTarget(name: "AuthTests", dependencies: ["Auth"]),
+    .target(name: "TestSupport", path: "Tests/TestSupport"),
+    .testTarget(name: "AuthTests", dependencies: ["Auth", "TestSupport"]),
     .testTarget(name: "ClientTests", dependencies: ["Client"]),
     .testTarget(name: "StoreTests", dependencies: ["Store"]),
     .testTarget(name: "AttentionTests", dependencies: ["Attention"]),

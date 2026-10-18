@@ -7,7 +7,7 @@ Each folder under `Sources/` is one SwiftPM target.
 | Target | Holds | May import | Package |
 |---|---|---|---|
 | `Contract` | Types and client generated from `contract/ian-desktop.v1.yaml` by `swift-openapi-generator`. Nothing hand-written except the generator config | OpenAPIRuntime | D1, D3 |
-| `Auth` | Token providers: `dev-local` bearer for the mock, PKCE loopback for `lance-dev`, Keychain storage | Foundation, Security | D3 |
+| `Auth` | Token providers: `dev-local` bearer for the mock, PKCE loopback for `lance-dev`, Keychain storage | Foundation, Security, Network, CryptoKit | D3 |
 | `Client` | HTTP through `swift-openapi-urlsession`, the SSE reader with `Last-Event-ID` replay and backoff, environment profiles | Contract, Auth, OpenAPIRuntime, OpenAPIURLSession | D3 |
 | `Store` | Observable state, the reducer that applies a snapshot and each event, pending marks on actions | Contract, Client | D3 |
 | `Attention` | Local notifications, the attention ladder, suppression (camera, external meeting, quiet hours, user pause), the session heartbeat | Store | D4, D8 |
