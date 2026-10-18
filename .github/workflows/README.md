@@ -5,7 +5,7 @@ D1 adds three workflows. Dom owns the GitHub side (Lance ADR 0007 applies here t
 | Workflow | Runs | On |
 |---|---|---|
 | `macos.yml` | Swift format lint, `swift build` and `swift test` for IanKit, the generated-code check, `xcodebuild build` for the app | `xcode-27` runner with Xcode 27.1, build 27A9275 (ADR 0010) |
-| `mock.yml` | `pnpm install --frozen-lockfile` and test in `mock/`; D2 adds lint and typecheck | Ubuntu 24.04 |
+| `mock.yml` | `pnpm install --frozen-lockfile`, lint (ESLint and Prettier), typecheck, the generated-schema drift check and test in `mock/` | Ubuntu 24.04 |
 | `contract.yml` | `pnpm install --frozen-lockfile` and OpenAPI lint of `contract/ian-desktop.v1.yaml` | Ubuntu 24.04 |
 
 ## Steps
@@ -27,7 +27,10 @@ D1 adds three workflows. Dom owns the GitHub side (Lance ADR 0007 applies here t
 2. Set up Node from `.nvmrc`.
 3. `corepack enable`
 4. `pnpm install --frozen-lockfile` in `mock/`
-5. `pnpm test` in `mock/`
+5. `pnpm lint` in `mock/`
+6. `pnpm typecheck` in `mock/`
+7. `pnpm generate`, then `git diff --exit-code -- src/generated`, in `mock/`; fails when the committed Zod schemas differ from what the contract generates
+8. `pnpm test` in `mock/`
 
 `contract.yml`, in order:
 

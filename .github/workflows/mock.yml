@@ -36,7 +36,20 @@ jobs:
         working-directory: mock
         run: pnpm install --frozen-lockfile
 
-      # D2 adds `pnpm lint` and `pnpm typecheck` steps here.
+      - name: Lint
+        working-directory: mock
+        run: pnpm lint
+
+      - name: Typecheck
+        working-directory: mock
+        run: pnpm typecheck
+
+      - name: Check the generated schemas are current
+        working-directory: mock
+        run: |
+          pnpm generate
+          git diff --exit-code -- src/generated
+
       - name: Test
         working-directory: mock
         run: pnpm test
