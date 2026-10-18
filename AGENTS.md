@@ -92,7 +92,7 @@ pnpm --dir mock lint && pnpm --dir mock typecheck && pnpm --dir mock test
 pnpm --dir contract install --frozen-lockfile && pnpm --dir contract lint
 ```
 
-Until D2, the mock has only an empty `test`. Read the workflows in `.github/workflows/` rather than this list when they differ; the workflows win.
+`scripts/dev.sh` starts the mock on port 4317 (`MOCK_PORT` and `MOCK_HOST` change it) and waits until it answers; `mock/README.md` lists the scenarios and the `pnpm --dir mock mock` commands for emitting events, moving the clock and switching capabilities. Read the workflows in `.github/workflows/` rather than this list when they differ; the workflows win.
 
 ## Git and GitHub
 
@@ -122,6 +122,7 @@ Promoted here when the same lesson appears more than twice in `.claude/notes/`. 
 - `swift-openapi-generator` silently drops a property declared as `oneOf` a `$ref` and `null`. Make such a property optional and absent when it does not apply (ADR 0009); inline values can use `type: [string, 'null']`.
 - Contract times are UTC with milliseconds. Configure OpenAPIRuntime with the `.iso8601WithFractionalSeconds` date transcoder, and decode event `data` with a `JSONDecoder` whose date strategy matches; the default `.iso8601` rejects them.
 - `asDecodedServerSentEventsWithJSONData` throws on the first event it cannot decode, which ends the stream, and the generated `StreamEvent` rejects an unknown `type`. Use `asDecodedServerSentEvents()`, skip events whose `event` field is not a known type, and refetch the snapshot when a known type fails to decode.
+- An event stream must write bytes the moment it opens. URLSession hands the Swift client nothing until the first bytes, and may hold a `text/*` body while it sniffs, so a quiet stream looks dead until its first heartbeat. The server writes `: open` with `X-Content-Type-Options: nosniff` (contract 1.0.1).
 - The `lance-dev` profile reads Dom's real dev data. Keep it out of every test, snapshot and recording.
 
 ## Review guidelines
