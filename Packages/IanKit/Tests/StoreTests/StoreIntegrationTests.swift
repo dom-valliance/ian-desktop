@@ -59,7 +59,9 @@ private func settles(
   return false
 }
 
-@Suite("Mock integration", .enabled(if: mockOrigin != nil))
+/// Serialised because every test drives the one shared mock, and switching it to `offline` in one
+/// test would cut another's stream.
+@Suite("Mock integration", .serialized, .enabled(if: mockOrigin != nil))
 @MainActor
 struct StoreIntegrationTests {
   private let mock = MockServer(mockOrigin)!
