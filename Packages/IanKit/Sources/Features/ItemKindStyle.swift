@@ -1,4 +1,5 @@
 import Contract
+import Surface
 import SwiftUI
 
 /// How an item's kind and horizon are named and coloured. These are the design's own words and
@@ -40,15 +41,18 @@ enum ItemKindStyle {
     }
   }
 
-  static func colour(_ kind: Kind) -> Color {
+  static func pillarKind(_ kind: Kind) -> PillarKind {
     switch kind {
-    case .commitmentBy: ClientPalette.rgb(243, 169, 130)
-    case .commitmentTo: ClientPalette.rgb(176, 193, 227)
-    case .proposal: ClientPalette.rgb(240, 185, 226)
-    case .alert: ClientPalette.rgb(216, 140, 140)
-    // The AGENTS.md Q12 default, until Dom picks.
-    case .task: ClientPalette.rgb(0x7F, 0xBF, 0xC1)
+    case .proposal: .proposal
+    case .commitmentBy: .commitmentBy
+    case .commitmentTo: .commitmentTo
+    case .task: .task
+    case .alert: .alert
     }
+  }
+
+  static func colour(_ kind: Kind) -> Color {
+    KindPalette.colour(for: pillarKind(kind)).color
   }
 
   static func name(_ horizon: Components.Schemas.Horizon) -> String {

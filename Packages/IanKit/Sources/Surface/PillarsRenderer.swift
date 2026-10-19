@@ -114,15 +114,7 @@ public enum PillarsRenderer {
     return OrbitColour(mix(colour.red), mix(colour.green), mix(colour.blue))
   }
 
-  static func colour(for kind: PillarKind) -> OrbitColour {
-    switch kind {
-    case .proposal: OrbitPalette.colour(for: .proposal)
-    case .commitmentBy: OrbitPalette.colour(for: .commitmentBy)
-    case .commitmentTo: OrbitPalette.colour(for: .commitmentTo)
-    case .task: OrbitPalette.colour(for: .task)
-    case .alert: OrbitPalette.colour(for: .alert)
-    }
-  }
+  static func colour(for kind: PillarKind) -> OrbitColour { KindPalette.colour(for: kind) }
 
   /// Whether growth or a sink is still running at `time`, so a still field can keep its clock.
   public static func hasTransition(_ scene: PillarsScene, time: Double) -> Bool {
