@@ -1,5 +1,6 @@
 import CoreGraphics
 import Foundation
+import TestSupport
 import Testing
 
 @testable import Surface

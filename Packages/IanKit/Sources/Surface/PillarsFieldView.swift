@@ -101,9 +101,13 @@ public struct PillarsDrawingView: View {
 /// The Pillars field: the drawing, driven by a clock that runs only while something moves.
 ///
 /// The clock stops when the field is hidden, occluded or suppressed (`isAnimating` false). The
-/// yaw turns for as long as the field is visible, so under motion the clock runs at 60 frames a
+/// yaw sways for as long as the field is visible, so under motion the clock runs at 60 frames a
 /// second (spec 6.9). Under Reduce Motion it runs only through a growth or a sink, which are then
 /// fades. A stopped field is drawn in its still pose.
+///
+/// Dragging sideways turns the field about its vertical axis, a click selects a pillar and a
+/// double-click returns the field to 45 degrees (`FieldPointer`). The turn is this view's own
+/// state, so a drag redraws the field alone.
 ///
 /// The field is not the accessible path (non-negotiable 8): every pillar is also a row in the
 /// lists below it, so VoiceOver meets one label and none of the internals.
@@ -115,18 +119,25 @@ public struct PillarsFieldView: View {
   private let isAnimating: Bool
   private let reducedMotion: Bool
   private let onSelect: (PillarCellKey) -> Void
+  private let onTurn: (Double) -> Void
+
+  /// The angle and the click state, which a drag changes many times a second.
+  @State private var pointer: FieldPointer
 
   /// Whether a Reduce Motion fade has finished, so its clock can stop.
   @State private var fadeDone = false
 
   public init(
     scene: PillarsScene, isAnimating: Bool, reducedMotion: Bool,
+    angle: Double = FieldTurn.defaultAngle, onTurn: @escaping (Double) -> Void = { _ in },
     onSelect: @escaping (PillarCellKey) -> Void
   ) {
     self.scene = scene
     self.isAnimating = isAnimating
     self.reducedMotion = reducedMotion
     self.onSelect = onSelect
+    self.onTurn = onTurn
+    _pointer = State(initialValue: FieldPointer(angle: angle))
   }
 
   private var runsClock: Bool {
@@ -135,24 +146,41 @@ public struct PillarsFieldView: View {
 
   public var body: some View {
     GeometryReader { geometry in
+      let fit = PillarsFit(size: geometry.size)
+      // The canvas is only as large as the fitted box, so the per-frame drawing does not grow
+      // with a pane that is wider or taller than the box; the gesture covers the whole pane.
       TimelineView(.animation(minimumInterval: Self.frameInterval, paused: !runsClock)) {
         timeline in
         let clock = timeline.date.timeIntervalSinceReferenceDate
         PillarsDrawingView(
           drawing: drawing(at: Self.drawTime(scene: scene, isAnimating: isAnimating, clock: clock)))
       }
+      .frame(
+        width: PillarsRenderer.boxSize.width * fit.scale,
+        height: PillarsRenderer.boxSize.height * fit.scale
+      )
+      .frame(width: geometry.size.width, height: geometry.size.height)
       .contentShape(Rectangle())
       .accessibilityHidden(true)
       .gesture(
-        SpatialTapGesture().onEnded { tap in
-          let point = PillarsFit(size: geometry.size).toBox(tap.location)
-          let now = Date.now.timeIntervalSinceReferenceDate
-          if let key = PillarsRenderer.hit(
-            point, in: PillarsRenderer.drawing(for: scene, time: now, reducedMotion: still))
-          {
-            onSelect(key)
-          }
-        })
+        DragGesture(minimumDistance: 0)
+          .onChanged { drag in pointer.changed(translation: drag.translation) }
+          .onEnded { drag in
+            switch pointer.ended(
+              location: drag.location, time: Date.now.timeIntervalSinceReferenceDate,
+              doubleClickInterval: NSEvent.doubleClickInterval)
+            {
+            case .turned, .reset:
+              onTurn(pointer.angle)
+            case .select(let location):
+              let time = Self.drawTime(
+                scene: scene, isAnimating: isAnimating,
+                clock: Date.now.timeIntervalSinceReferenceDate)
+              if let key = PillarsRenderer.hit(fit.toBox(location), in: drawing(at: time)) {
+                onSelect(key)
+              }
+            }
+          })
     }
     .task(id: scene.transitionEnd) {
       fadeDone = false
@@ -176,11 +204,12 @@ public struct PillarsFieldView: View {
     isAnimating ? clock : max(clock, scene.transitionEnd)
   }
 
-  /// A stopped field holds its pose, and Reduce Motion never turns.
+  /// A stopped field holds its pose, and Reduce Motion never sways.
   private var still: Bool { reducedMotion || !isAnimating }
 
   private func drawing(at time: Double) -> PillarsDrawing {
-    PillarsRenderer.drawing(for: scene, time: time, reducedMotion: still)
+    PillarsRenderer.drawing(
+      for: scene, time: time, reducedMotion: still, angle: pointer.angle)
   }
 }
 

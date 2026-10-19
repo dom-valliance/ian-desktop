@@ -23,7 +23,7 @@ How to review changes in this repository. These rules apply to human reviewers a
    - **Thin client:** arithmetic or sorting on `dueAt`, `severity`, `pressure` or counts that decides what the user sees; a hard-coded action id or label; a view choosing which buttons an item offers.
    - **Server settles state:** an item marked done, removed or moved before its event arrives; any queue of actions held for later.
    - **Contract:** hand edits to generated code; a field used that the contract does not define; a change to `v1` that breaks an existing client.
-   - **Disk:** `FileManager` writes, `URLCache` or a non-ephemeral `URLSession`, `UserDefaults` keys outside spec 6.4, item text in `os.Logger` without `.private`, or in any log at all where an id would do.
+   - **Disk:** `FileManager` writes, `URLCache` or a non-ephemeral `URLSession`, `UserDefaults` keys outside spec 6.4 and ADR 0016, item text in `os.Logger` without `.private`, or in any log at all where an id would do.
    - **Screen:** a window or panel without `sharingType = .none`; item text visible on the Orbit, in a hover or in a notification while suppressed.
    - **Rendering:** a `TimelineView` or timer that keeps running while hidden, occluded or suppressed; motion that ignores Reduce Motion.
    - **Accessibility:** an item or action reachable only through the field; a control without a VoiceOver label; urgency carried by colour alone.

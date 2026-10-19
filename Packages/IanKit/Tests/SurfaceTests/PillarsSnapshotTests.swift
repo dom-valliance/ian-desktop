@@ -14,10 +14,12 @@ struct PillarsSnapshotTests {
   private static let time = 3.0
   private static let scale: CGFloat = 2
 
-  private func image(_ scenario: String, reducedMotion: Bool) -> NSImage {
+  private func image(
+    _ scenario: String, reducedMotion: Bool, angle: Double = FieldTurn.defaultAngle
+  ) -> NSImage {
     let drawing = PillarsRenderer.drawing(
       for: OrbitScenario.load(scenario).pillarsScene, time: Self.time,
-      reducedMotion: reducedMotion)
+      reducedMotion: reducedMotion, angle: angle)
     let view = PillarsDrawingView(drawing: drawing)
       .frame(width: PillarsRenderer.boxSize.width, height: PillarsRenderer.boxSize.height)
       .background(OrbitPalette.ground.color)
@@ -43,5 +45,13 @@ struct PillarsSnapshotTests {
       of: image(scenario, reducedMotion: true),
       as: .image(precision: 0.998, perceptualPrecision: 0.98), named: "\(scenario)-motion-off",
       testName: "pillars")
+  }
+
+  @Test("matches the reference turned to the angle, with motion off", arguments: [135.0, 225.0])
+  func turned(angle: Double) {
+    assertSnapshot(
+      of: image("normal", reducedMotion: true, angle: angle),
+      as: .image(precision: 0.998, perceptualPrecision: 0.98),
+      named: "normal-motion-off-\(Int(angle))", testName: "pillars")
   }
 }

@@ -16,7 +16,7 @@ Each entry records:
 | D3 | Done, 18 October 2026 |
 | D4 | Done, 19 October 2026 |
 | D5 | Done, 19 October 2026 |
-| D5.1 | Not started |
+| D5.1 | Done, 19 October 2026 |
 | P1 | Not started |
 | D6 | Not started |
 | D7 | Not started |
@@ -317,3 +317,69 @@ The last three were measured by the lead on the app's own process with `ps -o ti
 
 - **Review.** An Opus review against REVIEW.md found 4 Blocking (one was this entry), 8 Should fix and 9 Suggestions. All are fixed, except the optional accessibility actions on Now rows.
 - **Next.** D5.1, which Dom asked for on 19 October: turning the field by dragging, and resizable panes, both saved across relaunches. Then P1.
+
+### D5.1. Turn the field and resize the panes
+
+- Date: 19 October 2026
+- Branch: `feat/d5-1-field-controls`, from the D5 branch `feat/d5-today` at `3cde236`. Commits `d6dae10..d3a84e6`, plus this entry. Merge D5 first.
+- Machine: MacBook Pro, Apple M4 Pro, macOS 27.0.1, Xcode 27.1 (27A9275).
+- Dom asked for it on 19 October 2026 and chose a full turn with the sway kept, a double-click to reset, both values saved across relaunches, and to build it before P1.
+
+#### Commands and exit codes
+
+| Command | Exit |
+|---|---|
+| `swift format lint --recursive --strict Packages App scripts` | 0 |
+| `swift build --package-path Packages/IanKit --force-resolved-versions` | 0 |
+| `swift test --package-path Packages/IanKit --force-resolved-versions`, three runs | 0 each: 373 tests (Surface 146, Features 88, Store 57, Client 43, Auth 25, Attention 9, Contract 5) |
+| `scripts/check-generated.sh` | 0 |
+| `xcodebuild -project App/Ian.xcodeproj -scheme Ian -configuration Debug -destination 'platform=macOS' -onlyUsePackageVersionsFromResolvedFile -derivedDataPath build/DerivedData build` | 0 |
+
+#### Done when
+
+1. **Tests** cover:
+   - the drag mapping and its direction (dragging right moves the front edge right);
+   - the sway around the chosen angle;
+   - Reduce Motion holding the chosen angle;
+   - the double-click reset;
+   - a click below the 4-point threshold selecting, and a drag never selecting;
+   - a click after an abandoned drag;
+   - the hit test at 135 and 225 degrees, through a face centre that hits at 45 degrees and misses when turned;
+   - labels at the leftmost end and not flipping during the sway;
+   - the three settings saved and restored through a scratch suite;
+   - the pane limits;
+   - the field following its pane.
+2. **Snapshots** of the field in `normal`, motion off, turned to 135 and 225 degrees (`pillars.normal-motion-off-135.png` and `-225.png`), checked by eye. The existing Orbit and Pillars snapshots are unchanged.
+3. **Manual check** by Dom on 19 October 2026, against the mock:
+   - Dragging turns the field all the way round, with the front edge following the pointer, and the tilt fixed.
+   - The sway carries on around the new angle, and a click selects.
+   - A double-click resets, and a click after an Escape mid-drag selects without a jump.
+   - The panes resize, with the field scaling, and stay usable when the panel shrinks.
+   - Reduce Motion stops the sway, not the drag.
+   - The angle and both divider positions survive a relaunch.
+   - The first check found that the dividers' resize cursor never appeared. A cursor rect under SwiftUI is overridden by the hosting view. After `d3a84e6` (a tracking area plus a hover handler setting the cursor on every move), Dom confirmed both cursors work, including while dragging at a limit.
+
+#### Choices recorded
+
+- **Turning.** The field turns at 0.5 degrees per point of drag. A double-click is a second click within the system's double-click interval and 8 points. A double-click on a pillar selects it and then resets the angle.
+- **Row labels.** They sit at whichever end of each row projects leftmost, chosen from the principal's angle rather than the sway, so the sway never flips them.
+- **Saved values (ADR 0016).**
+
+  | Key | Default |
+  |---|---|
+  | `IanFieldAngle` | 45 |
+  | `IanSidebarWidth` | 190 |
+  | `IanFieldHeight` | 300 |
+
+  The values are checked on read and written only when a drag or reset ends. There is no reset for the pane sizes; deleting the keys restores them. AGENTS.md's non-negotiables 5 and 7, REVIEW.md and the IanKit README now name these keys and the sway.
+- **Pane limits.**
+  - The sidebar is 160 to 320 points wide, and the right-hand panes keep at least 480.
+  - The field pane is at least 180 points tall, and the lists and footer keep at least 220.
+  - Saved sizes are clamped each time the panes lay out.
+- **Field size.** The field's canvas is drawn at its fitted size inside the pane, so its per-frame area is unchanged; the gesture covers the whole pane. `TodayView` reads only its pane's height, so a sidebar drag does not rebuild the lists.
+- **Divider accessibility.** The dividers are hidden from VoiceOver, since the lists are the accessible path. Exposing them as adjustable elements was suggested and left for later.
+
+#### Reviews and what is left
+
+- An Opus review against REVIEW.md found 1 Blocking (the rules still naming only spec 6.4), 5 Should fix and 9 Suggestions. All are fixed except the optional accessible dividers.
+- P1 measures CPU at the default pane sizes.

@@ -92,7 +92,7 @@ struct FieldWiringTests {
     let controller = SurfaceController(
       store: store, signals: SuppressionSignals(camera: IdleCamera()), defaults: defaults,
       quit: {})
-    let model = ClientModel()
+    let model = ClientModel(defaults: defaults)
     _ = ExpandedClientView(store: store, controller: controller, model: model)
     #expect(model.section == .today)
 

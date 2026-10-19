@@ -5,6 +5,7 @@ import SwiftUI
 /// arrow keys move through it and VoiceOver reads each row with its count.
 struct SidebarView: View {
   let counts: Components.Schemas.ViewCounts?
+  let width: Double
   @Binding var selection: ClientSection
 
   var body: some View {
@@ -31,7 +32,7 @@ struct SidebarView: View {
     }
     .listStyle(.plain)
     .scrollContentBackground(.hidden)
-    .frame(width: 190)
+    .frame(width: width)
     .accessibilityLabel("Views")
   }
 }

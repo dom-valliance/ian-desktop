@@ -20,5 +20,6 @@ Numbers here are this repository's own. Lance's ADRs are cited as "Lance ADR NNN
 | 0013 | [System frameworks for the Orbit and suppression](0013-orbit-imports.md) | Accepted |
 | 0014 | [System windows are swept](0014-system-windows-are-swept.md) | Accepted |
 | 0015 | [Features may import the generated contract types](0015-features-import-contract.md) | Accepted |
+| 0016 | [The field's angle and the pane sizes are saved](0016-field-angle-and-pane-sizes-are-saved.md) | Accepted |
 
 Later numbers go to deviations as they arise.

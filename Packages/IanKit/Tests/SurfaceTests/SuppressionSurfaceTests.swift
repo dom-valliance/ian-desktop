@@ -1,6 +1,7 @@
 import AppKit
 import Attention
 import SwiftUI
+import TestSupport
 import Testing
 
 @testable import Surface
