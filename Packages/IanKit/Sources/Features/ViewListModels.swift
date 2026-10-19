@@ -1,0 +1,117 @@
+import Contract
+import Foundation
+import Store
+
+/// One labelled group of items, as `views` sent it.
+struct ListedGroup: Equatable, Identifiable {
+  typealias Item = Components.Schemas.Item
+
+  let id: String
+  let label: String
+  let items: [Item]
+
+  /// Names each item id the server listed. An id the store does not hold yet is skipped, never
+  /// invented; the server sends `views.updated` with the item event that brings it.
+  init(_ group: Components.Schemas.ViewGroup, in state: StoreState, idPrefix: String = "") {
+    id = idPrefix + group.id
+    label = group.label
+    items = group.itemIds.compactMap { state.items[$0] }
+  }
+}
+
+/// Proposals: the groups of `views.proposals` in the order sent, each headed by its action class
+/// label (spec 6.3, ADR 0009). Nothing is grouped, sorted or counted here.
+struct ProposalsListModel: Equatable {
+  /// False until the first snapshot, so an empty list is not shown as "nothing waiting".
+  let isLoaded: Bool
+  let groups: [ListedGroup]
+
+  init(state: StoreState) {
+    isLoaded = state.views != nil
+    groups = (state.views?.proposals ?? []).map { ListedGroup($0, in: state) }
+  }
+}
+
+/// Commitments: the three tabs of `views.commitments`, each in the order sent.
+struct CommitmentsListModel: Equatable {
+  enum Tab: String, CaseIterable, Identifiable {
+    case owedByMe, owedToMe, toConfirm
+
+    var id: String { rawValue }
+
+    var title: String {
+      switch self {
+      case .owedByMe: "Owed by me"
+      case .owedToMe: "Owed to me"
+      case .toConfirm: "To confirm"
+      }
+    }
+
+    var emptyText: String {
+      switch self {
+      case .owedByMe: "Nothing is owed by you."
+      case .owedToMe: "Nothing is owed to you."
+      case .toConfirm: "Nothing is waiting for you to confirm."
+      }
+    }
+  }
+
+  let isLoaded: Bool
+  private let byTab: [Tab: [ListedGroup.Item]]
+
+  init(state: StoreState) {
+    isLoaded = state.views != nil
+    let tabs = state.views?.commitments
+    func items(_ ids: [String]?) -> [ListedGroup.Item] {
+      (ids ?? []).compactMap { state.items[$0] }
+    }
+    byTab = [
+      .owedByMe: items(tabs?.owedByMe), .owedToMe: items(tabs?.owedToMe),
+      .toConfirm: items(tabs?.toConfirm),
+    ]
+  }
+
+  func items(in tab: Tab) -> [ListedGroup.Item] { byTab[tab] ?? [] }
+}
+
+/// Tasks: the horizon sections of `views.tasks`, each holding its unit groups, as sent.
+struct TasksListModel: Equatable {
+  struct Section: Equatable, Identifiable {
+    var id: String { horizon.rawValue }
+    let horizon: Components.Schemas.Horizon
+    let label: String
+    let groups: [ListedGroup]
+  }
+
+  let isLoaded: Bool
+  let sections: [Section]
+
+  init(state: StoreState) {
+    isLoaded = state.views != nil
+    sections = (state.views?.tasks ?? []).map { section in
+      Section(
+        horizon: section.horizon, label: section.label,
+        // A unit repeats across horizons, so its group id is scoped by the horizon.
+        groups: section.groups.map {
+          ListedGroup($0, in: state, idPrefix: "\(section.horizon.rawValue)/")
+        })
+    }
+  }
+}
+
+/// Alerts: the groups of `views.alerts` in the order sent, which the server says is P0 first.
+/// The leading groups whose alerts are P0 are pinned, so they stay on screen while the rest
+/// scrolls. Which groups lead, and their order, is the server's.
+struct AlertsListModel: Equatable {
+  let isLoaded: Bool
+  let pinned: [ListedGroup]
+  let scrolling: [ListedGroup]
+
+  init(state: StoreState) {
+    isLoaded = state.views != nil
+    let groups = (state.views?.alerts ?? []).map { ListedGroup($0, in: state) }
+    let pinnedCount = groups.prefix { $0.items.first?.severity == .p0 }.count
+    pinned = Array(groups.prefix(pinnedCount))
+    scrolling = Array(groups.dropFirst(pinnedCount))
+  }
+}
