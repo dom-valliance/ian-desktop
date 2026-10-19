@@ -22,5 +22,6 @@ Numbers here are this repository's own. Lance's ADRs are cited as "Lance ADR NNN
 | 0015 | [Features may import the generated contract types](0015-features-import-contract.md) | Accepted |
 | 0016 | [The field's angle and the pane sizes are saved](0016-field-angle-and-pane-sizes-are-saved.md) | Accepted |
 | 0017 | [The Orbit's motion runs in Core Animation](0017-orbit-motion-runs-in-core-animation.md) | Accepted |
+| 0018 | [The field draws with Core Graphics on a display link](0018-the-field-draws-with-core-graphics-on-a-display-link.md) | Accepted |
 
 Later numbers go to deviations as they arise.
