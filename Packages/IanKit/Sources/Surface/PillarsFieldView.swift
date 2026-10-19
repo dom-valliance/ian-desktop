@@ -1,3 +1,4 @@
+import AppKit
 import SwiftUI
 
 /// Maps the 540 by 420 box into a frame, keeping its aspect and centring it.
@@ -42,6 +43,8 @@ public struct PillarsDrawingView: View {
     }
   }
 
+  private static let labelFont = NSFont.monospacedSystemFont(ofSize: 11, weight: .regular)
+
   private static func draw(
     _ drawing: PillarsDrawing, in context: inout GraphicsContext, fit: PillarsFit
   ) {
@@ -52,7 +55,10 @@ public struct PillarsDrawingView: View {
       let anchor = fit.toView(label.anchor)
       layer.translateBy(x: anchor.x, y: anchor.y)
       layer.scaleBy(x: fit.scale, y: fit.scale)
-      layer.draw(symbol, at: .zero, anchor: .trailing)
+      // The canvas sets each label's baseline at the anchor; `bottomTrailing` puts the text's
+      // bottom there, so the descent is added to bring the baseline back.
+      layer.draw(
+        symbol, at: CGPoint(x: 0, y: -Self.labelFont.descender), anchor: .bottomTrailing)
     }
     for cell in drawing.cells {
       if cell.faces.isEmpty || cell.opacity < 1 {
@@ -131,10 +137,12 @@ public struct PillarsFieldView: View {
     GeometryReader { geometry in
       TimelineView(.animation(minimumInterval: Self.frameInterval, paused: !runsClock)) {
         timeline in
-        let time = timeline.date.timeIntervalSinceReferenceDate
-        PillarsDrawingView(drawing: drawing(at: time))
+        let clock = timeline.date.timeIntervalSinceReferenceDate
+        PillarsDrawingView(
+          drawing: drawing(at: Self.drawTime(scene: scene, isAnimating: isAnimating, clock: clock)))
       }
       .contentShape(Rectangle())
+      .accessibilityHidden(true)
       .gesture(
         SpatialTapGesture().onEnded { tap in
           let point = PillarsFit(size: geometry.size).toBox(tap.location)
@@ -152,8 +160,20 @@ public struct PillarsFieldView: View {
       if remaining > 0 { try? await Task.sleep(for: .seconds(remaining)) }
       fadeDone = true
     }
-    .accessibilityElement(children: .ignore)
-    .accessibilityLabel("Pillars field. Each pillar is also a row in the lists below.")
+    // The field only describes itself. A tap gesture on it would make VoiceOver's activation
+    // select or clear a pillar, so the labelled element is a separate one with no action.
+    .overlay {
+      Color.clear
+        .allowsHitTesting(false)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("Pillars field. Each pillar is also a row in the lists below.")
+    }
+  }
+
+  /// The time to draw at. A field whose clock is stopped, hidden or suppressed, draws its
+  /// finished pose: a clock frozen before `openedAt` would otherwise draw every pillar unrisen.
+  static func drawTime(scene: PillarsScene, isAnimating: Bool, clock: Double) -> Double {
+    isAnimating ? clock : max(clock, scene.transitionEnd)
   }
 
   /// A stopped field holds its pose, and Reduce Motion never turns.

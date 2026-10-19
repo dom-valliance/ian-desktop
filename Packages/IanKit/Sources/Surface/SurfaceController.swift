@@ -72,6 +72,7 @@ public final class SurfaceController {
     orbitPanel.contentView = host
     hoverPanel.contentView = NSHostingView(rootView: HoverLabelView(controller: self))
     expandedPanel.contentView = NSHostingView(rootView: ExpandedPanelSurface { Color.clear })
+    expandedPanel.onCancel = { [weak self] in self?.hideExpanded() }
     placeOrbit()
   }
 

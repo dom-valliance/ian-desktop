@@ -28,7 +28,7 @@ public enum WindowFactory {
   }
 
   /// The expanded client: it can become key so text fields take input, and Escape closes it.
-  public static func makeExpandedPanel(content: NSView) -> NSPanel {
+  public static func makeExpandedPanel(content: NSView) -> ExpandedPanel {
     let panel = make(
       ExpandedPanel.self, style: [.borderless, .resizable],
       frame: CGRect(origin: .zero, size: OrbitPlacement.expandedDefaultSize), content: content)
@@ -65,17 +65,25 @@ private final class OrbitPanel: NSPanel {
   override var canBecomeMain: Bool { false }
 }
 
-private final class ExpandedPanel: NSPanel {
-  override var canBecomeKey: Bool { true }
-  override var canBecomeMain: Bool { false }
+public final class ExpandedPanel: NSPanel {
+  /// What Escape does. The controller sets it so the close goes through `hideExpanded`; without
+  /// one the panel hides itself.
+  public var onCancel: (@MainActor () -> Void)?
+
+  override public var canBecomeKey: Bool { true }
+  override public var canBecomeMain: Bool { false }
 
   /// Escape closes the panel when nothing in it, such as a text field, has taken the key.
-  override func keyDown(with event: NSEvent) {
+  override public func keyDown(with event: NSEvent) {
     if event.keyCode == 53 { cancelOperation(nil) } else { super.keyDown(with: event) }
   }
 
-  override func cancelOperation(_ sender: Any?) {
-    orderOut(sender)
-    NSApplication.shared.deactivate()
+  override public func cancelOperation(_ sender: Any?) {
+    if let onCancel {
+      onCancel()
+    } else {
+      orderOut(sender)
+      NSApplication.shared.deactivate()
+    }
   }
 }

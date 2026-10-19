@@ -80,6 +80,25 @@ struct ExpandedPresentationTests {
     }
   }
 
+  @Test("stops animating at once when Escape closes the panel")
+  func escapeStopsAnimation() throws {
+    try withController { controller, _ in
+      controller.showExpanded()
+      let panel = controller.windows[2]
+      let escape = try #require(
+        NSEvent.keyEvent(
+          with: .keyDown, location: .zero, modifierFlags: [], timestamp: 0,
+          windowNumber: panel.windowNumber, context: nil, characters: "\u{1B}",
+          charactersIgnoringModifiers: "\u{1B}", isARepeat: false, keyCode: 53))
+      #expect(controller.isExpandedAnimating)
+
+      panel.sendEvent(escape)
+
+      #expect(!controller.isExpandedVisible)
+      #expect(!controller.isExpandedAnimating)
+    }
+  }
+
   @Test("hosts the app's content in the expanded panel, still hidden from screen capture")
   func hostsContent() {
     withController { controller, _ in

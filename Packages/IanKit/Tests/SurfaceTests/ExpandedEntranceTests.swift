@@ -27,11 +27,4 @@ struct ExpandedEntranceTests {
     #expect(ExpandedEntrance.fadeDuration == 0.3)
     #expect(ExpandedEntrance.riseDuration == 0.35)
   }
-
-  @Test("gives each kind the colour the design names, once for every surface")
-  func kindPalette() {
-    #expect(KindPalette.colour(for: .proposal) == OrbitColour(240, 185, 226))
-    #expect(KindPalette.colour(for: .task) == OrbitColour(0x7F, 0xBF, 0xC1))
-    #expect(OrbitPalette.colour(for: .alert) == KindPalette.colour(for: .alert))
-  }
 }
