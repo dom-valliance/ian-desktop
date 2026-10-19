@@ -15,6 +15,10 @@ struct TodayView: View {
   let layout: PaneLayout
   let onNavigate: (ClientSection) -> Void
 
+  /// The pane's height, read from its geometry so only a change in height (not in width, as a
+  /// sidebar drag makes) rebuilds this view. A plausible height until the first layout.
+  @State private var containerHeight = 600.0
+
   /// What makes the scene stale: any applied event or snapshot, the selection, or a new opening.
   private struct SceneTrigger: Hashable {
     let lastEventID: UInt64?
@@ -33,29 +37,28 @@ struct TodayView: View {
     let selection = model.resolvedSelection(in: store)
     // Each rebuild redraws the rows, so a row leaving with its pillar goes when it is done.
     let _ = model.revision
-    GeometryReader { geometry in
-      VStack(spacing: 0) {
-        FieldPane(
-          layout: layout, containerHeight: geometry.size.height, scene: model.scene,
-          isAnimating: isAnimating, reducedMotion: reducedMotion,
-          onSelect: { key in
-            if let today = store.state.today {
-              model.selectPillar(key, in: today)
-            }
-          })
-        TodayListsView(
-          list: TodayListModel(
-            state: store.state, removals: store.removals, statuses: ItemStatuses(store: store),
-            at: Date.now),
-          hasToday: store.state.today != nil,
-          selection: Binding(get: { selection }, set: { model.select($0) })
-        )
-        Divider().overlay(ClientPalette.line)
-        SelectionFooter(
-          store: store, selection: selection, onSelect: { model.select($0) },
-          onNavigate: onNavigate)
-      }
+    VStack(spacing: 0) {
+      FieldPane(
+        layout: layout, containerHeight: containerHeight, scene: model.scene,
+        isAnimating: isAnimating, reducedMotion: reducedMotion,
+        onSelect: { key in
+          if let today = store.state.today {
+            model.selectPillar(key, in: today)
+          }
+        })
+      TodayListsView(
+        list: TodayListModel(
+          state: store.state, removals: store.removals, statuses: ItemStatuses(store: store),
+          at: Date.now),
+        hasToday: store.state.today != nil,
+        selection: Binding(get: { selection }, set: { model.select($0) })
+      )
+      Divider().overlay(ClientPalette.line)
+      SelectionFooter(
+        store: store, selection: selection, onSelect: { model.select($0) },
+        onNavigate: onNavigate)
     }
+    .onGeometryChange(for: Double.self, of: { $0.size.height }) { containerHeight = $0 }
     .task(id: trigger) { await keepSceneCurrent() }
   }
 

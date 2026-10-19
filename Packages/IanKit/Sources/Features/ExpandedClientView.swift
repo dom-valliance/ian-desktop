@@ -30,7 +30,10 @@ public struct ExpandedClientView: View {
           SidebarPane(
             layout: model.layout, containerWidth: geometry.size.width,
             counts: store.state.views?.counts,
-            selection: Binding(get: { model.section }, set: { model.section = $0 }))
+            selection: Binding(get: { model.section }, set: { model.section = $0 })
+          )
+          // Above the content, so the divider's grab strip is not half covered by it.
+          .zIndex(1)
           content
         }
       }
