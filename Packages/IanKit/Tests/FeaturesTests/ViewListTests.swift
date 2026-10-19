@@ -56,20 +56,41 @@ struct ViewListTests {
   }
 
   @Test(
-    "lists the alert groups views names, in order, with P0 pinned", arguments: ViewScenario.names)
+    "pins the alert groups the server marks pinned, and scrolls the rest",
+    arguments: ViewScenario.names)
   func alerts(_ name: String) {
     let scenario = ViewScenario.load(name)
     let model = AlertsListModel(state: scenario.state)
+    let sent = scenario.views.alerts
 
-    #expect(shape(model.pinned + model.scrolling) == shape(scenario.views.alerts))
-    #expect(model.pinned.allSatisfy { $0.items.allSatisfy { $0.severity == .p0 } })
-    #expect(model.scrolling.allSatisfy { $0.items.allSatisfy { $0.severity != .p0 } })
+    #expect(shape(model.pinned) == shape(sent.filter { $0.pinned == true }))
+    #expect(shape(model.scrolling) == shape(sent.filter { $0.pinned != true }))
   }
 
   @Test("pins the P0 group of the incident scenario and nothing in the others")
   func pinsP0() {
-    #expect(!AlertsListModel(state: ViewScenario.load("incident").state).pinned.isEmpty)
+    let incident = AlertsListModel(state: ViewScenario.load("incident").state)
+
+    #expect(!incident.pinned.isEmpty)
+    #expect(incident.pinned.flatMap(\.items).allSatisfy { $0.severity == .p0 })
     #expect(AlertsListModel(state: ViewScenario.load("normal").state).pinned.isEmpty)
+  }
+
+  @Test("pins by the server's flag and not by severity")
+  func pinsByFlagNotSeverity() {
+    var state = ViewScenario.load("incident").state
+    var views = try! #require(state.views)
+    views.alerts = views.alerts.map { group in
+      var group = group
+      group.pinned = group.id == "P2"
+      return group
+    }
+    state.views = views
+
+    let model = AlertsListModel(state: state)
+
+    #expect(model.pinned.map(\.id) == ["P2"])
+    #expect(model.scrolling.map(\.id) == ["P0"])
   }
 
   @Test(
@@ -100,6 +121,33 @@ struct ViewListTests {
     let model = ProposalsListModel(state: state)
 
     #expect(!model.groups.flatMap(\.items).map(\.id).contains(first))
+  }
+
+  @Test("draws an item the server has just removed, from the removals, in its place")
+  func listsLeavingItems() throws {
+    var state = ViewScenario.load("normal").state
+    let id = try #require(state.views?.proposals.first?.itemIds.first)
+    let item = try #require(state.items[id])
+    state.items[id] = nil
+    let removal = IanStore.Removal(item: item, outcome: "Rejected.", removedAt: Date())
+
+    let model = ProposalsListModel(state: state, removals: [id: removal])
+
+    let entries = try #require(model.groups.first?.entries)
+    #expect(entries.first?.id == id)
+    #expect(entries.first?.removal?.outcome == "Rejected.")
+    #expect(entries.dropFirst().allSatisfy { $0.removal == nil })
+  }
+
+  @Test("still skips an id found in neither the items nor the removals")
+  func skipsIDsInNeither() throws {
+    var state = ViewScenario.load("normal").state
+    let id = try #require(state.views?.proposals.first?.itemIds.first)
+    state.items[id] = nil
+
+    let model = ProposalsListModel(state: state, removals: [:])
+
+    #expect(!model.groups.flatMap(\.items).map(\.id).contains(id))
   }
 
   @Test("is not loaded, and lists nothing, before the first snapshot")

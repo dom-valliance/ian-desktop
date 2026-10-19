@@ -83,7 +83,11 @@ let package = Package(
     ),
     .testTarget(
       name: "FeaturesTests",
-      dependencies: ["Features", "Client", "Contract", "Store", "TestSupport"]
+      dependencies: [
+        "Features", "Client", "Contract", "Store", "TestSupport",
+        .product(name: "SnapshotTesting", package: "swift-snapshot-testing"),
+      ],
+      exclude: ["__Snapshots__"]
     ),
   ],
   swiftLanguageModes: [.v6]

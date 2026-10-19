@@ -41,12 +41,9 @@ private func proposal(confidence: String?) -> Schemas.Item {
 }
 
 private func card(
-  _ item: Schemas.Item, handoff: Bool = true, statuses: ItemStatuses = ItemStatuses(),
-  actionsEnabled: Bool = true
+  _ item: Schemas.Item, statuses: ItemStatuses = ItemStatuses(), removal: IanStore.Removal? = nil
 ) -> ItemCardModel {
-  ItemCardModel(
-    item: item, statuses: statuses, actionsEnabled: actionsEnabled, handoffOffered: handoff,
-    timeZone: utc)
+  ItemCardModel(item: item, statuses: statuses, removal: removal, timeZone: utc)
 }
 
 @Suite("Card content")
@@ -166,32 +163,6 @@ struct ItemCardModelTests {
     #expect(model.lanceURL == nil)
   }
 
-  @Test("shows exactly the buttons the item's actions name, in order, with invented ids")
-  func buttonsAreTheItemsActions() {
-    let odd = proposal(confidence: nil)
-    var invented = odd
-    invented.actions = [
-      Schemas.ItemAction(id: "qq_9", label: "Wibble", style: .quiet, confirm: nil, input: .none),
-      Schemas.ItemAction(
-        id: "aa_1", label: "Frobnicate", style: .primary, confirm: "Sure?", input: .note),
-      Schemas.ItemAction(
-        id: "mm_5", label: "Plugh", style: .secondary, confirm: nil, input: .until),
-    ]
-
-    let model = card(invented)
-
-    #expect(model.actions.buttons.map(\.id) == ["qq_9", "aa_1", "mm_5"])
-    #expect(model.actions.buttons.map(\.label) == ["Wibble", "Frobnicate", "Plugh"])
-  }
-
-  @Test("shows Hand to Ian only when the server offers it")
-  func handoffGate() {
-    let proposal = proposal(confidence: nil)
-
-    #expect(card(proposal, handoff: true).showsHandoff)
-    #expect(!card(proposal, handoff: false).showsHandoff)
-  }
-
   @Test("labels the card for VoiceOver with its kind, title and state")
   func accessibilityLabel() {
     let proposal = proposal(confidence: nil)
@@ -204,11 +175,65 @@ struct ItemCardModelTests {
     #expect(failed.accessibilityLabel == "Proposal, Title of prop_1, now, error: No.")
   }
 
-  @Test("shows Pending and disables the buttons while the item is pending")
-  func pendingState() {
-    let model = card(proposal(confidence: nil), statuses: ItemStatuses(pending: ["prop_1"]))
+  @Test("dims a removed item and shows the server's outcome line in place of its actions")
+  func settledCard() {
+    let item = proposal(confidence: nil)
+    let removal = IanStore.Removal(
+      item: item, outcome: "Approved. Recorded in dry run.", removedAt: Date())
 
-    #expect(model.actions.status == .pending)
-    #expect(model.actions.buttons.allSatisfy { !$0.isEnabled })
+    let model = card(item, removal: removal)
+
+    #expect(model.settlement == "Approved. Recorded in dry run.")
+    #expect(model.accessibilityLabel == "Proposal, Title of prop_1, now, settled")
+    #expect(card(item).settlement == nil)
+  }
+
+  @Test("says Closed when the server sent no outcome for a removed item")
+  func settledWithoutOutcome() {
+    let item = proposal(confidence: nil)
+
+    let model = card(item, removal: .init(item: item, outcome: nil, removedAt: Date()))
+
+    #expect(model.settlement == "Closed")
+  }
+
+  @Test("gives the urgent rim to every kind the server marks urgent or stop, and to no other")
+  func urgentRimFollowsAttention() {
+    var base = proposal(confidence: nil)
+    var rims: [Schemas.Attention: Bool] = [:]
+    for rung in [Schemas.Attention.ambient, .needsYou, .urgent, .stop] {
+      base.attention = rung
+      rims[rung] = card(base).isUrgent
+    }
+
+    #expect(rims == [.ambient: false, .needsYou: false, .urgent: true, .stop: true])
+  }
+
+  @Test("does not key the rim on an alert's severity")
+  func severityGivesNoRim() {
+    var alert = item(
+      id: "alrt_1", kind: "alert", severity: "P0",
+      detail: """
+        {"kind":"alert","alertKind":"k","alertKindLabel":"L","raisedAt":"2026-10-16T08:00:00.000Z",\
+        "dedupeKey":"k","relatedItemIds":[],"explanation":"E"}
+        """)
+    alert.attention = .needsYou
+
+    #expect(!card(alert).isUrgent)
+  }
+
+  @Test("formats dates in the principal's time zone, and falls back to the Mac's")
+  func principalTimeZone() {
+    var me = Fixtures.me()
+    me.timeZone = "Asia/Tokyo"
+    let tokyo = CardDate.timeZone(for: me)
+    me.timeZone = "Not/A_Zone"
+
+    #expect(tokyo.identifier == "Asia/Tokyo")
+    #expect(CardDate.timeZone(for: me) == .current)
+    #expect(CardDate.timeZone(for: nil) == .current)
+    #expect(
+      ItemCardModel(item: proposal(confidence: nil), timeZone: tokyo).lines.last?.text
+        == "Expires 17 Oct, 18:30")
   }
 }

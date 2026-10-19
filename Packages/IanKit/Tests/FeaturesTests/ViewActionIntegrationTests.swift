@@ -95,6 +95,10 @@ struct ViewActionIntegrationTests {
     #expect(views == ["Proposals", "Commitments", "Tasks", "Alerts"])
   }
 
+  /// The pending state is observable only because the mock sends an action's events after
+  /// `MOCK_ACTION_DELAY_MS` (250 ms by default), once it has answered the call. With a delay of
+  /// 0 the event can beat the response, so this test stops with a clear message instead of
+  /// passing or failing by chance.
   @Test("keeps each action's item pending until the server's event moves it")
   func everyActionRoundTrips() async throws {
     try await mock.loadNormalScenario()
@@ -110,15 +114,16 @@ struct ViewActionIntegrationTests {
       let id = actionCase.itemID
       let before = try #require(store.state.items[id], "\(actionCase.testDescription) is missing")
       let action = try #require(before.actions.first { $0.id == actionCase.actionID })
-      let cursor = store.state.lastEventID
 
       await store.run(
         actionID: action.id, on: id,
         until: action.input == .until ? Date().addingTimeInterval(86_400) : nil,
         note: action.input == .note ? "Following up." : nil)
 
-      #expect(
-        store.pending[id] != nil, "\(actionCase.testDescription) is not pending after the click")
+      try #require(
+        store.pending[id] != nil,
+        "\(actionCase.testDescription) was not pending after the click. This test needs the mock's action delay (MOCK_ACTION_DELAY_MS, 250 ms by default) to be above 0."
+      )
       #expect(
         store.state.items[id]?.version == before.version,
         "\(actionCase.testDescription) moved on the click")
@@ -128,9 +133,10 @@ struct ViewActionIntegrationTests {
 
       let cleared = await settles { store.pending[id] == nil }
       #expect(cleared, "\(actionCase.testDescription) stayed pending")
+      let after = store.state.items[id]
       #expect(
-        (store.state.lastEventID ?? 0) > (cursor ?? 0),
-        "\(actionCase.testDescription) cleared without an event")
+        after == nil || after!.version > before.version,
+        "\(actionCase.testDescription) was cleared but the item did not move")
     }
   }
 
