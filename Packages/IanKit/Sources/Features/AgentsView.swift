@@ -64,6 +64,11 @@ private struct CostHeader: View {
 private struct AgentTable: View {
   let store: IanStore
 
+  /// Times follow the principal's zone, as the server's own meta lines do.
+  private var timeZone: TimeZone {
+    store.state.me.flatMap { TimeZone(identifier: $0.timeZone) } ?? .current
+  }
+
   private enum Column: String, CaseIterable {
     case name = "Name"
     case kind = "Kind"
@@ -86,9 +91,12 @@ private struct AgentTable: View {
   }
 
   private static let commandWidth: CGFloat = 96
+  private static let tableMinimumWidth: CGFloat = 960
 
   var body: some View {
-    ScrollView {
+    // The columns need more room than a narrow panel gives, so the table scrolls sideways rather
+    // than squeezing the name.
+    ScrollView([.horizontal, .vertical]) {
       LazyVStack(alignment: .leading, spacing: 0) {
         HStack(spacing: 12) {
           ForEach(Column.allCases, id: \.self) { column in
@@ -97,7 +105,8 @@ private struct AgentTable: View {
               .tracking(ClientPalette.labelTracking)
               .foregroundStyle(ClientPalette.secondary(0.7))
               .frame(
-                minWidth: column.width, maxWidth: column.width ?? .infinity, alignment: .leading)
+                minWidth: column.width ?? 160, maxWidth: column.width ?? .infinity,
+                alignment: .leading)
           }
           Color.clear.frame(width: Self.commandWidth, height: 1)
         }
@@ -105,10 +114,13 @@ private struct AgentTable: View {
         .accessibilityHidden(true)
         Divider().overlay(ClientPalette.line)
         ForEach(store.state.agents, id: \.id) { agent in
-          AgentRowView(store: store, row: AgentRow(agent: agent), commandWidth: Self.commandWidth)
+          AgentRowView(
+            store: store, row: AgentRow(agent: agent, timeZone: timeZone),
+            commandWidth: Self.commandWidth)
           Divider().overlay(ClientPalette.line)
         }
       }
+      .frame(minWidth: Self.tableMinimumWidth, alignment: .leading)
     }
   }
 
@@ -129,7 +141,11 @@ private struct AgentTable: View {
           cell(.nextRun, row.nextRun)
           cell(.cost, row.cost)
           cell(.share, row.share)
-          command.frame(width: commandWidth, alignment: .trailing)
+          HStack(spacing: 0) {
+            Spacer(minLength: 0)
+            command
+          }
+          .frame(width: commandWidth)
         }
         if let notice = store.agentNotices[row.id] {
           Text(notice)
@@ -145,7 +161,9 @@ private struct AgentTable: View {
     private func cell(_ column: Column, _ value: String) -> some View {
       Text(value)
         .font(.system(size: 13))
-        .frame(minWidth: column.width, maxWidth: column.width ?? .infinity, alignment: .leading)
+        .frame(
+          minWidth: column.width ?? 160, maxWidth: column.width ?? .infinity, alignment: .leading
+        )
         .accessibilityLabel("\(row.name), \(column.rawValue): \(value)")
     }
 
