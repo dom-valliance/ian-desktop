@@ -50,7 +50,7 @@ public enum PillarsRenderer {
   static let maxHeight = 120.0
   static let baseHeight = 14.0
   static let platePad = pitch * 0.62
-  static let turn = 10.0
+  static let swayAmplitude = 10.0
   static let growDuration = 0.6
   static let sinkDuration = 0.7
   static let goneBelow = 0.02
@@ -83,7 +83,7 @@ public enum PillarsRenderer {
   public static func yaw(
     time: Double, reducedMotion: Bool, angle: Double = FieldTurn.defaultAngle
   ) -> Double {
-    let degrees = angle + (reducedMotion ? 0 : turn * sin(0.22 * time))
+    let degrees = angle + (reducedMotion ? 0 : swayAmplitude * sin(0.22 * time))
     return degrees * .pi / 180
   }
 
@@ -237,8 +237,11 @@ public enum PillarsRenderer {
         project($0.0, $0.1, 0, yaw: yaw)
       },
       fill: plateFill, stroke: plateStroke, lineWidth: 1)
+    // The labels sit at the plate end that projects leftmost, so they stay outside the plate.
+    // The side follows the chosen angle, not the sway, so the sway never flips them.
+    let labelX = cos(angle * .pi / 180) >= 0 ? -reach - 6 : reach + 6
     let labels = rowTitles.enumerated().map { row, title in
-      let point = project(-reach - 6, Double(row - 1) * pitch, 0, yaw: yaw)
+      let point = project(labelX, Double(row - 1) * pitch, 0, yaw: yaw)
       return PillarsDrawing.RowLabel(text: title, anchor: CGPoint(x: point.x, y: point.y + 4))
     }
     return PillarsDrawing(plate: plate, rowLabels: labels, cells: cells, particles: particles)

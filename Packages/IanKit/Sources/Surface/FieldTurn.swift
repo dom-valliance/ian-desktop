@@ -12,7 +12,8 @@ public enum FieldTurn {
   public static let degreesPerPoint = 0.5
   /// Movement below this many points is a click, not a drag.
   public static let dragThreshold = 4.0
-  /// The longest gap between two clicks that makes a double-click.
+  /// The longest gap between two clicks that makes a double-click in tests. The app passes the
+  /// system's interval.
   public static let doubleClickInterval: TimeInterval = 0.4
   /// How far the second click of a double-click may land from the first.
   static let doubleClickSlop = 8.0
@@ -23,10 +24,12 @@ public enum FieldTurn {
     normalised(start - degreesPerPoint * translation)
   }
 
-  /// `degrees` in `0..<360`.
+  /// `degrees` in `0..<360`. A value that is not a number gives the resting angle.
   public static func normalised(_ degrees: Double) -> Double {
+    guard degrees.isFinite else { return defaultAngle }
     let wrapped = degrees.truncatingRemainder(dividingBy: 360)
-    return wrapped < 0 ? wrapped + 360 : wrapped
+    let positive = wrapped < 0 ? wrapped + 360 : wrapped
+    return positive >= 360 ? 0 : positive
   }
 }
 
@@ -57,8 +60,13 @@ public struct FieldPointer: Equatable, Sendable {
   }
 
   /// Follows the pointer while it is down. Nothing turns until it has moved past the click
-  /// threshold, and once it has, the gesture stays a drag.
+  /// threshold, and once it has, the gesture stays a drag. A cancelled gesture never ends, so
+  /// the first event of the next one (no translation yet) clears what the last left behind.
   public mutating func changed(translation: CGSize) {
+    if translation == .zero {
+      start = nil
+      isDragging = false
+    }
     let origin = start ?? angle
     start = origin
     if hypot(translation.width, translation.height) >= FieldTurn.dragThreshold {
@@ -71,7 +79,10 @@ public struct FieldPointer: Equatable, Sendable {
 
   /// Ends the gesture and says what it was. The second click of a double-click resets the angle
   /// and selects nothing; the first click has already selected.
-  public mutating func ended(location: CGPoint, time: TimeInterval) -> Outcome {
+  public mutating func ended(
+    location: CGPoint, time: TimeInterval,
+    doubleClickInterval: TimeInterval = FieldTurn.doubleClickInterval
+  ) -> Outcome {
     defer {
       start = nil
       isDragging = false
@@ -80,7 +91,7 @@ public struct FieldPointer: Equatable, Sendable {
       lastClick = nil
       return .turned
     }
-    if let previous = lastClick, time - previous.time <= FieldTurn.doubleClickInterval,
+    if let previous = lastClick, time - previous.time <= doubleClickInterval,
       hypot(location.x - previous.location.x, location.y - previous.location.y)
         <= FieldTurn.doubleClickSlop
     {

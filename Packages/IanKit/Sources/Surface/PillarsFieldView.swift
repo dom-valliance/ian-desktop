@@ -101,7 +101,7 @@ public struct PillarsDrawingView: View {
 /// The Pillars field: the drawing, driven by a clock that runs only while something moves.
 ///
 /// The clock stops when the field is hidden, occluded or suppressed (`isAnimating` false). The
-/// yaw turns for as long as the field is visible, so under motion the clock runs at 60 frames a
+/// yaw sways for as long as the field is visible, so under motion the clock runs at 60 frames a
 /// second (spec 6.9). Under Reduce Motion it runs only through a growth or a sink, which are then
 /// fades. A stopped field is drawn in its still pose.
 ///
@@ -146,21 +146,29 @@ public struct PillarsFieldView: View {
 
   public var body: some View {
     GeometryReader { geometry in
+      let fit = PillarsFit(size: geometry.size)
+      // The canvas is only as large as the fitted box, so the per-frame drawing does not grow
+      // with a pane that is wider or taller than the box; the gesture covers the whole pane.
       TimelineView(.animation(minimumInterval: Self.frameInterval, paused: !runsClock)) {
         timeline in
         let clock = timeline.date.timeIntervalSinceReferenceDate
         PillarsDrawingView(
           drawing: drawing(at: Self.drawTime(scene: scene, isAnimating: isAnimating, clock: clock)))
       }
+      .frame(
+        width: PillarsRenderer.boxSize.width * fit.scale,
+        height: PillarsRenderer.boxSize.height * fit.scale
+      )
+      .frame(width: geometry.size.width, height: geometry.size.height)
       .contentShape(Rectangle())
       .accessibilityHidden(true)
       .gesture(
         DragGesture(minimumDistance: 0)
           .onChanged { drag in pointer.changed(translation: drag.translation) }
           .onEnded { drag in
-            let fit = PillarsFit(size: geometry.size)
             switch pointer.ended(
-              location: drag.location, time: Date.now.timeIntervalSinceReferenceDate)
+              location: drag.location, time: Date.now.timeIntervalSinceReferenceDate,
+              doubleClickInterval: NSEvent.doubleClickInterval)
             {
             case .turned, .reset:
               onTurn(pointer.angle)
@@ -196,7 +204,7 @@ public struct PillarsFieldView: View {
     isAnimating ? clock : max(clock, scene.transitionEnd)
   }
 
-  /// A stopped field holds its pose, and Reduce Motion never turns.
+  /// A stopped field holds its pose, and Reduce Motion never sways.
   private var still: Bool { reducedMotion || !isAnimating }
 
   private func drawing(at time: Double) -> PillarsDrawing {
