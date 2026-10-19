@@ -1,5 +1,6 @@
 import AppKit
 import Attention
+import Features
 import Store
 import Surface
 import SwiftUI
@@ -15,6 +16,8 @@ struct IanApp: App {
     })
     let surface = SurfaceController(
       store: store, signals: SuppressionSignals(camera: CoreMediaCameraMonitor()))
+    surface.setExpandedContent(
+      ExpandedClientView(store: store, controller: surface, model: ClientModel()))
     _store = State(initialValue: store)
     _surface = State(initialValue: surface)
     // Start once launching has finished, when the screens and the status bar exist.
@@ -30,7 +33,7 @@ struct IanApp: App {
 
   var body: some Scene {
     MenuBarExtra {
-      MenuBarMenu(store: store, controller: surface)
+      MenuBarMenu(controller: surface)
     } label: {
       Text(surface.menuBarTitle)
         .accessibilityLabel(surface.presentation.accessibilityLabel)

@@ -70,14 +70,13 @@ struct SuppressionSurfaceTests {
     }
   }
 
-  @Test("keeps item text out of the status lines and the menu")
-  func statusAndMenuCarryNoItemText() async {
+  @Test("keeps item text out of the menu bar title and the menu")
+  func titleAndMenuCarryNoItemText() async {
     await withScratchDefaultsAsync { defaults in
       let (controller, box) = await controller(nil, defaults: defaults)
       defer { box.store.stop() }
       let scenario = OrbitScenario.load("normal")
-      var strings = DebugStatus(store: box.store).lines
-      strings.append(controller.menuBarTitle)
+      var strings = [controller.menuBarTitle]
       for case .command(_, let title, _, _) in controller.menuEntries { strings.append(title) }
       #expect(!strings.isEmpty)
       for string in strings {

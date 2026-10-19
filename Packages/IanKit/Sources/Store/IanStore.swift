@@ -48,6 +48,12 @@ public final class IanStore {
     /// The server's one-line account of what happened. Nil for a cleared alert.
     public let outcome: String?
     public let removedAt: Date
+
+    public init(item: StoreState.Item, outcome: String?, removedAt: Date) {
+      self.item = item
+      self.outcome = outcome
+      self.removedAt = removedAt
+    }
   }
 
   /// Something the principal should see on an item.
