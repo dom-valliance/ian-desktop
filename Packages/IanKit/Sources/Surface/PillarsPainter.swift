@@ -29,13 +29,6 @@ struct PillarsFit: Equatable {
   }
 }
 
-extension OrbitColour {
-  var cgColor: CGColor {
-    CGColor(
-      srgbRed: red / 255, green: green / 255, blue: blue / 255, alpha: alpha)
-  }
-}
-
 /// The three row titles, laid out once. Drawing a frame only positions and draws these lines;
 /// no text is shaped per frame.
 struct PillarsLabels {

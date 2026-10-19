@@ -1,3 +1,5 @@
+import CoreGraphics
+
 /// An sRGB colour with 0 to 255 channels and an alpha, so the drawing is comparable in tests.
 public struct OrbitColour: Equatable, Sendable {
   public let red: Double
@@ -53,5 +55,13 @@ public enum KindPalette {
     // The AGENTS.md Q12 default, until Dom picks.
     case .task: OrbitColour(0x7F, 0xBF, 0xC1)
     }
+  }
+}
+
+extension OrbitColour {
+  /// The colour for Core Graphics and Core Animation, which the Orbit's layers and the field's
+  /// painter draw with.
+  var cgColor: CGColor {
+    CGColor(srgbRed: red / 255, green: green / 255, blue: blue / 255, alpha: alpha)
   }
 }

@@ -123,12 +123,6 @@ final class OrbitMotionView: NSView {
   }
 }
 
-extension OrbitColour {
-  var cgColor: CGColor {
-    CGColor(srgbRed: red / 255, green: green / 255, blue: blue / 255, alpha: alpha)
-  }
-}
-
 /// Puts `OrbitMotionView` over the still pose.
 struct OrbitMotionLayers: NSViewRepresentable {
   let motion: OrbitMotion
