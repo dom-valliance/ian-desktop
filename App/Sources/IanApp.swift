@@ -1,6 +1,7 @@
 import AppKit
 import Attention
 import Features
+import ServiceManagement
 import Store
 import Surface
 import SwiftUI
@@ -17,7 +18,9 @@ struct IanApp: App {
     let surface = SurfaceController(
       store: store, signals: SuppressionSignals(camera: CoreMediaCameraMonitor()))
     surface.setExpandedContent(
-      ExpandedClientView(store: store, controller: surface, model: ClientModel()))
+      ExpandedClientView(
+        store: store, controller: surface,
+        model: ClientModel(launchAtLogin: SystemLaunchAtLogin())))
     _store = State(initialValue: store)
     _surface = State(initialValue: surface)
     // Read from the argument domain only, so it is never saved (scripts/measure-cpu.sh).
@@ -43,5 +46,27 @@ struct IanApp: App {
       Text(surface.menuBarTitle)
         .accessibilityLabel(surface.presentation.accessibilityLabel)
     }
+  }
+}
+
+/// The app's login item, through the system's `SMAppService`. An unsigned build may be refused,
+/// which the Settings view reports.
+@MainActor
+private struct SystemLaunchAtLogin: LaunchAtLoginControlling {
+  var status: LaunchAtLoginStatus {
+    switch SMAppService.mainApp.status {
+    case .enabled: .enabled
+    case .requiresApproval: .requiresApproval
+    case .notFound: .unavailable
+    default: .disabled
+    }
+  }
+
+  func register() throws {
+    try SMAppService.mainApp.register()
+  }
+
+  func unregister() throws {
+    try SMAppService.mainApp.unregister()
   }
 }
