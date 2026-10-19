@@ -20,6 +20,6 @@ Rules that apply here (ADR 0001):
 
 - No target computes pressure, horizon, grouping, eligibility or a policy outcome. If a view seems to need one, the contract is missing a field.
 - Buttons come from an item's `actions`, in the order sent. No view hard-codes an action.
-- Nothing is written to disk except tokens in the Keychain and the client settings in `UserDefaults` listed in spec 6.4.
+- Nothing is written to disk except tokens in the Keychain and, in `UserDefaults`, the client settings listed in spec 6.4 and the layout values in ADR 0016.
 
 Tests live in `Tests/`, one test target per source target (`StoreTests`, `SurfaceTests` and so on). `Tests/TestSupport` is a library of test helpers shared by them (a stubbed `URLProtocol`, a manual clock, a scripted `DesktopService`, invented fixtures); no product depends on it. Snapshot tests use `swift-snapshot-testing`.

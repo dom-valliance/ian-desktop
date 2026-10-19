@@ -38,9 +38,9 @@ Enforced in code and tested. From ADRs 0001 to 0006 and the spec.
 2. **The server settles state.** An action marks its item pending. Only the server's event moves the item. No optimistic completion, no offline action queue; actions are disabled while offline.
 3. **The contract is the source.** Swift types are generated from `contract/ian-desktop.v1.yaml`; generated code is never edited by hand. The mock validates every response against the same file. A breaking change is `v2`, never an edit to `v1`.
 4. **Mock by default, invented data only.** The app starts against the mock unless a profile says otherwise. Debug builds carry `mock` and `lance-dev` only; no production profile exists in version 0.
-5. **Nothing on disk but two things.** Tokens in the Keychain, and the client settings in spec 6.4 in `UserDefaults`. No response caches (use an ephemeral `URLSession` configuration), no item content in logs (log ids only, through `os.Logger` with private interpolation), no crash reports or diagnostics carrying titles.
+5. **Nothing on disk but two things.** Tokens in the Keychain, and in `UserDefaults` the client settings in spec 6.4 plus the field's angle and the pane sizes (ADR 0016). No response caches (use an ephemeral `URLSession` configuration), no item content in logs (log ids only, through `os.Logger` with private interpolation), no crash reports or diagnostics carrying titles.
 6. **Off screen captures.** Every window and panel sets `sharingType = .none`. Settings cannot switch it off. Suppression hides all item text on the Orbit and in notifications; P0 still notifies.
-7. **Rendering costs nothing when unseen.** Animation stops when the expanded client is hidden, occluded or suppressed. Reduce Motion stops the ripple, the turn and the breathing.
+7. **Rendering costs nothing when unseen.** Animation stops when the expanded client is hidden, occluded or suppressed. Reduce Motion stops the ripple, the sway and the breathing; the principal's own drag still turns the field (ADR 0016).
 8. **The list is the accessible path.** Every item and action in the Pillars field is reachable from a list row with VoiceOver and the keyboard. The field is never the only way to an item.
 
 ## How to use the spec
