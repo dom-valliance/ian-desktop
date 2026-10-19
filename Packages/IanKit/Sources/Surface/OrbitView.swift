@@ -95,6 +95,10 @@ extension OrbitColour {
 /// Reduce Motion is on, and whenever nothing in the model moves. A stopped Orbit is drawn in its
 /// still pose.
 public struct OrbitView: View {
+  /// The breath takes 4.2 seconds and the pulse about 1.3, so 20 frames a second looks smooth
+  /// and keeps the idle Orbit inside the spec 6.9 budget.
+  private static let frameInterval = 1.0 / 20
+
   private let model: OrbitModel
   private let reducedMotion: Bool
   private let isAnimating: Bool
@@ -107,7 +111,7 @@ public struct OrbitView: View {
 
   public var body: some View {
     let moves = isAnimating && !reducedMotion && OrbitRenderer.hasMotion(model)
-    TimelineView(.animation(paused: !moves)) { timeline in
+    TimelineView(.animation(minimumInterval: Self.frameInterval, paused: !moves)) { timeline in
       OrbitDrawingView(
         drawing: OrbitRenderer.drawing(
           for: model, time: timeline.date.timeIntervalSinceReferenceDate,
