@@ -57,7 +57,8 @@ let package = Package(
         "Auth", "Client", "Contract",
         .product(name: "OpenAPIRuntime", package: "swift-openapi-runtime"),
       ],
-      path: "Tests/TestSupport"
+      path: "Tests/TestSupport",
+      resources: [.copy("Fixtures")]
     ),
     .testTarget(name: "AuthTests", dependencies: ["Auth", "TestSupport"]),
     .testTarget(
@@ -78,13 +79,11 @@ let package = Package(
         "Surface", "Store", "Attention", "Contract", "TestSupport",
         .product(name: "SnapshotTesting", package: "swift-snapshot-testing"),
       ],
-      exclude: ["__Snapshots__"],
-      resources: [.copy("Fixtures")]
+      exclude: ["__Snapshots__"]
     ),
     .testTarget(
       name: "FeaturesTests",
-      dependencies: ["Features", "Client", "Contract", "Store", "TestSupport"],
-      resources: [.copy("Fixtures")]
+      dependencies: ["Features", "Client", "Contract", "Store", "TestSupport"]
     ),
   ],
   swiftLanguageModes: [.v6]

@@ -339,7 +339,8 @@
         "label": "P0 critical",
         "itemIds": [
           "alrt_01MOCK000000000090"
-        ]
+        ],
+        "pinned": true
       },
       {
         "id": "P2",
@@ -1477,7 +1478,7 @@
     "mode": "dry_run",
     "timeZone": "Europe/London",
     "minClientVersion": "0.1.0",
-    "contractVersion": "1.0.1",
+    "contractVersion": "1.1.0",
     "capabilities": {
       "handoff": true
     },

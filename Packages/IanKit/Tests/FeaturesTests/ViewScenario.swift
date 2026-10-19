@@ -3,7 +3,7 @@ import Foundation
 import Store
 import TestSupport
 
-/// A mock scenario as `scripts/export-orbit-fixtures.sh` exported it: the `views`, the `items`
+/// A mock scenario as `scripts/export-scenario-fixtures.sh` exported it: the `views`, the `items`
 /// they name and the principal, taken at a fixed mock time.
 struct ViewScenario: Decodable {
   let today: Components.Schemas.Today
@@ -11,18 +11,10 @@ struct ViewScenario: Decodable {
   let items: [Components.Schemas.Item]
   let me: Components.Schemas.Me
 
-  static let names = ["quiet", "normal", "overloaded", "incident"]
+  static let names = ScenarioFixtures.names
 
   static func load(_ name: String) -> ViewScenario {
-    guard
-      let url = Bundle.module.url(
-        forResource: name, withExtension: "json", subdirectory: "Fixtures"),
-      let json = try? String(contentsOf: url, encoding: .utf8)
-    else {
-      preconditionFailure(
-        "The fixture \(name).json is missing. Run scripts/export-orbit-fixtures.sh.")
-    }
-    return Fixtures.decode(json)
+    Fixtures.decode(ScenarioFixtures.json(name))
   }
 
   var state: StoreState {

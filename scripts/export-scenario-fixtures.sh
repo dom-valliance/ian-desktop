@@ -1,23 +1,20 @@
 #!/usr/bin/env bash
 # Writes the scenario fixtures: the `today`, `views` and `items` of the mock's `quiet`, `normal`,
 # `overloaded` and `incident` snapshots, and `me`, taken at a fixed mock time, to
-# Packages/IanKit/Tests/SurfaceTests/Fixtures/<scenario>.json (the Orbit snapshot tests) and the
-# same file under Tests/FeaturesTests/Fixtures (the view tests). Starts the mock on a free port
-# and stops it on exit. Running it twice gives byte-identical files.
+# Packages/IanKit/Tests/TestSupport/Fixtures/<scenario>.json. The Orbit, Pillars and view tests
+# all read that one copy. Starts the mock on a free port and stops it on exit. Running it twice
+# gives byte-identical files.
 set -euo pipefail
 
 repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 mock_dir="$repo_root/mock"
-out_dirs=(
-  "$repo_root/Packages/IanKit/Tests/SurfaceTests/Fixtures"
-  "$repo_root/Packages/IanKit/Tests/FeaturesTests/Fixtures"
-)
+out_dir="$repo_root/Packages/IanKit/Tests/TestSupport/Fixtures"
 host="127.0.0.1"
 fixed_time="2026-10-16T09:30:00.000Z"
 scenarios=(quiet normal overloaded incident)
 
 fail() {
-  echo "export-orbit-fixtures.sh: $*" >&2
+  echo "export-scenario-fixtures.sh: $*" >&2
   exit 1
 }
 
@@ -68,7 +65,7 @@ for _ in $(seq 1 50); do
 done
 [[ "$ready" == "1" ]] || fail "the mock did not report that it was listening within ten seconds."
 
-mkdir -p "${out_dirs[@]}"
+mkdir -p "$out_dir"
 for scenario in "${scenarios[@]}"; do
   curl -fsS -X POST "$base/__mock/scenario" -H 'content-type: application/json' \
     -d "{\"scenario\":\"$scenario\"}" >/dev/null || fail "the mock refused the scenario '$scenario'."
@@ -80,16 +77,13 @@ for scenario in "${scenarios[@]}"; do
     fail "could not read the '$scenario' snapshot."
   curl -fsS "$base/desktop/v1/me" -H 'Authorization: Bearer dev-fixtures' >"$me_file" ||
     fail "could not read the '$scenario' principal."
-  for out_dir in "${out_dirs[@]}"; do
-    node -e '
-      const fs = require("fs");
-      const snapshot = JSON.parse(fs.readFileSync(process.argv[1], "utf8"));
-      const me = JSON.parse(fs.readFileSync(process.argv[2], "utf8"));
-      process.stdout.write(
-        JSON.stringify({ today: snapshot.today, views: snapshot.views, items: snapshot.items, me }, null, 2) + "\n",
-      );
-    ' "$snapshot_file" "$me_file" >"$out_dir/$scenario.json" || fail "could not write the '$scenario' fixture."
-    echo "Wrote $out_dir/$scenario.json"
-  done
+  node -e '
+    const fs = require("fs");
+    const snapshot = JSON.parse(fs.readFileSync(process.argv[1], "utf8"));
+    const me = JSON.parse(fs.readFileSync(process.argv[2], "utf8"));
+    const fixture = { today: snapshot.today, views: snapshot.views, items: snapshot.items, me };
+    process.stdout.write(JSON.stringify(fixture, null, 2) + "\n");
+  ' "$snapshot_file" "$me_file" >"$out_dir/$scenario.json" || fail "could not write the '$scenario' fixture."
+  echo "Wrote $out_dir/$scenario.json"
   rm -f "$snapshot_file" "$me_file"
 done
