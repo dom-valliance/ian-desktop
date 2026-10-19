@@ -55,17 +55,32 @@ final class OrbitMotionView: NSView {
     withoutImplicitAnimation { box.setAffineTransform(CGAffineTransform(scaleX: scale, y: scale)) }
   }
 
-  /// Shows `motion`: the layers and their animations, or nothing for `.still`. Applying the same
-  /// motion twice leaves the running animations alone, so a redraw does not restart the breath.
+  /// Shows `motion`: the layers and their animations, or nothing for `.still`. A layer whose part
+  /// has not changed is kept, so a redraw does not restart its animation.
   func apply(_ motion: OrbitMotion) {
     guard motion != applied else { return }
-    applied = motion
     withoutImplicitAnimation {
-      for layer in box.sublayers ?? [] { layer.removeFromSuperlayer() }
-      coreLayer = motion.core.map(makeCoreLayer)
-      rimLayers = motion.rims.compactMap(makeRimLayer)
-      for layer in [coreLayer].compactMap({ $0 }) + rimLayers { box.addSublayer(layer) }
+      if motion.core != applied.core {
+        coreLayer?.removeFromSuperlayer()
+        coreLayer = motion.core.map(makeCoreLayer)
+        if let coreLayer { box.addSublayer(coreLayer) }
+      }
+      var kept: [Int: CAShapeLayer] = [:]
+      for (satellite, layer) in zip(applied.rims, rimLayers) {
+        if motion.rims.contains(satellite) {
+          kept[satellite.slot] = layer
+        } else {
+          layer.removeFromSuperlayer()
+        }
+      }
+      rimLayers = motion.rims.compactMap { satellite in
+        if let layer = kept[satellite.slot] { return layer }
+        guard let layer = makeRimLayer(satellite) else { return nil }
+        box.addSublayer(layer)
+        return layer
+      }
     }
+    applied = motion
   }
 
   private func makeCoreLayer(_ core: OrbitDrawing.Core) -> CAShapeLayer {
@@ -104,6 +119,8 @@ final class OrbitMotionView: NSView {
     animation.duration = Double.pi / rate
     animation.autoreverses = true
     animation.repeatCount = .infinity
+    // The breath and the pulse are slow, so the render server need not run them at 120 Hz.
+    animation.preferredFrameRateRange = CAFrameRateRange(minimum: 20, maximum: 30, preferred: 30)
     animation.timingFunction = CAMediaTimingFunction(name: .easeInEaseOut)
     return animation
   }

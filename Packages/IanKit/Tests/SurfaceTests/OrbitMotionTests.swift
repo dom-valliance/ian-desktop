@@ -216,28 +216,128 @@ struct OrbitMotionTests {
 
   // MARK: The still pose
 
-  @Test("leaves out of the still pose exactly the parts the layers draw")
-  func stillPoseLeavesLayeredParts() {
-    for scenario in OrbitScenario.names {
-      let model = model(scenario)
-      let layered = motion(model)
-      let rimmed = layered.rims.map(\.slot)
-      let full = OrbitRenderer.drawing(for: model, time: 0, reducedMotion: true)
-      #expect(layered.core == (model.working ? full.core : nil))
-      #expect(rimmed == full.satellites.filter { $0.rim != nil }.map(\.slot))
+  /// The Orbit's still pose in a bitmap, with the layered parts left out as `layered` says.
+  private func pixels(of model: OrbitModel, layered: OrbitMotion) throws -> NSBitmapImageRep {
+    let side: CGFloat = 400
+    let view = OrbitDrawingView(
+      drawing: OrbitRenderer.drawing(for: model, time: 0, reducedMotion: true), layered: layered
+    )
+    .frame(width: side, height: side)
+    .background(OrbitPalette.ground.color)
+    let renderer = ImageRenderer(content: view)
+    renderer.scale = 1
+    let image = try #require(renderer.cgImage)
+    return NSBitmapImageRep(cgImage: image)
+  }
+
+  /// Whether the pixel at a point in the renderer's 100 unit box is the bitmap's background,
+  /// which the corner shows (colour management shifts the ground's own value).
+  private func isGround(_ bitmap: NSBitmapImageRep, at point: CGPoint) throws -> Bool {
+    let scale = Double(bitmap.pixelsWide) / OrbitRenderer.boxSize
+    let pixel = try #require(bitmap.colorAt(x: Int(point.x * scale), y: Int(point.y * scale)))
+    let ground = try #require(bitmap.colorAt(x: 0, y: 0))
+    return abs(pixel.redComponent - ground.redComponent) < 0.01
+      && abs(pixel.greenComponent - ground.greenComponent) < 0.01
+      && abs(pixel.blueComponent - ground.blueComponent) < 0.01
+  }
+
+  @Test("leaves the working core out of the still pose only when a layer draws it")
+  func stillPoseLeavesLayeredCore() throws {
+    let model = model("normal")
+    let core = OrbitRenderer.centre
+    #expect(try !isGround(pixels(of: model, layered: .still), at: core))
+    #expect(try isGround(pixels(of: model, layered: motion(model)), at: core))
+  }
+
+  @Test("leaves each alert's rim out of the still pose only when a layer draws it")
+  func stillPoseLeavesLayeredRims() throws {
+    let model = model("incident")
+    let rimmed = motion(model).rims
+    #expect(!rimmed.isEmpty)
+    let still = try pixels(of: model, layered: .still)
+    let layered = try pixels(of: model, layered: motion(model))
+    for satellite in rimmed {
+      // Half a unit outside the satellite's fill is on the rim's stroke, and towards the centre
+      // it is clear of the track, the arcs and the core.
+      let inwards = CGVector(
+        dx: OrbitRenderer.centre.x - satellite.centre.x,
+        dy: OrbitRenderer.centre.y - satellite.centre.y)
+      let length = hypot(inwards.dx, inwards.dy)
+      let distance = satellite.radius + 0.5
+      let edge = CGPoint(
+        x: satellite.centre.x + inwards.dx / length * distance,
+        y: satellite.centre.y + inwards.dy / length * distance)
+      #expect(try !isGround(still, at: edge), "still pose, slot \(satellite.slot)")
+      #expect(try isGround(layered, at: edge), "layered, slot \(satellite.slot)")
     }
   }
 
-  @Test("shows the layers inside a hosted Orbit, over the still pose")
-  func hosted() {
+  @Test("keeps the core's layer running when only the rims change")
+  func coreKeptWhenRimsChange() throws {
+    let working = model("normal")
+    let first = motion(working)
+    let view = motionView(showing: first)
+    let layer = try #require(view.coreLayer)
+    var changed = first
+    changed.rims = motion(model("incident")).rims
+    view.apply(changed)
+    #expect(view.coreLayer === layer)
+    #expect(view.rimLayers.count == changed.rims.count)
+  }
+
+  @Test("keeps a rim's layer running when another rim goes")
+  func rimKeptWhenAnotherGoes() throws {
+    let rims = motion(model("incident")).rims
+    try #require(rims.count >= 1)
+    var two = OrbitMotion.still
+    two.rims = rims + [rims[0].moved(toSlot: 4)]
+    let view = motionView(showing: two)
+    let layer = try #require(view.rimLayers.first)
+    var one = two
+    one.rims = rims
+    view.apply(one)
+    #expect(view.rimLayers.count == rims.count)
+    #expect(view.rimLayers.first === layer)
+  }
+
+  @Test("runs the breath and the pulse at a capped frame rate")
+  func cappedFrameRate() throws {
+    let working = motionView(showing: motion(model("normal")))
+    let breath = try animation(of: working.coreLayer, key: OrbitMotionView.breathKey)
+    #expect(breath.preferredFrameRateRange.maximum <= 30)
+    let alert = motionView(showing: motion(model("incident")))
+    let pulse = try animation(of: alert.rimLayers.first, key: OrbitMotionView.pulseKey)
+    #expect(pulse.preferredFrameRateRange.maximum <= 30)
+  }
+
+  @Test("shows the layers inside a hosted Orbit at the still pose's scale and positions")
+  func hosted() throws {
+    let model = model("incident")
     let hosting = NSHostingView(
-      rootView: OrbitView(model: model("incident"), reducedMotion: false, isAnimating: true)
+      rootView: OrbitView(model: model, reducedMotion: false, isAnimating: true)
         .frame(width: 96, height: 96))
     hosting.frame = CGRect(x: 0, y: 0, width: 96, height: 96)
+    let panel = WindowFactory.makeOrbitPanel(content: hosting)
     hosting.layoutSubtreeIfNeeded()
+    defer { panel.orderOut(nil) }
+
     let found = Self.descendants(of: hosting).compactMap { $0 as? OrbitMotionView }
     #expect(found.count == 1)
-    #expect(found.first?.rimLayers.isEmpty == false)
+    let view = try #require(found.first)
+    let box = try #require(view.layer?.sublayers?.first)
+    #expect(abs(box.affineTransform().a - 0.96) < 1e-9)
+
+    let satellites = OrbitRenderer.drawing(for: model, time: 0, reducedMotion: true).satellites
+      .filter { $0.rim != nil }
+    #expect(view.rimLayers.count == satellites.count)
+    for (layer, satellite) in zip(view.rimLayers, satellites) {
+      let inView = try #require(view.layer).convert(satellite.centre, from: layer)
+      let inHosting = hosting.convert(inView, from: view)
+      // The still pose draws with y down, so compare in top-down coordinates.
+      let top = hosting.isFlipped ? inHosting.y : hosting.bounds.height - inHosting.y
+      #expect(abs(inHosting.x - satellite.centre.x * 0.96) < 1e-6)
+      #expect(abs(top - satellite.centre.y * 0.96) < 1e-6)
+    }
   }
 
   private static func descendants(of view: NSView) -> [NSView] {
@@ -258,5 +358,13 @@ struct OrbitMotionTests {
         #expect(!text.contains(banned), "\(name).swift uses \(banned)")
       }
     }
+  }
+}
+
+extension OrbitDrawing.Satellite {
+  /// The same satellite in another slot, for a test that needs a second rim.
+  fileprivate func moved(toSlot slot: Int) -> OrbitDrawing.Satellite {
+    OrbitDrawing.Satellite(
+      slot: slot, centre: centre, radius: radius, colour: colour, rim: rim)
   }
 }
