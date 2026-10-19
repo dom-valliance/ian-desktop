@@ -3,12 +3,12 @@
 D1 to D9 from spec section 10, expanded into what to build and how to prove it. Run them in Claude Code from the repository root. `/package D<n>` loads an entry, checks its dependencies against [the phase log](../adr/0000-phase-log.md) and starts the branch.
 
 ```
-D1 ─┬─ D2 ────────────────────────────────┐
-    └─ D3 ── D4 ── D5 ── P1 ─┬─ D6 ── D8 ──┼── D9
-                             └─ D7 ────────┘
+D1 ─┬─ D2 ────────────────────────────────────────┐
+    └─ D3 ── D4 ── D5 ── D5.1 ── P1 ─┬─ D6 ── D8 ──┼── D9
+                                     └─ D7 ────────┘
 ```
 
-D2 and D3 can run in parallel after D1, as can D6 and D7 after P1. P1 was added on 19 October 2026, when D4 and D5 measured the cost of drawing in SwiftUI. For parallel sessions, create each git worktree by hand from the working branch, tell Dom the paths, and pin each session to its path (a Lance lesson: tool-made worktrees started from a stale `main`).
+D2 and D3 can run in parallel after D1, as can D6 and D7 after P1. D5.1 and P1 were added on 19 October 2026: D5.1 at Dom's request, P1 when D4 and D5 measured the cost of drawing in SwiftUI. For parallel sessions, create each git worktree by hand from the working branch, tell Dom the paths, and pin each session to its path (a Lance lesson: tool-made worktrees started from a stale `main`).
 
 Every package is done only when all of these pass by exit code, in addition to its own list:
 
@@ -135,9 +135,40 @@ Done when:
 - Tests of selection both ways, and of a pillar sinking after `item.removed` and not after the click.
 - The phase log records a keyboard-only pass and a VoiceOver pass through Today reaching every item from the list.
 
+## D5.1. Turn the field and resize the panes
+
+Branch `feat/d5-1-field-controls`. Depends on D5. Dom asked for it on 19 October 2026, after his keyboard and VoiceOver passes through Today, and chose to build it before P1.
+
+Read: the D5 entry in the phase log; docs/design/README.md (Pillars); ADR 0004; spec sections 6.2, 6.3 and 6.4.
+
+Build:
+
+- Dragging sideways on the field turns it about its vertical axis, by any amount and all the way round; the tilt never changes. The design's sway (10 degrees, `sin(0.22 t)`) carries on around the angle the principal leaves it at. Reduce Motion stops the sway, never the principal's own turn. A double-click returns the field to the design's 45 degrees. A click without dragging still selects a pillar, hit-tested at the current angle.
+- The expanded client's three panes are resizable by dragging the dividers between them: the sidebar on the left, the field at the top right, and the lists and footer at the bottom right. Each pane has a minimum size, and the field fills its pane, scaling the 540 by 420 box to fit and keeping its aspect.
+- The field's angle and the two divider positions are saved across relaunches. ADR 0016 adds them to the client settings that may reach disk (spec 6.4).
+
+Done when:
+
+- Tests cover:
+  - the drag mapping and its direction;
+  - the sway around the chosen angle;
+  - Reduce Motion holding the chosen angle;
+  - the double-click reset;
+  - a click below the drag threshold selecting a pillar;
+  - the hit test at a turned angle;
+  - the settings saved and restored;
+  - the panes' minimum sizes.
+- Snapshots of the field turned to 135 and 225 degrees in `normal`, with motion off.
+- The phase log records Dom's manual check:
+  - dragging turns the field;
+  - a click selects;
+  - a double-click resets;
+  - the panes resize with the field scaling;
+  - the angle and pane sizes survive a relaunch.
+
 ## P1. Rendering within the budget
 
-Branch `perf/rendering-budget`. Depends on D5. Dom chose on 19 October 2026 to fix this before D6 and D7, since every later view sits on the rendering.
+Branch `perf/rendering-budget`. Depends on D5.1. Dom chose on 19 October 2026 to fix this before D6 and D7, since every later view sits on the rendering.
 
 Read: spec sections 6.1, 6.3 and 6.9; ADR 0004; the D4 and D5 entries in the phase log.
 

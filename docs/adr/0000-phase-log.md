@@ -16,6 +16,7 @@ Each entry records:
 | D3 | Done, 18 October 2026 |
 | D4 | Done, 19 October 2026 |
 | D5 | Done, 19 October 2026 |
+| D5.1 | Not started |
 | P1 | Not started |
 | D6 | Not started |
 | D7 | Not started |
@@ -315,4 +316,4 @@ The last three were measured by the lead on the app's own process with `ps -o ti
 #### Reviews and what is left
 
 - **Review.** An Opus review against REVIEW.md found 4 Blocking (one was this entry), 8 Should fix and 9 Suggestions. All are fixed, except the optional accessibility actions on Now rows.
-- **Next.** P1, then the sub-phase Dom asked for on 19 October: rotating the field by dragging, and resizable panes.
+- **Next.** D5.1, which Dom asked for on 19 October: turning the field by dragging, and resizable panes, both saved across relaunches. Then P1.
