@@ -129,7 +129,9 @@ struct ClientStatusTests {
 struct ClientModelTests {
   @Test("opens on Today")
   func opensOnToday() {
-    #expect(ClientModel().section == .today)
+    withScratchDefaults { defaults in
+      #expect(ClientModel(defaults: defaults).section == .today)
+    }
   }
 
   @Test("keeps the last view and the selection when the panel is hidden and shown again")
@@ -137,10 +139,11 @@ struct ClientModelTests {
     _ = NSApplication.shared
     let (store, _, _) = await TodayScenario.liveStore()
     defer { store.stop() }
+    let defaults = UserDefaults(suiteName: "ian.tests.\(UUID().uuidString)")!
     let controller = SurfaceController(
-      store: store, signals: SuppressionSignals(camera: IdleCamera()),
-      defaults: UserDefaults(suiteName: "ian.tests.\(UUID().uuidString)")!, quit: {})
-    let model = ClientModel()
+      store: store, signals: SuppressionSignals(camera: IdleCamera()), defaults: defaults,
+      quit: {})
+    let model = ClientModel(defaults: defaults)
     controller.setExpandedContent(
       ExpandedClientView(store: store, controller: controller, model: model))
     let host = controller.windows[2].contentView

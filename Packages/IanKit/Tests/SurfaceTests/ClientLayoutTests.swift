@@ -1,4 +1,5 @@
 import Foundation
+import TestSupport
 import Testing
 
 @testable import Surface
@@ -52,6 +53,22 @@ struct ClientLayoutSettingsTests {
       #expect(settings.angle == 270)
       defaults.set(450.0, forKey: ClientLayoutSettings.angleKey)
       #expect(settings.angle == 90)
+    }
+  }
+
+  @Test("ignores a value that is not a finite number")
+  func ignoresNonFiniteWrites() {
+    withScratchDefaults { defaults in
+      let settings = ClientLayoutSettings(defaults: defaults)
+      settings.angle = 100
+      settings.sidebarWidth = 200
+      settings.fieldHeight = 250
+      settings.angle = .nan
+      settings.sidebarWidth = .infinity
+      settings.fieldHeight = .nan
+      #expect(settings.angle == 100)
+      #expect(settings.sidebarWidth == 200)
+      #expect(settings.fieldHeight == 250)
     }
   }
 

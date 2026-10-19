@@ -20,19 +20,28 @@ public struct ClientLayoutSettings {
   /// The field's angle in degrees, `0..<360`. 45 when none is saved.
   public var angle: Double {
     get { stored(Self.angleKey).map(FieldTurn.normalised) ?? FieldTurn.defaultAngle }
-    nonmutating set { defaults.set(FieldTurn.normalised(newValue), forKey: Self.angleKey) }
+    nonmutating set {
+      guard newValue.isFinite else { return }
+      defaults.set(FieldTurn.normalised(newValue), forKey: Self.angleKey)
+    }
   }
 
   /// The sidebar's width in points. The panes clamp it to their limits when they lay out.
   public var sidebarWidth: Double {
     get { stored(Self.sidebarWidthKey, positive: true) ?? Self.defaultSidebarWidth }
-    nonmutating set { defaults.set(newValue, forKey: Self.sidebarWidthKey) }
+    nonmutating set {
+      guard newValue.isFinite else { return }
+      defaults.set(newValue, forKey: Self.sidebarWidthKey)
+    }
   }
 
   /// The field pane's height in points. The panes clamp it to their limits when they lay out.
   public var fieldHeight: Double {
     get { stored(Self.fieldHeightKey, positive: true) ?? Self.defaultFieldHeight }
-    nonmutating set { defaults.set(newValue, forKey: Self.fieldHeightKey) }
+    nonmutating set {
+      guard newValue.isFinite else { return }
+      defaults.set(newValue, forKey: Self.fieldHeightKey)
+    }
   }
 
   /// A saved number, or nil when it is absent, not a finite number, or (if `positive`) not
