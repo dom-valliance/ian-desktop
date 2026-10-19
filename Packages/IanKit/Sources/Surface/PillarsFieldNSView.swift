@@ -49,6 +49,9 @@ final class PillarsFieldNSView: NSView {
   var clock: () -> Double = { Date.now.timeIntervalSinceReferenceDate }
 
   private(set) var pointer: FieldPointer
+  /// How many times a repaint has been asked for. A window the system has not shown never
+  /// clears `needsDisplay`, so tests count requests instead.
+  private(set) var repaintRequests = 0
   private var link: CADisplayLink?
   /// What the last frame showed. A tick repaints only if the new drawing differs visibly.
   private var shown: PillarsDrawing?
@@ -89,6 +92,20 @@ final class PillarsFieldNSView: NSView {
     return layer
   }
 
+  /// With `.onSetNeedsDisplay` a resize does not mark the layer for display, and the old bitmap
+  /// would stretch. A paused field, under Reduce Motion or suppression, would stay distorted, so
+  /// a new size or scale repaints at once.
+  override func setFrameSize(_ newSize: NSSize) {
+    let changed = newSize != frame.size
+    super.setFrameSize(newSize)
+    if changed { redrawNow() }
+  }
+
+  override func viewDidChangeBackingProperties() {
+    super.viewDidChangeBackingProperties()
+    redrawNow()
+  }
+
   override var isFlipped: Bool { true }
   override var mouseDownCanMoveWindow: Bool { false }
   override func acceptsFirstMouse(for event: NSEvent?) -> Bool { true }
@@ -97,7 +114,8 @@ final class PillarsFieldNSView: NSView {
 
   override func viewDidMoveToWindow() {
     super.viewDidMoveToWindow()
-    NotificationCenter.default.removeObserver(self)
+    NotificationCenter.default.removeObserver(
+      self, name: NSWindow.didChangeOcclusionStateNotification, object: nil)
     link?.invalidate()
     link = nil
     guard let window else { return }
@@ -105,7 +123,7 @@ final class PillarsFieldNSView: NSView {
       self, selector: #selector(visibilityChanged),
       name: NSWindow.didChangeOcclusionStateNotification,
       object: window)
-    let link = displayLink(target: self, selector: #selector(tick))
+    let link = displayLink(target: LinkTarget(view: self), selector: #selector(LinkTarget.tick))
     link.preferredFrameRateRange = CAFrameRateRange(
       minimum: Self.frameRate, maximum: Self.frameRate, preferred: Self.frameRate)
     link.isPaused = true
@@ -149,13 +167,18 @@ final class PillarsFieldNSView: NSView {
     let fit = PillarsFit(size: bounds.size)
     if let shown,
       !next.isVisiblyDifferent(
-        from: shown, pointTolerance: Self.pixelFraction / (fit.scale * backingScale),
-        colourTolerance: Self.colourStep)
+        from: shown, pointTolerance: pointTolerance(for: fit), colourTolerance: Self.colourStep)
     {
       return
     }
     shown = next
+    repaintRequests += 1
     setNeedsDisplay(fit.rect)
+  }
+
+  /// One device pixel, in box units, scaled by `pixelFraction`.
+  func pointTolerance(for fit: PillarsFit) -> Double {
+    Self.pixelFraction / (fit.scale * backingScale)
   }
 
   private var backingScale: Double { Double(window?.backingScaleFactor ?? 2) }
@@ -173,6 +196,7 @@ final class PillarsFieldNSView: NSView {
   /// Repaints the next display cycle whatever the last frame showed.
   private func redrawNow() {
     shown = nil
+    repaintRequests += 1
     needsDisplay = true
   }
 
@@ -242,5 +266,20 @@ final class PillarsFieldNSView: NSView {
         onSelect(key)
       }
     }
+  }
+}
+
+/// What the display link retains in place of the view, so a view that never leaves its window
+/// can still be released.
+@MainActor
+private final class LinkTarget: NSObject {
+  private weak var view: PillarsFieldNSView?
+
+  init(view: PillarsFieldNSView) {
+    self.view = view
+  }
+
+  @objc func tick() {
+    view?.tick()
   }
 }

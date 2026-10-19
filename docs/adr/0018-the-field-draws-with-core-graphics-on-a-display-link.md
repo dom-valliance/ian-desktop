@@ -17,6 +17,8 @@ P1 set the target on the M4 Pro at two thirds of each budget, under 10% with the
 
 A first Core Graphics version that repainted every frame measured 13.6 to 17.8% in the busy scene, no better than SwiftUI. A trace showed 8% of one core in `CGContextDrawPath` and a further 2% in commits: the cost is the rasterising, not only the view graph. A half-float backing store, which the system chose on a wide-colour display, made each fill several times dearer than 8 bits a channel.
 
+The work package named three routes: Core Animation layers per pillar, Metal, and SceneKit. None was chosen. Each rebuilds the drawing in a second representation (layer trees or a scene graph) that the snapshot tests and the hit test could not share with the renderer, and each adds work to keep the two in step. A Core Graphics painter reads the existing `PillarsDrawing` directly, keeps one painter for the screen and the tests, and met the target on the measurements below.
+
 ## Decision
 
 The field is an AppKit `NSView` (`PillarsFieldNSView`), layer-backed, hosted in SwiftUI through `NSViewRepresentable`. `PillarsFieldView` keeps its public initialiser, and `TodayView` is unchanged.
@@ -34,6 +36,6 @@ The field is an AppKit `NSView` (`PillarsFieldNSView`), layer-backed, hosted in 
 - The field reaches 60 frames a second in capability, not in repaints: a frame that would repaint identical pixels is skipped. The 6.9 figure is read as smooth motion, which the pixel tolerance keeps; a reviewer who wants every frame painted can set the tolerance to zero and pay the cost in the table.
 - The 8.0% figure is for the busiest realistic scene in a harness, not the app with the panel open; `scripts/measure-cpu.sh` measures the app.
 - The field now owns its pointer handling in AppKit. A mouse-down on the field cannot move the window (`mouseDownCanMoveWindow` is false) and the first click is accepted.
-- `Surface` still imports AppKit only; Core Text and Core Animation come with it.
+- The field adds no import: Core Text and Core Animation come with AppKit.
 - The `angle` argument of `PillarsFieldView` is where the field starts. The drag state lives in the view, as before.
 - The Pillars snapshots were re-recorded because Core Graphics places the row titles about a point lower and rasterises edges differently from SwiftUI. Polygons, colours and positions otherwise match: before re-recording, 99.7% of pixels matched and the differing ones were the labels.

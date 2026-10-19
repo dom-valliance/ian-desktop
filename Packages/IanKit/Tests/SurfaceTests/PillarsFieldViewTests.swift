@@ -39,6 +39,14 @@ struct PillarsFieldViewTests {
       selected: nil, openedAt: openedAt, sinking: [:])
   }
 
+  /// Windows the test made, detached when it ends so no display link outlives it.
+  @MainActor
+  private final class Hosts {
+    var windows: [NSWindow] = []
+    isolated deinit { for window in windows { window.contentView = nil } }
+  }
+  private let hosts = Hosts()
+
   private final class Log {
     var selected: [PillarCellKey] = []
     var turned: [Double] = []
@@ -58,6 +66,7 @@ struct PillarsFieldViewTests {
     let window = NSWindow(
       contentRect: view.frame, styleMask: [.borderless], backing: .buffered, defer: true)
     window.contentView = view
+    hosts.windows.append(window)
     view.updateClock()
     return (view, window, log)
   }
@@ -134,10 +143,11 @@ struct PillarsFieldViewTests {
     let (view, window, _) = field(scene: scene())
     view.isOnScreen = { seen }
     seen = false
+    let before = view.repaintRequests
     NotificationCenter.default.post(
       name: NSWindow.didChangeOcclusionStateNotification, object: window)
     #expect(!view.isTicking)
-    #expect(view.needsDisplay)
+    #expect(view.repaintRequests > before)
     seen = true
     NotificationCenter.default.post(
       name: NSWindow.didChangeOcclusionStateNotification, object: window)
@@ -147,11 +157,77 @@ struct PillarsFieldViewTests {
   @Test("hiding and showing the view returns and follows what it says")
   func hidingReturns() {
     let (view, _, _) = field(scene: scene())
-    view.isOnScreen = { !view.isHiddenOrHasHiddenAncestor }
+    view.isOnScreen = { [unowned view] in !view.isHiddenOrHasHiddenAncestor }
     view.isHidden = true
     #expect(!view.isTicking)
     view.isHidden = false
     #expect(view.isTicking)
+  }
+
+  @Test("repaints at once when resized, even with the link paused")
+  func resizeRepaints() {
+    let (view, _, _) = field(scene: scene(), reducedMotion: true)
+    #expect(!view.isTicking)
+    let before = view.repaintRequests
+    view.setFrameSize(CGSize(width: 300, height: 200))
+    #expect(view.repaintRequests > before)
+    #expect(!view.isTicking)
+  }
+
+  @Test("does not repaint when set to the size it already has")
+  func sameSizeDoesNotRepaint() {
+    let (view, _, _) = field(scene: scene(), reducedMotion: true)
+    let before = view.repaintRequests
+    view.setFrameSize(view.frame.size)
+    #expect(view.repaintRequests == before)
+  }
+
+  @Test("asks for an 8-bit backing store")
+  func eightBitBackingStore() {
+    let (view, _, _) = field(scene: scene())
+    #expect(view.layer?.contentsFormat == .RGBA8Uint)
+  }
+
+  // MARK: Repaint decision
+
+  @Test("a tick at the same time leaves the field unpainted")
+  func sameTimeSkips() {
+    let (view, _, _) = field(scene: scene())
+    view.tick()
+    let before = view.repaintRequests
+    view.tick()
+    #expect(view.repaintRequests == before)
+  }
+
+  @Test("a tick under one device pixel of sway leaves the field unpainted")
+  func tinyMoveSkips() {
+    let (view, _, _) = field(scene: scene())
+    view.tick()
+    let before = view.repaintRequests
+    view.clock = { [now] in now + 1.0 / 60 }
+    view.tick()
+    #expect(view.repaintRequests == before)
+  }
+
+  @Test("a tick after the sway has moved a device pixel paints")
+  func visibleMovePaints() {
+    let (view, _, _) = field(scene: scene())
+    view.tick()
+    let before = view.repaintRequests
+    view.clock = { [now] in now + 10 }
+    view.tick()
+    #expect(view.repaintRequests > before)
+  }
+
+  @Test("stopping under Reduce Motion paints the finished pose")
+  func reducedStopPaints() {
+    let (view, _, _) = field(scene: scene(openedAt: now), reducedMotion: true)
+    view.tick()
+    let before = view.repaintRequests
+    view.clock = { [now] in now + PillarsRenderer.longestGrow + 0.1 }
+    view.tick()
+    #expect(!view.isTicking)
+    #expect(view.repaintRequests > before)
   }
 
   @Test("stops the link when it leaves its window")

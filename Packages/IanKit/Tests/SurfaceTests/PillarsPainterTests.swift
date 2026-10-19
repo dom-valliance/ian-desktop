@@ -129,6 +129,7 @@ struct PillarsPainterTests {
 }
 
 @Suite("Pillars frame change")
+@MainActor
 struct PillarsFrameChangeTests {
   private let key = PillarCellKey(unitID: "u", horizon: .now)
   private var scene: PillarsScene {
@@ -136,6 +137,11 @@ struct PillarsFrameChangeTests {
       unitIDs: ["u"],
       cells: [PillarCell(key: key, pressure: 0.8, kind: .alert, working: true)],
       selected: key, openedAt: nil, sinking: [:])
+  }
+
+  /// What the view tolerates at its default field size on a 2x display.
+  private var oneDevicePixel: Double {
+    PillarsFieldNSView.pixelFraction / (PillarsFit(size: PillarsRenderer.boxSize).scale * 2)
   }
 
   private func drawing(at time: Double) -> PillarsDrawing {
@@ -149,7 +155,7 @@ struct PillarsFrameChangeTests {
         from: drawing(at: 3), pointTolerance: 0.1, colourTolerance: 2))
   }
 
-  @Test("treats a frame of sway alone as unchanged under a sixth of a point")
+  @Test("treats a frame of sway alone as unchanged under one device pixel")
   func swayFrame() {
     let sway = PillarsRenderer.drawing(
       for: PillarsScene(
@@ -163,17 +169,18 @@ struct PillarsFrameChangeTests {
         cells: [PillarCell(key: key, pressure: 0.8, kind: .proposal, working: false)],
         selected: nil, openedAt: nil, sinking: [:]),
       time: 3 + 1.0 / 60, reducedMotion: false)
-    #expect(!next.isVisiblyDifferent(from: sway, pointTolerance: 0.35, colourTolerance: 2))
+    #expect(
+      !next.isVisiblyDifferent(from: sway, pointTolerance: oneDevicePixel, colourTolerance: 2))
   }
 
   @Test("sees a pulse, a particle or a long gap as a change")
   func visibleChanges() {
     #expect(
       drawing(at: 3.5).isVisiblyDifferent(
-        from: drawing(at: 3), pointTolerance: 0.35, colourTolerance: 2))
+        from: drawing(at: 3), pointTolerance: oneDevicePixel, colourTolerance: 2))
     #expect(
       drawing(at: 30).isVisiblyDifferent(
-        from: drawing(at: 3), pointTolerance: 0.35, colourTolerance: 2))
+        from: drawing(at: 3), pointTolerance: oneDevicePixel, colourTolerance: 2))
   }
 
   @Test("sees a different number of cells as a change")
@@ -182,6 +189,6 @@ struct PillarsFrameChangeTests {
       unitIDs: [], cells: [], selected: nil, openedAt: nil, sinking: [:])
     #expect(
       PillarsRenderer.drawing(for: empty, time: 3, reducedMotion: true).isVisiblyDifferent(
-        from: drawing(at: 3), pointTolerance: 0.35, colourTolerance: 2))
+        from: drawing(at: 3), pointTolerance: oneDevicePixel, colourTolerance: 2))
   }
 }
