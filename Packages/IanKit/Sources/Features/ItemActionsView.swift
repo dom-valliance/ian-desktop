@@ -12,6 +12,10 @@ struct ItemActionsView: View {
   @State private var flow: ItemActionFlow
   @State private var until = Date().addingTimeInterval(3600)
   @State private var note = ""
+  @FocusState private var focus: PromptFocus?
+
+  /// The control that takes focus when a prompt opens, so the keyboard can answer it at once.
+  private enum PromptFocus: Hashable { case confirm, until, note }
 
   init(store: IanStore, item: Components.Schemas.Item) {
     self.store = store
@@ -26,8 +30,11 @@ struct ItemActionsView: View {
   private var model: ItemActionsModel {
     ItemActionsModel(
       item: item, isPending: store.pending[item.id] != nil, notice: store.notices[item.id],
-      actionsEnabled: store.actionsEnabled)
+      actionsEnabled: store.actionsEnabled,
+      isConnecting: store.connection == .connecting)
   }
+
+  private var canAct: Bool { store.actionsEnabled && store.pending[item.id] == nil }
 
   var body: some View {
     let model = model
@@ -45,6 +52,19 @@ struct ItemActionsView: View {
       }
       if let status = model.status { statusView(status) }
     }
+    .onChange(of: item.actions) { _, actions in flow.cancelIfMissing(from: actions) }
+    .onChange(of: flow.prompt) { _, prompt in
+      switch prompt {
+      case .confirm: focus = .confirm
+      case .until:
+        until = Date().addingTimeInterval(3600)
+        focus = .until
+      case .note:
+        note = ""
+        focus = .note
+      case nil: focus = nil
+      }
+    }
   }
 
   @ViewBuilder private func promptView(_ prompt: ItemActionFlow.Prompt) -> some View {
@@ -55,25 +75,42 @@ struct ItemActionsView: View {
         Text(action.confirm ?? "")
           .font(.system(size: 13))
           .foregroundStyle(ClientPalette.secondary())
-        Button(action.label) { Task { await flow.confirm() } }
-          .buttonStyle(ActionButtonStyle(style: action.style))
+        sendButton(action, isReady: true) { await flow.confirm() }
+          .focused($focus, equals: .confirm)
       case .until:
         DatePicker(
           "Until", selection: $until, in: Date()..., displayedComponents: [.date, .hourAndMinute]
         )
         .labelsHidden()
-        Button(action.label) { Task { await flow.submit(until: until, note: nil) } }
-          .buttonStyle(ActionButtonStyle(style: action.style))
+        .focused($focus, equals: .until)
+        sendButton(action, isReady: flow.canSubmit(until: until, note: nil)) {
+          await flow.submit(until: until, note: nil)
+        }
       case .note:
         TextField("Note", text: $note)
           .textFieldStyle(.roundedBorder)
           .frame(minWidth: 180, maxWidth: 280)
-        Button(action.label) { Task { await flow.submit(until: nil, note: note) } }
-          .buttonStyle(ActionButtonStyle(style: action.style))
+          .focused($focus, equals: .note)
+        sendButton(action, isReady: flow.canSubmit(until: nil, note: note)) {
+          await flow.submit(until: nil, note: note)
+        }
       }
       Button("Cancel") { flow.cancel() }
         .buttonStyle(ActionButtonStyle(style: .quiet))
+        .keyboardShortcut(.cancelAction)
     }
+  }
+
+  /// Return sends. It is off while offline, while the item is pending, and until the answer is
+  /// one the prompt accepts.
+  private func sendButton(
+    _ action: Components.Schemas.ItemAction, isReady: Bool,
+    send: @escaping () async -> Void
+  ) -> some View {
+    Button(action.label) { Task { await send() } }
+      .buttonStyle(ActionButtonStyle(style: action.style))
+      .keyboardShortcut(.defaultAction)
+      .disabled(!canAct || !isReady)
   }
 
   @ViewBuilder private func statusView(_ status: ItemActionsModel.Status) -> some View {
@@ -98,7 +135,7 @@ extension ItemActionsModel.Status {
   var isProblem: Bool {
     switch self {
     case .failed, .changed: true
-    case .pending, .offline: false
+    case .pending, .offline, .connecting: false
     }
   }
 

@@ -23,6 +23,8 @@ struct ItemActionsModel: Equatable {
     /// The `409` notice: the item changed before the action arrived.
     case changed
     case offline
+    /// The first snapshot or stream is not in yet.
+    case connecting
 
     var text: String {
       switch self {
@@ -30,6 +32,7 @@ struct ItemActionsModel: Equatable {
       case .failed(let message): message
       case .changed: "This item changed"
       case .offline: "Offline. Actions are paused."
+      case .connecting: "Connecting"
       }
     }
   }
@@ -39,7 +42,7 @@ struct ItemActionsModel: Equatable {
 
   init(
     item: Components.Schemas.Item, isPending: Bool, notice: IanStore.Notice?,
-    actionsEnabled: Bool
+    actionsEnabled: Bool, isConnecting: Bool = false
   ) {
     let isEnabled = !isPending && actionsEnabled
     buttons = item.actions.map { Button(action: $0, isEnabled: isEnabled) }
@@ -47,7 +50,8 @@ struct ItemActionsModel: Equatable {
     case (true, _): status = .pending
     case (false, .failed(let message)?): status = .failed(message)
     case (false, .changed?): status = .changed
-    case (false, nil): status = actionsEnabled ? nil : .offline
+    case (false, nil):
+      status = actionsEnabled ? nil : (isConnecting ? .connecting : .offline)
     }
   }
 }
@@ -93,9 +97,20 @@ final class ItemActionFlow {
     await advance(action)
   }
 
+  /// Whether what the principal gave answers the prompt: a time that has not passed, or a note
+  /// with something in it. A confirm prompt has nothing to send yet.
+  func canSubmit(until: Date?, note: String?, at date: Date = Date()) -> Bool {
+    switch prompt {
+    case .until: (until ?? .distantPast) > date
+    case .note: !(note ?? "").trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+    case .confirm, nil: false
+    }
+  }
+
   /// The principal gave the time or the note the action asked for. The one the action's `input`
-  /// does not ask for is dropped.
+  /// does not ask for is dropped, and an answer that `canSubmit` refuses is not sent.
   func submit(until: Date?, note: String?) async {
+    guard canSubmit(until: until, note: note) else { return }
     switch prompt {
     case .until(let action), .note(let action):
       prompt = nil
@@ -104,6 +119,14 @@ final class ItemActionFlow {
     case .confirm, nil:
       return
     }
+  }
+
+  /// Drops the prompt when the item no longer offers its action.
+  func cancelIfMissing(from actions: [Components.Schemas.ItemAction]) {
+    guard let action = prompt?.action, !actions.contains(where: { $0.id == action.id }) else {
+      return
+    }
+    prompt = nil
   }
 
   func cancel() {

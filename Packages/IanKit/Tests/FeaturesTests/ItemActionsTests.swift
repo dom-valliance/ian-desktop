@@ -158,7 +158,7 @@ struct ItemActionFlowTests {
     let (store, service, _) = await TodayScenario.liveStore()
     defer { store.stop() }
     let flow = flow(for: "alrt_b1", store: store)
-    let time = Date(timeIntervalSince1970: 1_792_200_000)
+    let time = Date().addingTimeInterval(3600)
 
     await flow.choose(scenarioAction("alrt_b1", "act_later"))
     #expect(flow.prompt == .until(scenarioAction("alrt_b1", "act_later")))
@@ -235,6 +235,58 @@ struct ItemActionFlowTests {
       actionsEnabled: store.actionsEnabled)
     #expect(model.status?.text == "This item changed")
     #expect(store.state.items["prop_a1"]?.title == "Changed elsewhere")
+  }
+
+  @Test("refuses a time that has passed and keeps the prompt open")
+  func refusesPastTime() async {
+    let (store, service, _) = await TodayScenario.liveStore()
+    defer { store.stop() }
+    let flow = flow(for: "alrt_b1", store: store)
+
+    await flow.choose(scenarioAction("alrt_b1", "act_later"))
+    #expect(!flow.canSubmit(until: Date().addingTimeInterval(-60), note: nil))
+    await flow.submit(until: Date().addingTimeInterval(-60), note: nil)
+
+    #expect(service.actionCalls.isEmpty)
+    #expect(flow.prompt != nil)
+    #expect(flow.canSubmit(until: Date().addingTimeInterval(3600), note: nil))
+  }
+
+  @Test("refuses a blank note and keeps the prompt open")
+  func refusesBlankNote() async {
+    let (store, service, _) = await TodayScenario.liveStore()
+    defer { store.stop() }
+    let flow = flow(for: "cmt_a2", store: store)
+
+    await flow.choose(scenarioAction("cmt_a2", "act_nudge"))
+    await flow.submit(until: nil, note: "   ")
+
+    #expect(service.actionCalls.isEmpty)
+    #expect(flow.prompt != nil)
+    #expect(!flow.canSubmit(until: nil, note: ""))
+    #expect(flow.canSubmit(until: nil, note: "Any news?"))
+  }
+
+  @Test("cancels the prompt when the item stops offering its action")
+  func cancelsWhenActionDisappears() async {
+    let (store, _, _) = await TodayScenario.liveStore()
+    defer { store.stop() }
+    let flow = flow(for: "cmt_a2", store: store)
+    await flow.choose(scenarioAction("cmt_a2", "act_nudge"))
+
+    flow.cancelIfMissing(from: [TodayScenario.approve, TodayScenario.chase])
+    #expect(flow.prompt != nil)
+    flow.cancelIfMissing(from: [TodayScenario.approve])
+    #expect(flow.prompt == nil)
+  }
+
+  @Test("says Connecting, not Offline, before the first connection")
+  func connectingStatus() {
+    let model = ItemActionsModel(
+      item: item([action("a", label: "A")]), isPending: false, notice: nil,
+      actionsEnabled: false, isConnecting: true)
+    #expect(model.status?.text == "Connecting")
+    #expect(model.buttons.allSatisfy { !$0.isEnabled })
   }
 
   @Test("disables the buttons and sends nothing while the stream is down")
