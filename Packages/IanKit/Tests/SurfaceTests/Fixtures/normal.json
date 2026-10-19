@@ -1,0 +1,1293 @@
+{
+  "today": {
+    "orbit": {
+      "itemIds": [
+        "prop_01MOCK000000000001",
+        "prop_01MOCK000000000002",
+        "prop_01MOCK000000000003",
+        "cmt_01MOCK000000000001",
+        "cmt_01MOCK000000000102"
+      ],
+      "overflow": 4,
+      "nowCount": 9,
+      "urgentCount": 1,
+      "load": 18,
+      "median": 14,
+      "working": true
+    },
+    "field": {
+      "units": [
+        {
+          "id": "unit_client_a",
+          "name": "[CLIENT A]"
+        },
+        {
+          "id": "unit_client_b",
+          "name": "[CLIENT B]"
+        },
+        {
+          "id": "unit_internal",
+          "name": "Internal operations"
+        },
+        {
+          "id": "unit_client_c",
+          "name": "[CLIENT C]"
+        },
+        {
+          "id": "other",
+          "name": "Other"
+        }
+      ],
+      "cells": [
+        {
+          "unitId": "unit_client_a",
+          "horizon": "now",
+          "itemIds": [
+            "prop_01MOCK000000000001",
+            "cmt_01MOCK000000000001",
+            "task_notion_01MOCK000000000001",
+            "prop_01MOCK000000000005"
+          ],
+          "pressure": 1,
+          "kind": "proposal",
+          "working": true
+        },
+        {
+          "unitId": "unit_client_a",
+          "horizon": "week",
+          "itemIds": [
+            "cmt_01MOCK000000000101",
+            "task_jamie_01MOCK000000000005"
+          ],
+          "pressure": 0.36,
+          "kind": "commitment_to",
+          "working": false
+        },
+        {
+          "unitId": "unit_client_b",
+          "horizon": "now",
+          "itemIds": [
+            "prop_01MOCK000000000002",
+            "cmt_01MOCK000000000102",
+            "cmt_01MOCK000000000002"
+          ],
+          "pressure": 0.99,
+          "kind": "proposal",
+          "working": false
+        },
+        {
+          "unitId": "unit_client_b",
+          "horizon": "week",
+          "itemIds": [
+            "cmt_01MOCK000000000003"
+          ],
+          "pressure": 0.4,
+          "kind": "commitment_by",
+          "working": false
+        },
+        {
+          "unitId": "unit_client_b",
+          "horizon": "later",
+          "itemIds": [
+            "task_jamie_01MOCK000000000003"
+          ],
+          "pressure": 0.1,
+          "kind": "task",
+          "working": false
+        },
+        {
+          "unitId": "unit_internal",
+          "horizon": "now",
+          "itemIds": [
+            "prop_01MOCK000000000004"
+          ],
+          "pressure": 0.74,
+          "kind": "proposal",
+          "working": false
+        },
+        {
+          "unitId": "unit_internal",
+          "horizon": "week",
+          "itemIds": [
+            "task_notion_01MOCK000000000002",
+            "task_notion_01MOCK000000000004"
+          ],
+          "pressure": 0.64,
+          "kind": "task",
+          "working": false
+        },
+        {
+          "unitId": "unit_client_c",
+          "horizon": "now",
+          "itemIds": [
+            "prop_01MOCK000000000003"
+          ],
+          "pressure": 0.8,
+          "kind": "proposal",
+          "working": false
+        },
+        {
+          "unitId": "unit_client_c",
+          "horizon": "week",
+          "itemIds": [
+            "cmt_01MOCK000000000103",
+            "cmt_01MOCK000000000004"
+          ],
+          "pressure": 0.58,
+          "kind": "commitment_to",
+          "working": false
+        },
+        {
+          "unitId": "other",
+          "horizon": "later",
+          "itemIds": [
+            "alrt_01MOCK000000000001"
+          ],
+          "pressure": 0.55,
+          "kind": "alert",
+          "working": false
+        }
+      ]
+    },
+    "lists": {
+      "now": [
+        "prop_01MOCK000000000001",
+        "prop_01MOCK000000000002",
+        "prop_01MOCK000000000003",
+        "cmt_01MOCK000000000001",
+        "cmt_01MOCK000000000102",
+        "prop_01MOCK000000000004",
+        "cmt_01MOCK000000000002",
+        "task_notion_01MOCK000000000001",
+        "prop_01MOCK000000000005"
+      ],
+      "week": [
+        {
+          "unitId": "unit_client_a",
+          "itemIds": [
+            "cmt_01MOCK000000000101",
+            "task_jamie_01MOCK000000000005"
+          ]
+        },
+        {
+          "unitId": "unit_client_b",
+          "itemIds": [
+            "cmt_01MOCK000000000003"
+          ]
+        },
+        {
+          "unitId": "unit_internal",
+          "itemIds": [
+            "task_notion_01MOCK000000000002",
+            "task_notion_01MOCK000000000004"
+          ]
+        },
+        {
+          "unitId": "unit_client_c",
+          "itemIds": [
+            "cmt_01MOCK000000000103",
+            "cmt_01MOCK000000000004"
+          ]
+        }
+      ],
+      "later": [
+        {
+          "unitId": "unit_client_b",
+          "counts": [
+            {
+              "kind": "task",
+              "count": 1
+            }
+          ]
+        },
+        {
+          "unitId": "other",
+          "counts": [
+            {
+              "kind": "alert",
+              "count": 1
+            }
+          ]
+        }
+      ]
+    },
+    "context": {
+      "inExternalMeeting": false,
+      "quietHoursActive": false
+    }
+  },
+  "items": [
+    {
+      "id": "prop_01MOCK000000000001",
+      "kind": "proposal",
+      "title": "Send the revised scope to [CLIENT A]",
+      "meta": "[CLIENT A], draft email, expires at 10:42",
+      "unit": {
+        "id": "unit_client_a",
+        "name": "[CLIENT A]"
+      },
+      "horizon": "now",
+      "pressure": 0.89,
+      "attention": "urgent",
+      "dueAt": null,
+      "working": false,
+      "version": 2,
+      "actions": [
+        {
+          "id": "approve",
+          "label": "Approve",
+          "style": "primary",
+          "confirm": null,
+          "input": "none"
+        },
+        {
+          "id": "reject",
+          "label": "Reject",
+          "style": "secondary",
+          "confirm": "Reject this proposal?",
+          "input": "none"
+        }
+      ],
+      "detail": {
+        "kind": "proposal",
+        "actionClass": "draft_email",
+        "actionClassLabel": "Draft email",
+        "targetSystem": "graph",
+        "targetSystemLabel": "Outlook",
+        "summary": "A reply to [PERSON A] with the revised scope attached.",
+        "policyDecision": "propose",
+        "decisionTier": "personal",
+        "expiresAt": "2026-10-16T09:42:00.000Z",
+        "confidence": {
+          "value": 0.82,
+          "source": "self_report"
+        }
+      },
+      "links": {
+        "lance": "https://lance.example.invalid/proposals/prop_01MOCK000000000001",
+        "source": null
+      }
+    },
+    {
+      "id": "prop_01MOCK000000000002",
+      "kind": "proposal",
+      "title": "Reply to [PERSON B] about the review date",
+      "meta": "[CLIENT B], draft email, expires at 12:05",
+      "unit": {
+        "id": "unit_client_b",
+        "name": "[CLIENT B]"
+      },
+      "horizon": "now",
+      "pressure": 0.84,
+      "attention": "needs_you",
+      "dueAt": null,
+      "working": false,
+      "version": 2,
+      "actions": [
+        {
+          "id": "approve",
+          "label": "Approve",
+          "style": "primary",
+          "confirm": null,
+          "input": "none"
+        },
+        {
+          "id": "reject",
+          "label": "Reject",
+          "style": "secondary",
+          "confirm": "Reject this proposal?",
+          "input": "none"
+        }
+      ],
+      "detail": {
+        "kind": "proposal",
+        "actionClass": "draft_email",
+        "actionClassLabel": "Draft email",
+        "targetSystem": "graph",
+        "targetSystemLabel": "Outlook",
+        "summary": "A short reply proposing two dates for the review.",
+        "policyDecision": "propose",
+        "decisionTier": "organisation",
+        "expiresAt": "2026-10-16T11:05:00.000Z",
+        "confidence": {
+          "value": 0.9,
+          "source": "lev_trusted"
+        }
+      },
+      "links": {
+        "lance": "https://lance.example.invalid/proposals/prop_01MOCK000000000002",
+        "source": null
+      }
+    },
+    {
+      "id": "prop_01MOCK000000000003",
+      "kind": "proposal",
+      "title": "Move the weekly sync with [CLIENT C] to Thursday",
+      "meta": "[CLIENT C], calendar invite, expires at 13:30",
+      "unit": {
+        "id": "unit_client_c",
+        "name": "[CLIENT C]"
+      },
+      "horizon": "now",
+      "pressure": 0.8,
+      "attention": "needs_you",
+      "dueAt": null,
+      "working": false,
+      "version": 2,
+      "actions": [
+        {
+          "id": "approve",
+          "label": "Approve",
+          "style": "primary",
+          "confirm": null,
+          "input": "none"
+        },
+        {
+          "id": "reject",
+          "label": "Reject",
+          "style": "secondary",
+          "confirm": "Reject this proposal?",
+          "input": "none"
+        }
+      ],
+      "detail": {
+        "kind": "proposal",
+        "actionClass": "send_calendar_invite",
+        "actionClassLabel": "Calendar invite",
+        "targetSystem": "graph",
+        "targetSystemLabel": "Outlook calendar",
+        "summary": "Move the recurring sync one day later, this week only.",
+        "policyDecision": "propose",
+        "decisionTier": "personal",
+        "expiresAt": "2026-10-16T12:30:00.000Z",
+        "confidence": {
+          "value": 0.74,
+          "source": "self_report"
+        }
+      },
+      "links": {
+        "lance": "https://lance.example.invalid/proposals/prop_01MOCK000000000003",
+        "source": null
+      }
+    },
+    {
+      "id": "cmt_01MOCK000000000001",
+      "kind": "commitment_by",
+      "title": "Send [PERSON A] the signed order form",
+      "meta": "[PERSON A] at [CLIENT A], due today at 14:30",
+      "unit": {
+        "id": "unit_client_a",
+        "name": "[CLIENT A]"
+      },
+      "horizon": "now",
+      "pressure": 0.77,
+      "attention": "needs_you",
+      "dueAt": "2026-10-16T13:30:00.000Z",
+      "working": false,
+      "version": 3,
+      "actions": [
+        {
+          "id": "settle",
+          "label": "Settle",
+          "style": "primary",
+          "confirm": null,
+          "input": "none"
+        },
+        {
+          "id": "snooze",
+          "label": "Snooze",
+          "style": "quiet",
+          "confirm": null,
+          "input": "until"
+        },
+        {
+          "id": "dismiss",
+          "label": "Dismiss",
+          "style": "quiet",
+          "confirm": "Dismiss this commitment?",
+          "input": "none"
+        }
+      ],
+      "detail": {
+        "kind": "commitment_by",
+        "counterparty": {
+          "id": "person_0001",
+          "name": "[PERSON A]"
+        },
+        "evidence": {
+          "quote": "I will send the signed order form over by Friday.",
+          "source": {
+            "kind": "email",
+            "system": "graph",
+            "label": "Email",
+            "observedAt": "2026-10-14T17:30:00.000Z"
+          }
+        },
+        "chase": {
+          "state": "not_chased",
+          "count": 0,
+          "lastChasedAt": null,
+          "nextChaseAt": null
+        },
+        "toConfirm": false
+      },
+      "links": {
+        "lance": "https://lance.example.invalid/commitments/cmt_01MOCK000000000001",
+        "source": null
+      }
+    },
+    {
+      "id": "cmt_01MOCK000000000102",
+      "kind": "commitment_to",
+      "title": "[PERSON B] owes the signed statement of work",
+      "meta": "[PERSON B] at [CLIENT B], due today at 15:30",
+      "unit": {
+        "id": "unit_client_b",
+        "name": "[CLIENT B]"
+      },
+      "horizon": "now",
+      "pressure": 0.74,
+      "attention": "needs_you",
+      "dueAt": "2026-10-16T14:30:00.000Z",
+      "working": false,
+      "version": 2,
+      "actions": [
+        {
+          "id": "settle",
+          "label": "Received",
+          "style": "primary",
+          "confirm": null,
+          "input": "none"
+        },
+        {
+          "id": "chase",
+          "label": "Chase",
+          "style": "secondary",
+          "confirm": null,
+          "input": "note"
+        },
+        {
+          "id": "snooze",
+          "label": "Snooze",
+          "style": "quiet",
+          "confirm": null,
+          "input": "until"
+        }
+      ],
+      "detail": {
+        "kind": "commitment_to",
+        "counterparty": {
+          "id": "person_0002",
+          "name": "[PERSON B]"
+        },
+        "evidence": {
+          "quote": "The signed statement of work will come back today.",
+          "source": {
+            "kind": "email",
+            "system": "graph",
+            "label": "Email",
+            "observedAt": "2026-10-15T03:30:00.000Z"
+          }
+        },
+        "chase": {
+          "state": "chased",
+          "count": 1,
+          "lastChasedAt": "2026-10-15T09:30:00.000Z",
+          "nextChaseAt": null
+        },
+        "toConfirm": false
+      },
+      "links": {
+        "lance": "https://lance.example.invalid/commitments/cmt_01MOCK000000000102",
+        "source": null
+      }
+    },
+    {
+      "id": "prop_01MOCK000000000004",
+      "kind": "proposal",
+      "title": "Move the supplier checklist to In Progress",
+      "meta": "Internal operations, update task, expires at 15:30",
+      "unit": {
+        "id": "unit_internal",
+        "name": "Internal operations"
+      },
+      "horizon": "now",
+      "pressure": 0.74,
+      "attention": "needs_you",
+      "dueAt": null,
+      "working": false,
+      "version": 3,
+      "actions": [
+        {
+          "id": "approve",
+          "label": "Approve",
+          "style": "primary",
+          "confirm": null,
+          "input": "none"
+        },
+        {
+          "id": "reject",
+          "label": "Reject",
+          "style": "secondary",
+          "confirm": "Reject this proposal?",
+          "input": "none"
+        }
+      ],
+      "detail": {
+        "kind": "proposal",
+        "actionClass": "update_task",
+        "actionClassLabel": "Update task",
+        "targetSystem": "notion",
+        "targetSystemLabel": "Notion",
+        "summary": "Change the status of one task from Not started to In Progress.",
+        "policyDecision": "propose",
+        "decisionTier": "fallback",
+        "expiresAt": "2026-10-16T14:30:00.000Z"
+      },
+      "links": {
+        "lance": "https://lance.example.invalid/proposals/prop_01MOCK000000000004",
+        "source": null
+      }
+    },
+    {
+      "id": "cmt_01MOCK000000000002",
+      "kind": "commitment_by",
+      "title": "Share the project plan with [PERSON B]",
+      "meta": "[PERSON B] at [CLIENT B], due today at 16:30",
+      "unit": {
+        "id": "unit_client_b",
+        "name": "[CLIENT B]"
+      },
+      "horizon": "now",
+      "pressure": 0.72,
+      "attention": "needs_you",
+      "dueAt": "2026-10-16T15:30:00.000Z",
+      "working": false,
+      "version": 2,
+      "actions": [
+        {
+          "id": "settle",
+          "label": "Settle",
+          "style": "primary",
+          "confirm": null,
+          "input": "none"
+        },
+        {
+          "id": "snooze",
+          "label": "Snooze",
+          "style": "quiet",
+          "confirm": null,
+          "input": "until"
+        },
+        {
+          "id": "dismiss",
+          "label": "Dismiss",
+          "style": "quiet",
+          "confirm": "Dismiss this commitment?",
+          "input": "none"
+        }
+      ],
+      "detail": {
+        "kind": "commitment_by",
+        "counterparty": {
+          "id": "person_0002",
+          "name": "[PERSON B]"
+        },
+        "evidence": {
+          "quote": "I will share the plan once the dates are agreed.",
+          "source": {
+            "kind": "meeting",
+            "system": "jamie",
+            "label": "Meeting",
+            "observedAt": "2026-10-15T11:30:00.000Z"
+          }
+        },
+        "chase": {
+          "state": "not_chased",
+          "count": 0,
+          "lastChasedAt": null,
+          "nextChaseAt": null
+        },
+        "toConfirm": false
+      },
+      "links": {
+        "lance": "https://lance.example.invalid/commitments/cmt_01MOCK000000000002",
+        "source": null
+      }
+    },
+    {
+      "id": "task_notion_01MOCK000000000001",
+      "kind": "task",
+      "title": "Draft the agenda for the [CLIENT A] steering group",
+      "meta": "Notion, due today at 17:30",
+      "unit": {
+        "id": "unit_client_a",
+        "name": "[CLIENT A]"
+      },
+      "horizon": "now",
+      "pressure": 0.7,
+      "attention": "ambient",
+      "dueAt": "2026-10-16T16:30:00.000Z",
+      "working": true,
+      "version": 2,
+      "actions": [
+        {
+          "id": "done",
+          "label": "Done",
+          "style": "primary",
+          "confirm": null,
+          "input": "none"
+        }
+      ],
+      "detail": {
+        "kind": "task",
+        "source": "notion",
+        "assignee": {
+          "name": "[PERSON]",
+          "isPrincipal": true
+        },
+        "status": "In Progress",
+        "project": "Steering group"
+      },
+      "links": {
+        "lance": "https://lance.example.invalid/tasks/task_notion_01MOCK000000000001",
+        "source": "https://notion.example.invalid/task_notion_01MOCK000000000001"
+      }
+    },
+    {
+      "id": "prop_01MOCK000000000005",
+      "kind": "proposal",
+      "title": "Add a follow-up task for the [CLIENT A] workshop",
+      "meta": "[CLIENT A], create task, expires at 18:30",
+      "unit": {
+        "id": "unit_client_a",
+        "name": "[CLIENT A]"
+      },
+      "horizon": "now",
+      "pressure": 0.68,
+      "attention": "needs_you",
+      "dueAt": null,
+      "working": false,
+      "version": 2,
+      "actions": [
+        {
+          "id": "approve",
+          "label": "Approve",
+          "style": "primary",
+          "confirm": null,
+          "input": "none"
+        },
+        {
+          "id": "reject",
+          "label": "Reject",
+          "style": "secondary",
+          "confirm": "Reject this proposal?",
+          "input": "none"
+        }
+      ],
+      "detail": {
+        "kind": "proposal",
+        "actionClass": "create_task",
+        "actionClassLabel": "Create task",
+        "targetSystem": "notion",
+        "targetSystemLabel": "Notion",
+        "summary": "A task to send the workshop notes, due on Friday.",
+        "policyDecision": "propose",
+        "decisionTier": "personal",
+        "expiresAt": "2026-10-16T17:30:00.000Z",
+        "confidence": {
+          "value": 0.67,
+          "source": "lev_untrusted"
+        }
+      },
+      "links": {
+        "lance": "https://lance.example.invalid/proposals/prop_01MOCK000000000005",
+        "source": null
+      }
+    },
+    {
+      "id": "alrt_01MOCK000000000001",
+      "kind": "alert",
+      "title": "The mail watcher is running slowly",
+      "meta": "P2, raised at 09:30",
+      "unit": {
+        "id": "other",
+        "name": "Other"
+      },
+      "horizon": "later",
+      "pressure": 0.55,
+      "attention": "needs_you",
+      "dueAt": null,
+      "working": false,
+      "version": 2,
+      "actions": [
+        {
+          "id": "acknowledge",
+          "label": "Acknowledge",
+          "style": "primary",
+          "confirm": null,
+          "input": "none"
+        },
+        {
+          "id": "snooze",
+          "label": "Snooze",
+          "style": "quiet",
+          "confirm": null,
+          "input": "until"
+        }
+      ],
+      "detail": {
+        "kind": "alert",
+        "alertKind": "watcher_slow",
+        "alertKindLabel": "Watcher slow",
+        "raisedAt": "2026-10-16T08:30:00.000Z",
+        "dedupeKey": "watcher:graph-mail:latency",
+        "relatedItemIds": [],
+        "explanation": "The mail watcher took three times its usual time on the last run."
+      },
+      "links": {
+        "lance": "https://lance.example.invalid/alerts/alrt_01MOCK000000000001",
+        "source": null
+      },
+      "severity": "P2"
+    },
+    {
+      "id": "task_notion_01MOCK000000000002",
+      "kind": "task",
+      "title": "Review the onboarding checklist",
+      "meta": "Notion, due tomorrow",
+      "unit": {
+        "id": "unit_internal",
+        "name": "Internal operations"
+      },
+      "horizon": "week",
+      "pressure": 0.49,
+      "attention": "ambient",
+      "dueAt": "2026-10-17T05:30:00.000Z",
+      "working": false,
+      "version": 2,
+      "actions": [
+        {
+          "id": "done",
+          "label": "Done",
+          "style": "primary",
+          "confirm": null,
+          "input": "none"
+        }
+      ],
+      "detail": {
+        "kind": "task",
+        "source": "notion",
+        "assignee": {
+          "name": "[PERSON]",
+          "isPrincipal": true
+        },
+        "status": "Not started",
+        "project": null
+      },
+      "links": {
+        "lance": "https://lance.example.invalid/tasks/task_notion_01MOCK000000000002",
+        "source": "https://notion.example.invalid/task_notion_01MOCK000000000002"
+      }
+    },
+    {
+      "id": "cmt_01MOCK000000000103",
+      "kind": "commitment_to",
+      "title": "[PERSON C] owes the access request outcome",
+      "meta": "[PERSON C] at [CLIENT C], due tomorrow",
+      "unit": {
+        "id": "unit_client_c",
+        "name": "[CLIENT C]"
+      },
+      "horizon": "week",
+      "pressure": 0.42,
+      "attention": "ambient",
+      "dueAt": "2026-10-17T13:30:00.000Z",
+      "working": false,
+      "version": 2,
+      "actions": [
+        {
+          "id": "settle",
+          "label": "Received",
+          "style": "primary",
+          "confirm": null,
+          "input": "none"
+        },
+        {
+          "id": "chase",
+          "label": "Chase",
+          "style": "secondary",
+          "confirm": null,
+          "input": "note"
+        },
+        {
+          "id": "snooze",
+          "label": "Snooze",
+          "style": "quiet",
+          "confirm": null,
+          "input": "until"
+        }
+      ],
+      "detail": {
+        "kind": "commitment_to",
+        "counterparty": {
+          "id": "person_0003",
+          "name": "[PERSON C]"
+        },
+        "evidence": {
+          "quote": "I will confirm the access request tomorrow.",
+          "source": {
+            "kind": "email",
+            "system": "graph",
+            "label": "Email",
+            "observedAt": "2026-10-15T07:30:00.000Z"
+          }
+        },
+        "chase": {
+          "state": "not_chased",
+          "count": 0,
+          "lastChasedAt": null,
+          "nextChaseAt": null
+        },
+        "toConfirm": false
+      },
+      "links": {
+        "lance": "https://lance.example.invalid/commitments/cmt_01MOCK000000000103",
+        "source": null
+      }
+    },
+    {
+      "id": "cmt_01MOCK000000000003",
+      "kind": "commitment_by",
+      "title": "Confirm the venue for the [CLIENT B] offsite",
+      "meta": "[PERSON B] at [CLIENT B], due tomorrow",
+      "unit": {
+        "id": "unit_client_b",
+        "name": "[CLIENT B]"
+      },
+      "horizon": "week",
+      "pressure": 0.4,
+      "attention": "ambient",
+      "dueAt": "2026-10-17T15:30:00.000Z",
+      "working": false,
+      "version": 2,
+      "actions": [
+        {
+          "id": "settle",
+          "label": "Settle",
+          "style": "primary",
+          "confirm": null,
+          "input": "none"
+        },
+        {
+          "id": "snooze",
+          "label": "Snooze",
+          "style": "quiet",
+          "confirm": null,
+          "input": "until"
+        },
+        {
+          "id": "dismiss",
+          "label": "Dismiss",
+          "style": "quiet",
+          "confirm": "Dismiss this commitment?",
+          "input": "none"
+        }
+      ],
+      "detail": {
+        "kind": "commitment_by",
+        "counterparty": {
+          "id": "person_0002",
+          "name": "[PERSON B]"
+        },
+        "evidence": {
+          "quote": "Let me confirm the venue by the end of the week.",
+          "source": {
+            "kind": "email",
+            "system": "graph",
+            "label": "Email",
+            "observedAt": "2026-10-13T21:30:00.000Z"
+          }
+        },
+        "chase": {
+          "state": "not_chased",
+          "count": 0,
+          "lastChasedAt": null,
+          "nextChaseAt": null
+        },
+        "toConfirm": false
+      },
+      "links": {
+        "lance": "https://lance.example.invalid/commitments/cmt_01MOCK000000000003",
+        "source": null
+      }
+    },
+    {
+      "id": "task_notion_01MOCK000000000004",
+      "kind": "task",
+      "title": "Update the risk register",
+      "meta": "Notion, due Sunday",
+      "unit": {
+        "id": "unit_internal",
+        "name": "Internal operations"
+      },
+      "horizon": "week",
+      "pressure": 0.29,
+      "attention": "ambient",
+      "dueAt": "2026-10-18T11:30:00.000Z",
+      "working": false,
+      "version": 2,
+      "actions": [
+        {
+          "id": "done",
+          "label": "Done",
+          "style": "primary",
+          "confirm": null,
+          "input": "none"
+        }
+      ],
+      "detail": {
+        "kind": "task",
+        "source": "notion",
+        "assignee": {
+          "name": "[PERSON]",
+          "isPrincipal": true
+        },
+        "status": "In Progress",
+        "project": null
+      },
+      "links": {
+        "lance": "https://lance.example.invalid/tasks/task_notion_01MOCK000000000004",
+        "source": "https://notion.example.invalid/task_notion_01MOCK000000000004"
+      }
+    },
+    {
+      "id": "cmt_01MOCK000000000004",
+      "kind": "commitment_by",
+      "title": "Return the reviewed draft to [PERSON C]",
+      "meta": "[PERSON C] at [CLIENT C], due Sunday",
+      "unit": {
+        "id": "unit_client_c",
+        "name": "[CLIENT C]"
+      },
+      "horizon": "week",
+      "pressure": 0.28,
+      "attention": "ambient",
+      "dueAt": "2026-10-18T13:30:00.000Z",
+      "working": false,
+      "version": 2,
+      "actions": [
+        {
+          "id": "settle",
+          "label": "Settle",
+          "style": "primary",
+          "confirm": null,
+          "input": "none"
+        },
+        {
+          "id": "snooze",
+          "label": "Snooze",
+          "style": "quiet",
+          "confirm": null,
+          "input": "until"
+        },
+        {
+          "id": "dismiss",
+          "label": "Dismiss",
+          "style": "quiet",
+          "confirm": "Dismiss this commitment?",
+          "input": "none"
+        }
+      ],
+      "detail": {
+        "kind": "commitment_by",
+        "counterparty": {
+          "id": "person_0003",
+          "name": "[PERSON C]"
+        },
+        "evidence": {
+          "quote": "I will return the draft with comments on Wednesday.",
+          "source": {
+            "kind": "email",
+            "system": "graph",
+            "label": "Email",
+            "observedAt": "2026-10-15T03:30:00.000Z"
+          }
+        },
+        "chase": {
+          "state": "not_chased",
+          "count": 0,
+          "lastChasedAt": null,
+          "nextChaseAt": null
+        },
+        "toConfirm": false
+      },
+      "links": {
+        "lance": "https://lance.example.invalid/commitments/cmt_01MOCK000000000004",
+        "source": null
+      }
+    },
+    {
+      "id": "cmt_01MOCK000000000201",
+      "kind": "commitment_to",
+      "title": "[PERSON D] may owe a reference check",
+      "meta": "[PERSON D] at Hiring, due Sunday",
+      "unit": {
+        "id": "unit_hiring",
+        "name": "Hiring"
+      },
+      "horizon": "week",
+      "pressure": 0.26,
+      "attention": "ambient",
+      "dueAt": "2026-10-18T21:30:00.000Z",
+      "working": false,
+      "version": 2,
+      "actions": [
+        {
+          "id": "confirm",
+          "label": "Confirm",
+          "style": "primary",
+          "confirm": null,
+          "input": "none"
+        },
+        {
+          "id": "dismiss",
+          "label": "Dismiss",
+          "style": "quiet",
+          "confirm": "Dismiss this commitment?",
+          "input": "none"
+        }
+      ],
+      "detail": {
+        "kind": "commitment_to",
+        "counterparty": {
+          "id": "person_0004",
+          "name": "[PERSON D]"
+        },
+        "evidence": {
+          "quote": "I can get you a reference by the end of next week, if that helps.",
+          "source": {
+            "kind": "email",
+            "system": "graph",
+            "label": "Email",
+            "observedAt": "2026-10-16T04:30:00.000Z"
+          }
+        },
+        "chase": {
+          "state": "not_chased",
+          "count": 0,
+          "lastChasedAt": null,
+          "nextChaseAt": null
+        },
+        "toConfirm": true
+      },
+      "links": {
+        "lance": "https://lance.example.invalid/commitments/cmt_01MOCK000000000201",
+        "source": null
+      }
+    },
+    {
+      "id": "cmt_01MOCK000000000101",
+      "kind": "commitment_to",
+      "title": "[PERSON A] owes the updated forecast",
+      "meta": "[PERSON A] at [CLIENT A], due Monday",
+      "unit": {
+        "id": "unit_client_a",
+        "name": "[CLIENT A]"
+      },
+      "horizon": "week",
+      "pressure": 0.23,
+      "attention": "ambient",
+      "dueAt": "2026-10-19T09:30:00.000Z",
+      "working": false,
+      "version": 2,
+      "actions": [
+        {
+          "id": "settle",
+          "label": "Received",
+          "style": "primary",
+          "confirm": null,
+          "input": "none"
+        },
+        {
+          "id": "chase",
+          "label": "Chase",
+          "style": "secondary",
+          "confirm": null,
+          "input": "note"
+        },
+        {
+          "id": "snooze",
+          "label": "Snooze",
+          "style": "quiet",
+          "confirm": null,
+          "input": "until"
+        }
+      ],
+      "detail": {
+        "kind": "commitment_to",
+        "counterparty": {
+          "id": "person_0001",
+          "name": "[PERSON A]"
+        },
+        "evidence": {
+          "quote": "We will have the updated forecast to you early next week.",
+          "source": {
+            "kind": "meeting",
+            "system": "jamie",
+            "label": "Meeting",
+            "observedAt": "2026-10-15T13:30:00.000Z"
+          }
+        },
+        "chase": {
+          "state": "not_chased",
+          "count": 0,
+          "lastChasedAt": null,
+          "nextChaseAt": null
+        },
+        "toConfirm": false
+      },
+      "links": {
+        "lance": "https://lance.example.invalid/commitments/cmt_01MOCK000000000101",
+        "source": null
+      }
+    },
+    {
+      "id": "task_jamie_01MOCK000000000005",
+      "kind": "task",
+      "title": "Write up the workshop notes",
+      "meta": "Jamie, due Tuesday",
+      "unit": {
+        "id": "unit_client_a",
+        "name": "[CLIENT A]"
+      },
+      "horizon": "week",
+      "pressure": 0.17,
+      "attention": "ambient",
+      "dueAt": "2026-10-20T13:30:00.000Z",
+      "working": false,
+      "version": 2,
+      "actions": [
+        {
+          "id": "done",
+          "label": "Done",
+          "style": "primary",
+          "confirm": null,
+          "input": "none"
+        }
+      ],
+      "detail": {
+        "kind": "task",
+        "source": "jamie",
+        "assignee": {
+          "name": "[PERSON]",
+          "isPrincipal": true
+        },
+        "status": "Not started",
+        "project": "Workshop"
+      },
+      "links": {
+        "lance": "https://lance.example.invalid/tasks/task_jamie_01MOCK000000000005",
+        "source": "https://jamie.example.invalid/task_jamie_01MOCK000000000005"
+      }
+    },
+    {
+      "id": "cmt_01MOCK000000000202",
+      "kind": "commitment_by",
+      "title": "You may have offered the workshop slides to [PERSON A]",
+      "meta": "[PERSON A] at [CLIENT A], no due date",
+      "unit": {
+        "id": "unit_client_a",
+        "name": "[CLIENT A]"
+      },
+      "horizon": "later",
+      "pressure": 0.1,
+      "attention": "ambient",
+      "dueAt": null,
+      "working": false,
+      "version": 2,
+      "actions": [
+        {
+          "id": "confirm",
+          "label": "Confirm",
+          "style": "primary",
+          "confirm": null,
+          "input": "none"
+        },
+        {
+          "id": "dismiss",
+          "label": "Dismiss",
+          "style": "quiet",
+          "confirm": "Dismiss this commitment?",
+          "input": "none"
+        }
+      ],
+      "detail": {
+        "kind": "commitment_by",
+        "counterparty": {
+          "id": "person_0001",
+          "name": "[PERSON A]"
+        },
+        "evidence": {
+          "quote": "Happy to pass the slides on afterwards.",
+          "source": {
+            "kind": "meeting",
+            "system": "jamie",
+            "label": "Meeting",
+            "observedAt": "2026-10-16T06:30:00.000Z"
+          }
+        },
+        "chase": {
+          "state": "not_chased",
+          "count": 0,
+          "lastChasedAt": null,
+          "nextChaseAt": null
+        },
+        "toConfirm": true
+      },
+      "links": {
+        "lance": "https://lance.example.invalid/commitments/cmt_01MOCK000000000202",
+        "source": null
+      }
+    },
+    {
+      "id": "task_jamie_01MOCK000000000003",
+      "kind": "task",
+      "title": "Collate feedback from the pilot users",
+      "meta": "Jamie, no due date",
+      "unit": {
+        "id": "unit_client_b",
+        "name": "[CLIENT B]"
+      },
+      "horizon": "later",
+      "pressure": 0.1,
+      "attention": "ambient",
+      "dueAt": null,
+      "working": false,
+      "version": 1,
+      "actions": [
+        {
+          "id": "done",
+          "label": "Done",
+          "style": "primary",
+          "confirm": null,
+          "input": "none"
+        }
+      ],
+      "detail": {
+        "kind": "task",
+        "source": "jamie",
+        "assignee": {
+          "name": "[PERSON]",
+          "isPrincipal": true
+        },
+        "status": "Not started",
+        "project": "Pilot"
+      },
+      "links": {
+        "lance": "https://lance.example.invalid/tasks/task_jamie_01MOCK000000000003",
+        "source": "https://jamie.example.invalid/task_jamie_01MOCK000000000003"
+      }
+    }
+  ]
+}
