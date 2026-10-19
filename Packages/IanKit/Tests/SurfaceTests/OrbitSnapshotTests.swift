@@ -33,7 +33,7 @@ struct OrbitSnapshotTests {
   func motionOn(scenario: String) {
     assertSnapshot(
       of: image(scenario, reducedMotion: false),
-      as: .image(precision: 0.98, perceptualPrecision: 0.98), named: "\(scenario)-motion-on",
+      as: .image(precision: 0.998, perceptualPrecision: 0.98), named: "\(scenario)-motion-on",
       testName: "orbit")
   }
 
@@ -41,7 +41,7 @@ struct OrbitSnapshotTests {
   func motionOff(scenario: String) {
     assertSnapshot(
       of: image(scenario, reducedMotion: true),
-      as: .image(precision: 0.98, perceptualPrecision: 0.98), named: "\(scenario)-motion-off",
+      as: .image(precision: 0.998, perceptualPrecision: 0.98), named: "\(scenario)-motion-off",
       testName: "orbit")
   }
 }
