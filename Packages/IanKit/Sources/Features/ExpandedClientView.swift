@@ -21,7 +21,7 @@ public struct ExpandedClientView: View {
   public var body: some View {
     VStack(spacing: 0) {
       ClientHeader(
-        store: store, isTicking: controller?.isExpandedAnimating ?? false,
+        store: store, isTicking: controller?.isExpandedOnScreen ?? false,
         close: { controller?.hideExpanded() })
       Divider().overlay(ClientPalette.line)
       HStack(spacing: 0) {

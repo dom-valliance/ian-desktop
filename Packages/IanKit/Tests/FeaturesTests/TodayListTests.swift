@@ -11,7 +11,8 @@ struct TodayListModelTests {
   private func model(
     removals: [String: IanStore.Removal] = [:], statuses: ItemStatuses = ItemStatuses()
   ) -> TodayListModel {
-    TodayListModel(state: TodayScenario.state, removals: removals, statuses: statuses)
+    TodayListModel(
+      state: TodayScenario.state, removals: removals, statuses: statuses, at: Date())
   }
 
   @Test("lists the Now rows in the order the server sent, with the kind of each item")
@@ -51,18 +52,57 @@ struct TodayListModelTests {
     #expect(ItemKindStyle.section(for: .alert) == .alerts)
   }
 
-  @Test("dims a row whose item the server has just removed, and keeps its place")
-  func settledRowStaysAndDims() {
-    var state = TodayScenario.state
-    let removed = state.items.removeValue(forKey: "prop_a1")!
-    let removal = IanStore.Removal.make(removed, outcome: "Settled.")
+  @Test(
+    "keeps a removed item's dimmed row and its outcome footer after the today update that follows")
+  @MainActor
+  func settledRowAndOutcomeSurviveTheTodayUpdate() async {
+    let (store, _, feed) = await TodayScenario.liveStore()
+    defer { store.stop() }
+    let model = TodayModel()
+    model.select(.item("prop_a1"))
 
+    // The server's order: the removal, then the Today that no longer lists the item. Nothing
+    // refreshes between them.
+    await TodayScenario.send(
+      Fixtures.removedJSON("prop_a1", outcome: "Settled. Recorded on the ledger"), id: 11,
+      to: feed, on: store)
+    await TodayScenario.send(
+      TodayScenario.todayUpdatedJSON(dropping: ["prop_a1"]), id: 12, to: feed, on: store)
+
+    let removedAt = store.removals["prop_a1"]!.removedAt
     let rows = TodayListModel(
-      state: state, removals: ["prop_a1": removal], statuses: ItemStatuses()
+      state: store.state, removals: store.removals, statuses: ItemStatuses(store: store),
+      at: removedAt.addingTimeInterval(0.1)
     ).now
-
     #expect(rows.map(\.id) == ["alrt_b1", "prop_a1", "cmt_a2"])
     #expect(rows.map(\.isSettled) == [false, true, false])
+
+    let selection = model.resolvedSelection(in: store)
+    #expect(selection == .item("prop_a1"))
+    let footer = FooterContent(
+      selection: selection!, state: store.state, removals: store.removals)
+    #expect(footer?.trailing == .outcome("Settled. Recorded on the ledger"))
+  }
+
+  @Test("lets the dimmed row go once its pillar has finished sinking")
+  @MainActor
+  func settledRowLeavesWithItsPillar() async {
+    let (store, _, feed) = await TodayScenario.liveStore()
+    defer { store.stop() }
+    await TodayScenario.send(Fixtures.removedJSON("prop_a1"), id: 11, to: feed, on: store)
+    await TodayScenario.send(
+      TodayScenario.todayUpdatedJSON(dropping: ["prop_a1"]), id: 12, to: feed, on: store)
+    let removedAt = store.removals["prop_a1"]!.removedAt
+
+    func rows(after seconds: TimeInterval) -> [String] {
+      TodayListModel(
+        state: store.state, removals: store.removals, statuses: ItemStatuses(),
+        at: removedAt.addingTimeInterval(seconds)
+      ).now.map(\.id)
+    }
+
+    #expect(rows(after: 0.5) == ["alrt_b1", "prop_a1", "cmt_a2"])
+    #expect(rows(after: 0.8) == ["alrt_b1", "cmt_a2"])
   }
 
   @Test("leaves out a row whose item the store neither holds nor remembers")
@@ -70,7 +110,7 @@ struct TodayListModelTests {
     var state = TodayScenario.state
     state.items["cmt_a2"] = nil
 
-    let rows = TodayListModel(state: state, removals: [:], statuses: ItemStatuses()).now
+    let rows = TodayListModel(state: state, removals: [:], statuses: ItemStatuses(), at: Date()).now
 
     #expect(rows.map(\.id) == ["alrt_b1", "prop_a1"])
   }
@@ -83,6 +123,19 @@ struct TodayListModelTests {
     #expect(list.now[2].accessibilityLabel == "Owed by you, Title of cmt_a2, now")
     #expect(list.week[0].accessibilityLabel == "This week, [CLIENT A], 2 items")
     #expect(list.later[0].accessibilityLabel == "Later, [CLIENT A], 1 task, 1 proposal")
+  }
+
+  @Test("says when an agent is working on an item, before any pending state")
+  func workingLabel() {
+    var state = TodayScenario.state
+    state.items["prop_a1"]?.working = true
+
+    let rows = TodayListModel(
+      state: state, removals: [:], statuses: ItemStatuses(pending: ["prop_a1"]), at: Date()
+    ).now
+
+    #expect(
+      rows[1].accessibilityLabel == "Proposal, Title of prop_a1, now, being worked on, pending")
   }
 
   @Test("adds pending, error and changed states to a row's label")
@@ -103,7 +156,8 @@ struct TodayListModelTests {
     let removed = state.items.removeValue(forKey: "prop_a1")!
 
     let rows = TodayListModel(
-      state: state, removals: ["prop_a1": .make(removed, outcome: nil)], statuses: ItemStatuses()
+      state: state, removals: ["prop_a1": .make(removed, outcome: nil)], statuses: ItemStatuses(),
+      at: Date()
     ).now
 
     #expect(rows[1].accessibilityLabel == "Proposal, Title of prop_a1, now, settled")
@@ -111,7 +165,8 @@ struct TodayListModelTests {
 
   @Test("has no rows before the first snapshot")
   func emptyBeforeSnapshot() {
-    let list = TodayListModel(state: StoreState(), removals: [:], statuses: ItemStatuses())
+    let list = TodayListModel(
+      state: StoreState(), removals: [:], statuses: ItemStatuses(), at: Date())
     #expect(list.now.isEmpty && list.week.isEmpty && list.later.isEmpty)
   }
 }
@@ -158,17 +213,21 @@ struct FooterContentTests {
     #expect(footer?.trailing == .members(["task_a3", "cmt_a4"]))
   }
 
-  @Test("summarises a later group by kind and offers no actions")
+  @Test("summarises a later group by kind and links each count to its view")
   func laterGroupFooter() {
     let footer = FooterContent(selection: .later(unitID: "unit_a"), state: state, removals: [:])
 
     #expect(footer?.meta == "1 task, 1 proposal")
-    #expect(footer?.trailing == FooterContent.Trailing.none)
+    guard case .counts(let counts)? = footer?.trailing else {
+      Issue.record("A later group's footer carries its counts.")
+      return
+    }
+    #expect(counts.map(\.section) == [.tasks, .proposals])
   }
 }
 
 extension IanStore.Removal {
   fileprivate static func make(_ item: Components.Schemas.Item, outcome: String?) -> Self {
-    Self(item: item, outcome: outcome, removedAt: Date())
+    Self(item: item, outcome: outcome, removedAt: Date(), nowListIndex: nil)
   }
 }

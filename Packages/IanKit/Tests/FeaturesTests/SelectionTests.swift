@@ -68,10 +68,11 @@ struct SelectionTests {
         == FieldCellRef(unitID: "unit_b", horizon: .later))
   }
 
-  @Test("selects no pillar for a group whose unit is not in the field")
-  func unknownUnitSelectsNoPillar() {
+  @Test("selects no pillar for a group whose unit has no such cell")
+  func groupWithoutCellSelectsNoPillar() {
     #expect(TodaySelectionModel.pillar(for: .week(unitID: "unit_z"), in: today) == nil)
-    #expect(TodaySelectionModel.pillar(for: .later(unitID: "unit_b"), in: today) != nil)
+    #expect(TodaySelectionModel.pillar(for: .week(unitID: "unit_b"), in: today) == nil)
+    #expect(TodaySelectionModel.pillar(for: .later(unitID: "unit_z"), in: today) == nil)
     #expect(TodaySelectionModel.pillar(for: .item("task_unknown"), in: today) == nil)
   }
 
@@ -85,10 +86,15 @@ struct SelectionTests {
     }
   }
 
-  @Test("every unit a group names is one of the field's units")
-  func groupsNameFieldUnits() {
-    let units = Set(today.field.units.map(\.id))
-    #expect(today.lists.week.allSatisfy { units.contains($0.unitId) })
-    #expect(today.lists.later.allSatisfy { units.contains($0.unitId) })
+  @Test("never selects a pillar, or the row of one, whose unit is not one of the field's units")
+  func unitOutsideFieldSelectsNothing() {
+    var stray = today
+    stray.field.units.removeAll { $0.id == "unit_b" }
+
+    #expect(
+      TodaySelectionModel.selection(
+        forPillar: FieldCellRef(unitID: "unit_b", horizon: .now), in: stray) == nil)
+    #expect(TodaySelectionModel.pillar(for: .item("alrt_b1"), in: stray) == nil)
+    #expect(TodaySelectionModel.pillar(for: .later(unitID: "unit_b"), in: stray) == nil)
   }
 }

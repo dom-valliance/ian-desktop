@@ -117,12 +117,13 @@ enum TodayScenario {
   /// A started, live store holding the scenario.
   @MainActor
   static func liveStore(
-    service: ScriptedService = ScriptedService(snapshots: [.success(snapshot)])
+    service: ScriptedService = ScriptedService(snapshots: [.success(snapshot)]),
+    clock: ManualClock = ManualClock()
   ) async -> (store: IanStore, service: ScriptedService, feed: Feed) {
     let feed = service.planStream()
     let store = IanStore(
       service: service, profile: .mock, appVersion: SemanticVersion(major: 0, minor: 1, patch: 0),
-      clock: ManualClock(), jitter: { 1 })
+      clock: clock, jitter: { 1 })
     store.start()
     _ = await eventually("live") { await MainActor.run { store.connection == .live } }
     return (store, service, feed)

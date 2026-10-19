@@ -21,6 +21,8 @@ struct FieldSceneModel: Equatable {
 struct FieldMemory: Equatable {
   fileprivate var cells: [FieldCellRef: Components.Schemas.FieldCell] = [:]
   fileprivate var sinking: [FieldCellRef: TimeInterval] = [:]
+  /// The columns as last drawn, held while a cell of a column that has left is still sinking.
+  fileprivate var unitIDs: [String] = []
 
   /// Whether a cell has started to sink and not finished, so the caller builds again once it
   /// has, and the cell that left Today can go.
@@ -63,16 +65,22 @@ enum FieldSceneBuilder {
       next.cells[ref] = cell
       next.sinking[ref] = sinkStart(of: cell, ref)
     }
-    // A cell Today dropped keeps sinking from its last values, until it has finished.
-    for (ref, old) in memory.cells where !current.contains(ref) && unitIDs.contains(ref.unitID) {
-      guard let start = sinkStart(of: old, ref), now - start < sinkDuration else { continue }
+    // A cell Today dropped keeps sinking from its last values, until it has finished. While one
+    // sinks, its column stays, so the others do not shift under it.
+    var shownUnitIDs = unitIDs
+    for (ref, old) in memory.cells where !current.contains(ref) {
+      guard memory.unitIDs.contains(ref.unitID) || unitIDs.contains(ref.unitID),
+        let start = sinkStart(of: old, ref), now - start < sinkDuration
+      else { continue }
       cells.append(old)
       next.cells[ref] = old
       next.sinking[ref] = start
+      if !unitIDs.contains(ref.unitID) { shownUnitIDs = memory.unitIDs }
     }
+    next.unitIDs = shownUnitIDs
     return (
       FieldSceneModel(
-        unitIDs: unitIDs, cells: cells, selected: selected, openedAt: openedAt,
+        unitIDs: shownUnitIDs, cells: cells, selected: selected, openedAt: openedAt,
         sinking: next.sinking),
       next
     )

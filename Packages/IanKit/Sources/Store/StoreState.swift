@@ -97,14 +97,4 @@ public struct StoreState: Equatable, Sendable {
     }
     return effects
   }
-
-  /// Whether Today still names the item: in the Orbit, a field cell, the Now list or a week
-  /// group. A membership test on what the server sent; nothing is counted or chosen.
-  public func todayNames(_ itemID: String) -> Bool {
-    guard let today else { return false }
-    return today.orbit.itemIds.contains(itemID)
-      || today.field.cells.contains { $0.itemIds.contains(itemID) }
-      || today.lists.now.contains(itemID)
-      || today.lists.week.contains { $0.itemIds.contains(itemID) }
-  }
 }

@@ -86,28 +86,29 @@ struct RemovalTests {
     #expect(harness.store.removals.isEmpty)
   }
 
-  @Test("keeps the record while Today still names the item")
-  func keepsRecordWhileTodayNamesIt() async {
+  @Test("keeps the record through the today update that follows item.removed")
+  func keepsRecordThroughTodayUpdate() async {
     let harness = await liveHarness()
     defer { harness.store.stop() }
-    await apply(harness, Fixtures.removedJSON("task_1"), id: "11")
-
-    await apply(harness, todayUpdated(naming: ["task_1", "alrt_1"]), id: "12")
-
-    #expect(harness.store.removals["task_1"] != nil)
-  }
-
-  @Test("clears the record when a later today update no longer names the item")
-  func clearsWhenTodayDropsItem() async {
-    let harness = await liveHarness()
-    defer { harness.store.stop() }
-    await apply(harness, Fixtures.removedJSON("task_1"), id: "11")
+    await apply(harness, Fixtures.removedJSON("task_1", outcome: "Settled."), id: "11")
     await apply(harness, Fixtures.alertClearedJSON("alrt_1"), id: "12")
 
-    await apply(harness, todayUpdated(naming: ["alrt_1"]), id: "13")
+    await apply(harness, todayUpdated(naming: []), id: "13")
 
-    #expect(harness.store.removals["task_1"] == nil)
+    #expect(harness.store.removals["task_1"]?.outcome == "Settled.")
     #expect(harness.store.removals["alrt_1"] != nil)
+  }
+
+  @Test("remembers where the item stood in the Now list when it left")
+  func remembersNowListIndex() async {
+    let harness = await liveHarness()
+    defer { harness.store.stop() }
+
+    await apply(harness, Fixtures.removedJSON("alrt_1"), id: "11")
+    await apply(harness, Fixtures.removedJSON("task_1"), id: "12")
+
+    #expect(harness.store.removals["task_1"]?.nowListIndex == 0)
+    #expect(harness.store.removals["alrt_1"]?.nowListIndex == 1)
   }
 
   @Test("clears the record when the item comes back")
@@ -138,19 +139,5 @@ struct RemovalTests {
 
     await harness.clock.advance(by: .seconds(1))
     #expect(await eventually("expiry") { await MainActor.run { harness.store.removals.isEmpty } })
-  }
-
-  @Test("names an item only while the snapshot's Today lists it")
-  func todayNamesItemsItLists() async {
-    var state = StoreState()
-    state.apply(
-      snapshot: Fixtures.snapshot(
-        items: [Fixtures.itemJSON(id: "task_1")],
-        today: Fixtures.todayJSON(load: 1, itemIDs: ["task_1"])))
-    #expect(state.todayNames("task_1"))
-
-    state.apply(snapshot: Fixtures.snapshot(items: [], today: Fixtures.todayJSON(load: 0)))
-
-    #expect(!state.todayNames("task_1"))
   }
 }

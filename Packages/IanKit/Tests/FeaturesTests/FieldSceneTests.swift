@@ -90,6 +90,25 @@ struct FieldSceneBuilderTests {
     #expect(after.scene.cells.contains { TodaySelectionModel.ref($0) == nowPillar })
   }
 
+  @Test("keeps a column while a cell of the unit that left is still sinking, then drops it")
+  func columnStaysWhileDepartingCellSinks() {
+    let before = build()
+    var withoutUnitB = TodayScenario.today
+    withoutUnitB.field.units.removeAll { $0.id == "unit_b" }
+    withoutUnitB.field.cells.removeAll { $0.unitId == "unit_b" }
+    let gone: (String) -> Bool = { !["alrt_b1", "task_b2"].contains($0) }
+
+    let during = build(
+      hasItem: gone, memory: before.memory, today: withoutUnitB, now: t0 + 0.2)
+    #expect(during.scene.unitIDs == ["unit_a", "unit_b"])
+    #expect(during.scene.sinking[nowPillar] == t0 + 0.2)
+
+    let after = build(
+      hasItem: gone, memory: during.memory, today: withoutUnitB, now: t0 + 0.2 + 0.75)
+    #expect(after.scene.unitIDs == ["unit_a"])
+    #expect(after.scene.cells.allSatisfy { $0.unitId == "unit_a" })
+  }
+
   @Test("lets a cell that moved away go at once, since its items still exist")
   func movedCellDoesNotSink() {
     let before = build()
@@ -143,7 +162,7 @@ struct FieldSceneStoreTests {
     model.refresh(store: store, openedAt: nil, now: start)
     await TodayScenario.send(
       TodayScenario.todayUpdatedJSON(dropping: ["alrt_b1"]), id: 12, to: feed, on: store)
-    #expect(store.removals["alrt_b1"] == nil)
+    #expect(store.removals["alrt_b1"] != nil)
 
     let stillSinking = model.refresh(store: store, openedAt: nil, now: start + 0.3)
     #expect(stillSinking)
@@ -169,8 +188,8 @@ struct FieldSceneStoreTests {
     #expect(model.scene?.openedAt == 7)
   }
 
-  @Test("selects the first item's row from a pillar and drops a selection that is gone")
-  func pillarSelectsRowAndStaleSelectionDrops() async {
+  @Test("selects the first item's row from a pillar and keeps it while the removal record lives")
+  func pillarSelectsRowAndRemovedSelectionStays() async {
     let (store, _, feed) = await TodayScenario.liveStore()
     defer { store.stop() }
     let model = TodayModel()
@@ -180,9 +199,28 @@ struct FieldSceneStoreTests {
     #expect(model.resolvedSelection(in: store) == .item("prop_a1"))
 
     await TodayScenario.send(Fixtures.removedJSON("prop_a1"), id: 11, to: feed, on: store)
-    #expect(model.resolvedSelection(in: store) == .item("prop_a1"))
     await TodayScenario.send(
       TodayScenario.todayUpdatedJSON(dropping: ["prop_a1"]), id: 12, to: feed, on: store)
+
+    #expect(model.resolvedSelection(in: store) == .item("prop_a1"))
+  }
+
+  @Test("drops a selection once the item's removal record has expired")
+  func expiredRemovalDropsSelection() async {
+    let clock = ManualClock()
+    let (store, _, feed) = await TodayScenario.liveStore(clock: clock)
+    defer { store.stop() }
+    let model = TodayModel()
+    model.select(.item("prop_a1"))
+
+    await TodayScenario.send(Fixtures.removedJSON("prop_a1"), id: 11, to: feed, on: store)
+    #expect(model.resolvedSelection(in: store) == .item("prop_a1"))
+    _ = await eventually("the expiry timer") {
+      await clock.requestedSleeps.contains(IanStore.removalLifetime)
+    }
+    await clock.advance(by: .seconds(10))
+    _ = await eventually("expiry") { await MainActor.run { store.removals.isEmpty } }
+
     #expect(model.resolvedSelection(in: store) == nil)
   }
 }

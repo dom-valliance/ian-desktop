@@ -1,3 +1,4 @@
+import Foundation
 import Store
 import Surface
 import SwiftUI
@@ -29,19 +30,22 @@ struct TodayView: View {
 
   var body: some View {
     let selection = model.resolvedSelection(in: store)
+    // Each rebuild redraws the rows, so a row leaving with its pillar goes when it is done.
+    let _ = model.revision
     VStack(spacing: 0) {
       field
       Divider().overlay(ClientPalette.line)
-      ScrollView {
-        TodayListsView(
-          list: TodayListModel(
-            state: store.state, removals: store.removals, statuses: ItemStatuses(store: store)),
-          selection: selection, onSelect: { model.select($0) }, onNavigate: onNavigate
-        )
-        .padding(.horizontal, 8)
-      }
+      TodayListsView(
+        list: TodayListModel(
+          state: store.state, removals: store.removals, statuses: ItemStatuses(store: store),
+          at: Date.now),
+        hasToday: store.state.today != nil,
+        selection: Binding(get: { selection }, set: { model.select($0) })
+      )
       Divider().overlay(ClientPalette.line)
-      SelectionFooter(store: store, selection: selection, onSelect: { model.select($0) })
+      SelectionFooter(
+        store: store, selection: selection, onSelect: { model.select($0) },
+        onNavigate: onNavigate)
     }
     .task(id: trigger) { await keepSceneCurrent() }
   }

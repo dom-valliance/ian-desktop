@@ -14,6 +14,8 @@ final class TodayModel {
   /// says whether it still stands.
   private(set) var selection: TodaySelection?
   private(set) var scene: FieldSceneModel?
+  /// Counts each rebuild, so a view that draws rows leaving the list is redrawn when it is done.
+  private(set) var revision = 0
   @ObservationIgnored private var memory = FieldMemory()
 
   init() {}
@@ -38,10 +40,11 @@ final class TodayModel {
     return store.state.items[id] != nil || store.removals[id] != nil ? selection : nil
   }
 
-  /// Rebuilds the scene from the store. Returns whether a pillar is still sinking, so the
-  /// caller builds again when it has finished.
+  /// Rebuilds the scene from the store. Returns whether a pillar is still sinking or a row is
+  /// still leaving, so the caller builds again when they have finished.
   @discardableResult
   func refresh(store: IanStore, openedAt: TimeInterval?, now: TimeInterval) -> Bool {
+    revision += 1
     guard let today = store.state.today else {
       if scene != nil { scene = nil }
       memory = FieldMemory()
@@ -56,6 +59,9 @@ final class TodayModel {
       selected: selected, openedAt: openedAt, memory: memory, now: now)
     if scene != built.scene { scene = built.scene }
     memory = built.memory
-    return memory.hasUnfinishedSinking(at: now)
+    let rowsLeaving = !TodayListModel.nowIDs(
+      today.lists.now, removals: store.removals, at: Date(timeIntervalSinceReferenceDate: now)
+    ).filter { !today.lists.now.contains($0) }.isEmpty
+    return memory.hasUnfinishedSinking(at: now) || rowsLeaving
   }
 }

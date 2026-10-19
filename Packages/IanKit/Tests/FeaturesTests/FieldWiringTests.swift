@@ -102,10 +102,3 @@ struct FieldWiringTests {
     controller.hideExpanded()
   }
 }
-
-@MainActor
-private final class IdleCamera: CameraMonitoring {
-  var isLive = false
-  func start(onChange: @escaping @MainActor () -> Void) {}
-  func stop() {}
-}

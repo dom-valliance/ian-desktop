@@ -1,125 +1,107 @@
-import Store
+import Contract
 import SwiftUI
 
-/// The Now list, This week's rolled-up groups and Later's counts (spec 6.3). Every row is a
-/// real button, and the list is the accessible path to every item the field shows.
+/// The Now list, This week's rolled-up groups and Later's counts (spec 6.3), as one sectioned
+/// list bound to the selection, so the arrow keys move through it without any system keyboard
+/// setting. The list is the accessible path to every item the field shows.
 struct TodayListsView: View {
   let list: TodayListModel
-  let selection: TodaySelection?
-  let onSelect: (TodaySelection) -> Void
-  let onNavigate: (ClientSection) -> Void
+  /// Whether Today has loaded, so an empty list can say that nothing is open.
+  let hasToday: Bool
+  @Binding var selection: TodaySelection?
 
   var body: some View {
-    VStack(alignment: .leading, spacing: 14) {
-      if list.now.isEmpty && list.week.isEmpty && list.later.isEmpty {
-        Text("Nothing is open.")
-          .font(.system(size: 13))
-          .foregroundStyle(ClientPalette.secondary(0.6))
-          .padding(.horizontal, 8)
-      }
-      if !list.now.isEmpty {
-        section("Now") {
-          ForEach(list.now) { row in
-            Button {
-              onSelect(.item(row.id))
-            } label: {
-              RowContent(
-                kindColour: ItemKindStyle.colour(row.kind), title: row.title, tag: "NOW",
-                isSettled: row.isSettled)
-            }
-            .buttonStyle(ListRowButtonStyle(isSelected: selection == .item(row.id)))
-            .accessibilityLabel(row.accessibilityLabel)
-          }
+    ScrollViewReader { proxy in
+      List(selection: highlighted) {
+        if hasToday && list.now.isEmpty && list.week.isEmpty && list.later.isEmpty {
+          Text("Nothing is open.")
+            .font(.system(size: 13))
+            .foregroundStyle(ClientPalette.secondary(0.6))
+            .selectionDisabled()
         }
-      }
-      if !list.week.isEmpty {
-        section("This week") {
-          ForEach(list.week) { row in
-            Button {
-              onSelect(.week(unitID: row.unitID))
-            } label: {
+        if !list.now.isEmpty {
+          Section {
+            ForEach(list.now) { row in
               RowContent(
-                kindColour: row.kind.map(ItemKindStyle.colour) ?? ClientPalette.secondary(),
-                title: row.unitName, tag: String(row.itemIDs.count), isSettled: false)
-            }
-            .buttonStyle(ListRowButtonStyle(isSelected: isSelected(row)))
-            .accessibilityLabel(row.accessibilityLabel)
-          }
-        }
-      }
-      if !list.later.isEmpty {
-        section("Later") {
-          ForEach(list.later) { row in
-            HStack(spacing: 6) {
-              Button {
-                onSelect(.later(unitID: row.unitID))
-              } label: {
-                RowContent(
-                  kindColour: row.kind.map(ItemKindStyle.colour) ?? ClientPalette.secondary(),
-                  title: row.unitName, tag: nil, isSettled: false)
-              }
-              .buttonStyle(ListRowButtonStyle(isSelected: selection == .later(unitID: row.unitID)))
+                kind: row.kind, title: row.title, tag: "NOW", isSettled: row.isSettled
+              )
               .accessibilityLabel(row.accessibilityLabel)
-              ForEach(row.counts, id: \.kind) { count in
-                Button {
-                  onNavigate(count.section)
-                } label: {
-                  Text(count.phrase.uppercased())
-                    .font(ClientPalette.label)
-                    .tracking(ClientPalette.labelTracking)
-                    .foregroundStyle(ClientPalette.secondary(0.8))
-                    .padding(.horizontal, 8)
-                    .frame(minHeight: 36)
-                }
-                .buttonStyle(.plain)
-                .accessibilityLabel("\(count.phrase), open \(count.section.title)")
-              }
+              .tag(TodaySelection.item(row.id))
+              .id(TodaySelection.item(row.id))
             }
+          } header: {
+            header("Now")
+          }
+        }
+        if !list.week.isEmpty {
+          Section {
+            ForEach(list.week) { row in
+              RowContent(
+                kind: row.kind, title: row.unitName, tag: String(row.itemIDs.count),
+                isSettled: false
+              )
+              .accessibilityLabel(row.accessibilityLabel)
+              .tag(TodaySelection.week(unitID: row.unitID))
+              .id(TodaySelection.week(unitID: row.unitID))
+            }
+          } header: {
+            header("This week")
+          }
+        }
+        if !list.later.isEmpty {
+          Section {
+            ForEach(list.later) { row in
+              RowContent(kind: row.kind, title: row.unitName, tag: nil, isSettled: false)
+                .accessibilityLabel(row.accessibilityLabel)
+                .tag(TodaySelection.later(unitID: row.unitID))
+                .id(TodaySelection.later(unitID: row.unitID))
+            }
+          } header: {
+            header("Later")
           }
         }
       }
-    }
-    .padding(.vertical, 10)
-  }
-
-  /// A week group is selected when it is, or when an item inside it is.
-  private func isSelected(_ row: TodayListModel.WeekRow) -> Bool {
-    switch selection {
-    case .week(let unitID): unitID == row.unitID
-    case .item(let id): row.itemIDs.contains(id)
-    case .later, nil: false
+      .listStyle(.plain)
+      .scrollContentBackground(.hidden)
+      .environment(\.defaultMinListRowHeight, 36)
+      .onChange(of: highlighted.wrappedValue) { _, new in
+        if let new { proxy.scrollTo(new) }
+      }
     }
   }
 
-  private func section<Content: View>(_ title: String, @ViewBuilder rows: () -> Content)
-    -> some View
-  {
-    VStack(alignment: .leading, spacing: 2) {
-      Text(title.uppercased())
-        .font(ClientPalette.label)
-        .tracking(ClientPalette.labelTracking)
-        .foregroundStyle(ClientPalette.secondary(0.6))
-        .padding(.horizontal, 8)
-        .padding(.bottom, 4)
-        .accessibilityAddTraits(.isHeader)
-      rows()
-    }
+  /// A week group is highlighted when it is selected or when an item inside it is.
+  private var highlighted: Binding<TodaySelection?> {
+    Binding(
+      get: {
+        guard case .item(let id) = selection,
+          let group = list.week.first(where: { $0.itemIDs.contains(id) })
+        else { return selection }
+        return list.now.contains { $0.id == id } ? selection : .week(unitID: group.unitID)
+      },
+      set: { selection = $0 })
+  }
+
+  private func header(_ title: String) -> some View {
+    Text(title.uppercased())
+      .font(ClientPalette.label)
+      .tracking(ClientPalette.labelTracking)
+      .foregroundStyle(ClientPalette.secondary(0.6))
+      .accessibilityAddTraits(.isHeader)
   }
 }
 
-/// A 10-point colour square with radius 2, the title at 13 points truncated, and a monospaced
-/// 11-point tag. A settled row dims until it leaves.
+/// A kind swatch, the title at 13 points truncated, and a monospaced 11-point tag. A settled row
+/// dims until it leaves.
 private struct RowContent: View {
-  let kindColour: Color
+  let kind: Components.Schemas.ItemKind?
   let title: String
   let tag: String?
   let isSettled: Bool
 
   var body: some View {
     HStack(spacing: 10) {
-      RoundedRectangle(cornerRadius: 2)
-        .fill(kindColour)
-        .frame(width: 10, height: 10)
+      KindSwatch(kind: kind)
       Text(title)
         .font(.system(size: 13))
         .lineLimit(1)
@@ -131,6 +113,7 @@ private struct RowContent: View {
           .foregroundStyle(ClientPalette.secondary(0.6))
       }
     }
+    .frame(minHeight: 28)
     .opacity(isSettled ? 0.35 : 1)
   }
 }

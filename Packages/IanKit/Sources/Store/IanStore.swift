@@ -48,11 +48,16 @@ public final class IanStore {
     /// The server's one-line account of what happened. Nil for a cleared alert.
     public let outcome: String?
     public let removedAt: Date
+    /// Where the item stood in `today.lists.now` when it left, so its row can stay in place
+    /// while it finishes leaving. Nil when Today did not list it there.
+    public let nowListIndex: Int?
 
-    public init(item: StoreState.Item, outcome: String?, removedAt: Date) {
+    public init(item: StoreState.Item, outcome: String?, removedAt: Date, nowListIndex: Int? = nil)
+    {
       self.item = item
       self.outcome = outcome
       self.removedAt = removedAt
+      self.nowListIndex = nowListIndex
     }
   }
 
@@ -71,9 +76,9 @@ public final class IanStore {
   public private(set) var pending: [String: Pending] = [:]
   public private(set) var notices: [String: Notice] = [:]
   /// Items the server removed a moment ago, by id, so a settled row and its pillar can finish
-  /// leaving the screen with the server's outcome line. A record clears when a later
-  /// `today.updated` or snapshot no longer names the item, when the item comes back, or after
-  /// `removalLifetime`, whichever is first.
+  /// leaving the screen with the server's outcome line. The server sends `item.removed` and then
+  /// the `today.updated` that drops the item, so a Today update does not clear a record. A record
+  /// clears when the item comes back, after `removalLifetime`, or when the store resets.
   public private(set) var removals: [String: Removal] = [:]
   /// When the server last confirmed the data: a snapshot, an event or a heartbeat.
   public private(set) var lastUpdatedAt: Date?
@@ -184,7 +189,6 @@ public final class IanStore {
     case .snapshot(let snapshot):
       state.apply(snapshot: snapshot)
       dropPendingMarksForMissingItems()
-      dropRemovalsNotNamedByToday()
       lastUpdatedAt = now()
     case .connected:
       connection = .live
@@ -212,7 +216,6 @@ public final class IanStore {
     switch event {
     case .item_upserted(let upserted): forgetRemoval(of: upserted.item.id)
     case .alert_raised(let raised): forgetRemoval(of: raised.item.id)
-    case .today_updated: dropRemovalsNotNamedByToday()
     default: break
     }
     if let correlationID = effects.correlationID { settle(correlationID: correlationID) }
@@ -234,7 +237,9 @@ public final class IanStore {
   }
 
   private func recordRemoval(_ item: StoreState.Item, outcome: String?) {
-    removals[item.id] = Removal(item: item, outcome: outcome, removedAt: now())
+    removals[item.id] = Removal(
+      item: item, outcome: outcome, removedAt: now(),
+      nowListIndex: state.today?.lists.now.firstIndex(of: item.id))
     removalExpiries[item.id]?.cancel()
     let id = item.id
     removalExpiries[id] = Task { [weak self, clock = self.clock] in
@@ -247,12 +252,6 @@ public final class IanStore {
   private func forgetRemoval(of itemID: String) {
     removals[itemID] = nil
     removalExpiries.removeValue(forKey: itemID)?.cancel()
-  }
-
-  /// A removal clears once Today no longer names its item. While Today still names it, the
-  /// server's update has not caught up and the record stays.
-  private func dropRemovalsNotNamedByToday() {
-    for id in removals.keys where !state.todayNames(id) { forgetRemoval(of: id) }
   }
 
   private func dropPendingMarksForMissingItems() {

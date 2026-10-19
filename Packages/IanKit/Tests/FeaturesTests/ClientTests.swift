@@ -1,7 +1,10 @@
+import AppKit
+import Attention
 import Client
 import Contract
 import Foundation
 import Store
+import Surface
 import TestSupport
 import Testing
 
@@ -129,13 +132,35 @@ struct ClientModelTests {
     #expect(ClientModel().section == .today)
   }
 
-  @Test("remembers the last view and the selection while the process runs")
-  func remembersLastView() {
+  @Test("keeps the last view and the selection when the panel is hidden and shown again")
+  func remembersLastView() async {
+    _ = NSApplication.shared
+    let (store, _, _) = await TodayScenario.liveStore()
+    defer { store.stop() }
+    let controller = SurfaceController(
+      store: store, signals: SuppressionSignals(camera: IdleCamera()),
+      defaults: UserDefaults(suiteName: "ian.tests.\(UUID().uuidString)")!, quit: {})
     let model = ClientModel()
+    controller.setExpandedContent(
+      ExpandedClientView(store: store, controller: controller, model: model))
+    let host = controller.windows[2].contentView
+
     model.section = .tasks
     model.today.select(.item("prop_a1"))
+    controller.showExpanded()
+    controller.hideExpanded()
+    controller.showExpanded()
 
+    #expect(controller.windows[2].contentView === host)
     #expect(model.section == .tasks)
     #expect(model.today.selection == .item("prop_a1"))
+    controller.hideExpanded()
   }
+}
+
+@MainActor
+final class IdleCamera: CameraMonitoring {
+  var isLive = false
+  func start(onChange: @escaping @MainActor () -> Void) {}
+  func stop() {}
 }

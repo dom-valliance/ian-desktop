@@ -14,7 +14,8 @@ struct FooterContent: Equatable {
     case outcome(String?)
     /// The items of a rolled-up week group, each one selectable.
     case members([String])
-    case none
+    /// A later group's counts by kind, each linking to the view that holds them.
+    case counts([TodayListModel.LaterCount])
   }
 
   let kicker: String
@@ -50,7 +51,7 @@ struct FooterContent: Equatable {
         kicker: "Rolled up / \(unit) / Later", title: unit,
         meta: group.counts.map { ItemKindStyle.phrase($0.kind, count: $0.count) }
           .joined(separator: ", "),
-        trailing: Trailing.none)
+        trailing: .counts(group.counts.map(TodayListModel.LaterCount.init)))
     }
   }
 
@@ -78,6 +79,7 @@ struct SelectionFooter: View {
   let store: IanStore
   let selection: TodaySelection?
   let onSelect: (TodaySelection) -> Void
+  let onNavigate: (ClientSection) -> Void
 
   var body: some View {
     if let selection,
@@ -123,6 +125,7 @@ struct SelectionFooter: View {
         .frame(maxWidth: 320, alignment: .trailing)
         .multilineTextAlignment(.trailing)
     case .members(let ids):
+      let statuses = ItemStatuses(store: store)
       ScrollView {
         VStack(alignment: .leading, spacing: 2) {
           ForEach(ids, id: \.self) { id in
@@ -131,25 +134,37 @@ struct SelectionFooter: View {
                 onSelect(.item(id))
               } label: {
                 HStack(spacing: 10) {
-                  RoundedRectangle(cornerRadius: 2)
-                    .fill(ItemKindStyle.colour(item.kind))
-                    .frame(width: 10, height: 10)
+                  KindSwatch(kind: item.kind)
                   Text(item.title)
                     .font(.system(size: 13))
                     .lineLimit(1)
                     .frame(maxWidth: .infinity, alignment: .leading)
                 }
               }
-              .buttonStyle(ListRowButtonStyle(isSelected: false))
-              .accessibilityLabel("\(ItemKindStyle.name(item.kind)), \(item.title)")
+              .buttonStyle(ListRowButtonStyle(isSelected: selection == .item(id)))
+              .accessibilityLabel(
+                TodayListModel.itemLabel(
+                  item, horizon: "this week", status: statuses.description(of: id)))
             }
           }
         }
       }
       .frame(width: 320)
       .frame(maxHeight: 110)
-    case .none:
-      EmptyView()
+    case .counts(let counts):
+      HStack(spacing: 6) {
+        ForEach(counts, id: \.kind) { count in
+          Button {
+            onNavigate(count.section)
+          } label: {
+            Text(count.phrase.uppercased())
+              .font(ClientPalette.label)
+              .tracking(ClientPalette.labelTracking)
+          }
+          .buttonStyle(ActionButtonStyle(style: .secondary))
+          .accessibilityLabel("\(count.phrase), open \(count.section.title)")
+        }
+      }
     }
   }
 }
