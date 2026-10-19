@@ -131,6 +131,9 @@ struct ItemCardView: View {
           .buttonStyle(ActionButtonStyle(style: .quiet))
       }
     }
+    // A quiet button keeps its 14 points of side padding as hit area; pulling the row back by
+    // that much lines the first link's text up with the card's.
+    .padding(.leading, -14)
   }
 
   private var controls: some View {

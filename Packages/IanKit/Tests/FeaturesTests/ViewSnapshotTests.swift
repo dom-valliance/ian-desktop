@@ -9,7 +9,7 @@ import Testing
 
 @testable import Features
 
-/// The four views drawn from the scenario fixtures at 640 by 720 points, in UTC, through the
+/// The four views drawn from the scenario fixtures at 640 by 720 points, through the
 /// views the app uses. Each is hosted in an `NSHostingView` that never enters a window, since
 /// the pickers and fields are AppKit controls that `ImageRenderer` would draw as placeholders.
 @Suite("View snapshots")
@@ -17,12 +17,11 @@ import Testing
 struct ViewSnapshotTests {
   private static let size = CGSize(width: 640, height: 720)
 
-  /// A store that has loaded the snapshot, in UTC, with its stream live. The caller stops it.
+  /// A store that has loaded the snapshot, with its stream live. Card dates follow the fixture's
+  /// `me.timeZone`, so they agree with the server's meta lines. The caller stops it.
   private func liveStore(_ snapshot: Components.Schemas.Snapshot, me: Components.Schemas.Me)
     async -> IanStore
   {
-    var me = me
-    me.timeZone = "UTC"
     let store = IanStore(
       service: ScriptedService(me: me, snapshots: [.success(snapshot)]), profile: .mock,
       appVersion: SemanticVersion(major: 0, minor: 1, patch: 0))
