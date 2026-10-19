@@ -18,6 +18,9 @@ public final class SurfaceController {
   public private(set) var isOrbitOnScreen = true
   /// The spec 6.4 motion setting. The system's Reduce Motion forces reduced regardless.
   public var reducedMotionSetting: Bool
+  /// Runs when the Settings command opens the panel, so the client can show its Settings view.
+  /// Surface does not know the views; whoever hosts the content sets this.
+  public var onOpenSettings: (@MainActor () -> Void)?
   /// False once the expanded client is hidden or fully covered. Its animation stops then.
   public private(set) var isExpandedOnScreen = false
   /// When the expanded client last opened, in seconds since the reference date, for the
@@ -139,7 +142,10 @@ public final class SurfaceController {
 
   public func perform(_ command: AppMenu.Command) {
     switch command {
-    case .open, .openSettings: showExpanded()
+    case .open: showExpanded()
+    case .openSettings:
+      showExpanded()
+      onOpenSettings?()
     case .togglePause: signals.isPaused.toggle()
     case .quit: quit()
     }
@@ -150,16 +156,41 @@ public final class SurfaceController {
   }
 
   public func showExpanded() {
-    if !expandedPanel.isVisible { expandedOpenedAt = Date().timeIntervalSinceReferenceDate }
+    let isOpening = !expandedPanel.isVisible
+    if isOpening { expandedOpenedAt = Date().timeIntervalSinceReferenceDate }
     repositionExpanded()
+    let entrance = ExpandedEntrance(
+      endFrame: expandedPanel.frame,
+      reducedMotion: reducedMotionSetting
+        || NSWorkspace.shared.accessibilityDisplayShouldReduceMotion)
+    if isOpening {
+      expandedPanel.alphaValue = 0
+      expandedPanel.setFrame(entrance.startFrame, display: false)
+    }
     NSApplication.shared.activate()
     expandedPanel.makeKeyAndOrderFront(nil)
     isExpandedOnScreen = true
+    if isOpening { animate(entrance) }
+  }
+
+  private func animate(_ entrance: ExpandedEntrance) {
+    NSAnimationContext.runAnimationGroup { context in
+      context.duration = ExpandedEntrance.fadeDuration
+      context.timingFunction = CAMediaTimingFunction(name: .easeOut)
+      expandedPanel.animator().alphaValue = 1
+    }
+    guard entrance.rises else { return }
+    NSAnimationContext.runAnimationGroup { context in
+      context.duration = ExpandedEntrance.riseDuration
+      context.timingFunction = CAMediaTimingFunction(name: .easeOut)
+      expandedPanel.animator().setFrame(entrance.endFrame, display: true)
+    }
   }
 
   /// Hides the expanded client and gives focus back to the app the principal was in.
   public func hideExpanded() {
     expandedPanel.orderOut(nil)
+    expandedPanel.alphaValue = 1
     isExpandedOnScreen = false
     NSApplication.shared.deactivate()
   }
