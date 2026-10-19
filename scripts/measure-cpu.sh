@@ -63,8 +63,6 @@ stop_pid() {
     sleep 0.2
   done
   kill -9 "$pid" 2>/dev/null || true
-  # Reaps a child of this shell, so bash does not print its "Terminated" notice.
-  wait "$pid" 2>/dev/null || true
 }
 
 stop_app() {
@@ -110,6 +108,8 @@ rm -f "$build_log"
 
 "$repo_root/scripts/dev.sh" --mock-only >"$mock_log" 2>&1 &
 mock_pid=$!
+# Disowned, so bash does not print a "Terminated" notice when the cleanup stops it.
+disown "$mock_pid"
 ready=0
 for _ in $(seq 1 100); do
   if grep -q '^Mock listening' "$mock_log"; then
@@ -139,6 +139,7 @@ set_scenario() {
 launch_app() {
   "$app_bin" -IanEnvironment mock "$@" >/dev/null 2>&1 &
   app_pid=$!
+  disown "$app_pid"
   local command
   command="$(ps -o command= -p "$app_pid" 2>/dev/null || true)"
   [[ "$command" == "$app_bin"* ]] ||
