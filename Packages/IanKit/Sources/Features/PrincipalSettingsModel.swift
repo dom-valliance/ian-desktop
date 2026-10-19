@@ -19,10 +19,27 @@ final class PrincipalSettingsModel {
   private(set) var isConfirmingLive = false
 
   @ObservationIgnored private let store: IanStore
+  /// The settings the drafts last followed, so a change can be told field by field.
+  @ObservationIgnored private var followed: Components.Schemas.Settings?
 
   init(store: IanStore) {
     self.store = store
     syncFromServer()
+    observeServer()
+  }
+
+  /// Follows the store's settings: when `settings.updated` moves them, the drafts of the fields
+  /// that changed follow, and a draft being edited for another field is kept.
+  private func observeServer() {
+    withObservationTracking {
+      _ = store.state.settings
+    } onChange: { [weak self] in
+      // `onChange` runs before the value changes, so read it on the next turn.
+      Task { @MainActor in
+        self?.settingsDidChange()
+        self?.observeServer()
+      }
+    }
   }
 
   var settings: Components.Schemas.Settings? { store.state.settings }
@@ -53,8 +70,20 @@ final class PrincipalSettingsModel {
     return "Going live opens on \(text)."
   }
 
-  /// Puts the drafts back to what the server holds. The view calls it when `settings` changes.
+  /// Whether each draft differs from what the server holds, which is when Apply means something.
+  var quietHoursChanged: Bool {
+    guard let settings else { return false }
+    return quietStart != settings.quietHours.start || quietEnd != settings.quietHours.end
+  }
+
+  var pushBudgetChanged: Bool {
+    guard let settings else { return false }
+    return pushBudget != settings.pushBudgetPerHour
+  }
+
+  /// Puts every draft back to what the server holds.
   func syncFromServer() {
+    followed = settings
     guard let settings else { return }
     quietStart = settings.quietHours.start
     quietEnd = settings.quietHours.end
@@ -62,11 +91,29 @@ final class PrincipalSettingsModel {
     pauseReason = settings.pausedReason ?? ""
   }
 
+  /// Moves only the drafts whose server value changed since the last one.
+  func settingsDidChange() {
+    guard let settings else { return }
+    guard let old = followed else {
+      syncFromServer()
+      return
+    }
+    if settings.quietHours.start != old.quietHours.start { quietStart = settings.quietHours.start }
+    if settings.quietHours.end != old.quietHours.end { quietEnd = settings.quietHours.end }
+    if settings.pushBudgetPerHour != old.pushBudgetPerHour {
+      pushBudget = settings.pushBudgetPerHour
+    }
+    if settings.pausedReason != old.pausedReason { pauseReason = settings.pausedReason ?? "" }
+    followed = settings
+  }
+
   func applyQuietHours() async {
+    guard quietHoursChanged else { return }
     await send(.init(quietHours: .init(start: quietStart, end: quietEnd)))
   }
 
   func applyPushBudget() async {
+    guard pushBudgetChanged else { return }
     await send(.init(pushBudgetPerHour: min(50, max(0, pushBudget))))
   }
 
@@ -97,8 +144,11 @@ final class PrincipalSettingsModel {
     await send(.init(mode: .dryRun))
   }
 
+  /// A refused or failed change leaves the controls showing a value the server did not take, so
+  /// they go back to the server's.
   private func send(_ patch: Components.Schemas.SettingsPatch) async {
     await store.updateSettings(patch)
+    if store.settingsNotice != nil { syncFromServer() }
   }
 }
 

@@ -10,7 +10,7 @@ final class SettingsModel {
   let launchAtLogin: LaunchAtLoginModel
   /// The profile the principal chose and has not yet confirmed.
   private(set) var pendingProfile: ProfileChoice?
-  /// True after the report was copied, until the next change the view makes.
+  /// True after the report was copied, until Settings is closed.
   private(set) var didCopyReport = false
 
   @ObservationIgnored private let copy: (String) -> Void
@@ -34,6 +34,10 @@ final class SettingsModel {
     guard let choice = pendingProfile else { return }
     pendingProfile = nil
     await store.switchProfile(to: choice.id)
+  }
+
+  func clearCopied() {
+    didCopyReport = false
   }
 
   func copyReport(from store: IanStore, now: Date = Date()) {

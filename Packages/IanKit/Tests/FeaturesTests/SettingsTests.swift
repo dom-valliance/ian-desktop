@@ -70,20 +70,32 @@ struct PrincipalSettingsTests {
     #expect(store.state.settings?.pushBudgetPerHour == 3)
   }
 
-  @Test("sends the own pause with its reason, and leaves the reason out when empty")
+  @Test("sends the own pause with its trimmed reason, and holds a second change back")
   func ownPausePatch() async {
     let (store, service, _) = await liveStore()
     defer { store.stop() }
+    service.planSettingsPatch(.success(Fixtures.settings(paused: true, pausedReason: "On leave")))
     let model = PrincipalSettingsModel(store: store)
     model.pauseReason = "  On leave  "
 
     await model.setOwnPause(true)
-    store.dismissSettingsNotice()
-    model.pauseReason = ""
+    model.pauseReason = "Another"
     // The first change is still waiting on its event, so a second is held back.
     await model.setOwnPause(true)
 
     #expect(service.settingsPatches == [.init(paused: true, pausedReason: "On leave")])
+  }
+
+  @Test("leaves the reason out of a pause when none is given")
+  func pauseWithoutAReason() async {
+    let (store, service, _) = await liveStore()
+    defer { store.stop() }
+    let model = PrincipalSettingsModel(store: store)
+    model.pauseReason = "   "
+
+    await model.setOwnPause(true)
+
+    #expect(service.settingsPatches == [.init(paused: true)])
   }
 
   @Test("sends a resume without a reason")
@@ -179,20 +191,65 @@ struct PrincipalSettingsTests {
     #expect(!model.isPending)
   }
 
-  @Test("puts the drafts back to the server's values when settings.updated moves them")
-  func drafsFollowTheServer() async {
+  @Test("moves a draft to the server's value when settings.updated changes that field")
+  func draftFollowsTheServer() async {
+    let (store, _, feed) = await liveStore()
+    defer { store.stop() }
+    let model = PrincipalSettingsModel(store: store)
+
+    feed.yield(.event(id: "11", Fixtures.event(Fixtures.settingsUpdatedJSON(pushBudget: 9))))
+
+    #expect(await eventually("the draft") { await MainActor.run { model.pushBudget == 9 } })
+  }
+
+  @Test("keeps a draft being edited when settings.updated changes another field")
+  func keepsADraftBeingEdited() async {
     let (store, _, feed) = await liveStore()
     defer { store.stop() }
     let model = PrincipalSettingsModel(store: store)
     model.pushBudget = 40
 
-    feed.yield(.event(id: "11", Fixtures.event(Fixtures.settingsUpdatedJSON(pushBudget: 9))))
-    _ = await eventually("the event") {
-      await MainActor.run { store.state.settings?.pushBudgetPerHour == 9 }
-    }
-    model.syncFromServer()
+    let quiet = Fixtures.settingsJSON(quietStart: "21:00", quietEnd: "05:00")
+    feed.yield(.event(id: "11", Fixtures.event(Fixtures.settingsUpdatedJSON(settings: quiet))))
 
-    #expect(model.pushBudget == 9)
+    #expect(
+      await eventually("the quiet hours") { await MainActor.run { model.quietStart == "21:00" } })
+    #expect(model.quietEnd == "05:00")
+    #expect(model.pushBudget == 40)
+  }
+
+  @Test("offers Apply only while a draft differs from the server's value")
+  func applyNeedsAChange() async {
+    let (store, service, _) = await liveStore()
+    defer { store.stop() }
+    let model = PrincipalSettingsModel(store: store)
+    #expect(!model.quietHoursChanged)
+    #expect(!model.pushBudgetChanged)
+
+    await model.applyPushBudget()
+    await model.applyQuietHours()
+    #expect(service.settingsPatches.isEmpty)
+
+    model.pushBudget = 4
+    model.quietEnd = "08:00"
+    #expect(model.pushBudgetChanged)
+    #expect(model.quietHoursChanged)
+  }
+
+  @Test("puts a refused value back to the server's in the controls")
+  func refusalResetsTheDrafts() async {
+    let (store, service, _) = await liveStore()
+    defer { store.stop() }
+    service.planSettingsPatch(.failure(.rejected(status: 400, detail: "Out of range.")))
+    let model = PrincipalSettingsModel(store: store)
+    model.pushBudget = 12
+    model.quietStart = "22:00"
+
+    await model.applyPushBudget()
+
+    #expect(model.notice == "Out of range.")
+    #expect(model.pushBudget == 3)
+    #expect(model.quietStart == "19:00")
   }
 
   @Test("converts a time of day to and from a picker's date")
@@ -357,6 +414,18 @@ struct SettingsModelTests {
       })
     #expect(store.state.items["task_1"] == nil)
     #expect(model.pendingProfile == nil)
+  }
+
+  @Test("clears the copied note when Settings closes")
+  func copiedNoteClears() async {
+    let (store, _, _) = await liveStore()
+    defer { store.stop() }
+    let model = model()
+    model.copyReport(from: store, now: epoch)
+
+    model.clearCopied()
+
+    #expect(!model.didCopyReport)
   }
 
   @Test("copies the diagnostics report through the injected pasteboard")

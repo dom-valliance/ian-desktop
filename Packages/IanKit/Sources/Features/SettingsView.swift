@@ -33,6 +33,7 @@ struct SettingsView: View {
     }
     .accessibilityElement(children: .contain)
     .accessibilityLabel("Settings")
+    .onDisappear { model.clearCopied() }
   }
 }
 
@@ -74,6 +75,7 @@ struct SettingRow<Control: View>: View {
       control
     }
     .accessibilityElement(children: .contain)
+    .accessibilityLabel(title)
   }
 }
 
@@ -84,15 +86,14 @@ private struct PrincipalSettingsSection: View {
   @Bindable var model: PrincipalSettingsModel
 
   var body: some View {
-    SettingsGroup(title: "Your settings in Lance") {
+    SettingsGroup(title: "Your settings") {
       if model.settings == nil {
-        Text("Lance has not sent your settings yet.")
+        Text("Ian has not received your settings yet.")
           .foregroundStyle(ClientPalette.secondary())
       } else {
         content
       }
     }
-    .onChange(of: store.state.settings) { _, _ in model.syncFromServer() }
   }
 
   @ViewBuilder private var content: some View {
@@ -100,7 +101,7 @@ private struct PrincipalSettingsSection: View {
       NoticeRow(text: notice, dismiss: store.dismissSettingsNotice)
     }
     if model.isPending {
-      Text("Waiting for Lance to confirm the change.")
+      Text("Waiting for Ian to confirm the change.")
         .font(.system(size: 12))
         .foregroundStyle(ClientPalette.secondary())
     }
@@ -114,7 +115,7 @@ private struct PrincipalSettingsSection: View {
   private var quietHours: some View {
     SettingRow(
       title: "Quiet hours",
-      detail: "Ian and Lance stay quiet in this window, in your time zone."
+      detail: "Ian stays quiet in this window, in your time zone."
     ) {
       HStack(spacing: 8) {
         timePicker("Quiet hours start", time: $model.quietStart)
@@ -122,7 +123,8 @@ private struct PrincipalSettingsSection: View {
         timePicker("Quiet hours end", time: $model.quietEnd)
         Button("Apply") { Task { await model.applyQuietHours() } }
           .buttonStyle(ActionButtonStyle(style: .secondary))
-          .disabled(!model.canSend)
+          .disabled(!model.canSend || !model.quietHoursChanged)
+          .accessibilityLabel("Apply quiet hours")
       }
     }
   }
@@ -151,7 +153,8 @@ private struct PrincipalSettingsSection: View {
         .accessibilityValue("\(model.pushBudget)")
         Button("Apply") { Task { await model.applyPushBudget() } }
           .buttonStyle(ActionButtonStyle(style: .secondary))
-          .disabled(!model.canSend)
+          .disabled(!model.canSend || !model.pushBudgetChanged)
+          .accessibilityLabel("Apply push budget")
       }
     }
   }
@@ -159,9 +162,9 @@ private struct PrincipalSettingsSection: View {
   private var ownPause: some View {
     let paused = model.settings?.paused ?? false
     return SettingRow(
-      title: paused ? "Paused in Lance" : "Pause Lance for me",
-      detail: "Lance stops acting for you. This is separate from \"Pause me\" in the menu, "
-        + "which only silences this Mac."
+      title: paused ? "Paused everywhere" : "Pause Ian everywhere",
+      detail: "Ian stops acting for you on every device and in Slack. This is separate from "
+        + "\"Pause me\" in the menu, which only silences this Mac."
     ) {
       HStack(spacing: 8) {
         if !paused {
@@ -175,6 +178,7 @@ private struct PrincipalSettingsSection: View {
         Button(paused ? "Resume" : "Pause") { Task { await model.setOwnPause(!paused) } }
           .buttonStyle(ActionButtonStyle(style: .secondary))
           .disabled(!model.canSend)
+          .accessibilityLabel(paused ? "Resume Ian everywhere" : "Pause Ian everywhere")
       }
     }
   }
@@ -185,8 +189,8 @@ private struct PrincipalSettingsSection: View {
       title: "Mode",
       detail: model.liveUnavailableReason
         ?? (isLive
-          ? "Lance is live: approved proposals take effect."
-          : "Lance is in dry run: nothing takes effect.")
+          ? "Ian is live: approved proposals take effect."
+          : "Ian is in dry run: nothing takes effect.")
     ) {
       HStack(spacing: 8) {
         Text(isLive ? "Live" : "Dry run").font(.system(size: 13, weight: .medium))
@@ -215,8 +219,10 @@ private struct PrincipalSettingsSection: View {
 
   @ViewBuilder private var readOnly: some View {
     if let settings = model.settings {
-      SettingRow(title: "Time zone", detail: "Set in Lance.") { Text(settings.timeZone) }
-      SettingRow(title: "Daily cost ceiling", detail: "Set in Lance.") {
+      SettingRow(title: "Time zone", detail: "Set for your account. Read-only here.") {
+        Text(settings.timeZone)
+      }
+      SettingRow(title: "Daily cost ceiling", detail: "Set for your account. Read-only here.") {
         Text(AgentRow.money(settings.costCeilingGbp))
       }
       SettingRow(
@@ -329,15 +335,15 @@ private struct ClientSettingsSection: View {
   private var suppression: some View {
     VStack(alignment: .leading, spacing: 8) {
       Toggle(
-        "Hide item text while a camera is live",
+        "Hide item text and hold notifications while a camera is live",
         isOn: Binding(
           get: { settings.suppressOnCamera }, set: { settings.setSuppressOnCamera($0) }))
       Toggle(
-        "Hide item text during external meetings",
+        "Hide item text and hold notifications during external meetings",
         isOn: Binding(
           get: { settings.suppressInExternalMeeting },
           set: { settings.setSuppressInExternalMeeting($0) }))
-      Text("Quiet hours and \"Pause me\" always hide item text.")
+      Text("Quiet hours and \"Pause me\" always do the same. P0 alerts still notify.")
         .font(.system(size: 12))
         .foregroundStyle(ClientPalette.secondary())
     }
@@ -371,6 +377,7 @@ private struct ClientSettingsSection: View {
       }
       .labelsHidden()
       .frame(width: 160)
+      .disabled(store.isSigningIn)
     }
     .confirmationDialog(
       "Switch to \(model.pendingProfile?.displayName ?? "another environment")?",
@@ -389,6 +396,7 @@ private struct ClientSettingsSection: View {
     SettingRow(title: "Account") {
       Button("Sign out") { Task { await store.signOut() } }
         .buttonStyle(ActionButtonStyle(style: .secondary))
+        .disabled(store.isSigningIn)
     }
   }
 

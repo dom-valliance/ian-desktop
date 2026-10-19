@@ -12,7 +12,7 @@ struct AgentRow: Identifiable, Equatable {
   let name: String
   let kind: String
   let state: String
-  /// The breaker's state when the agent has one, such as "Breaker open".
+  /// The breaker's state when the agent has one and the state does not already say it.
   let breaker: String?
   let lastRun: String
   let nextRun: String
@@ -26,7 +26,7 @@ struct AgentRow: Identifiable, Equatable {
     name = agent.name
     kind = Self.kindName(agent.kind)
     state = Self.stateName(agent.state)
-    breaker = agent.breaker.flatMap(Self.breakerName)
+    breaker = agent.state == .breakerOpen ? nil : agent.breaker.flatMap(Self.breakerName)
     lastRun = Self.time(agent.lastRunAt, timeZone: timeZone) ?? "Not yet"
     nextRun = Self.time(agent.nextRunAt, timeZone: timeZone) ?? "None planned"
     cost = Self.money(agent.costTodayGbp)
@@ -89,7 +89,7 @@ struct KillSwitchNotice: Equatable {
   init?(global: Components.Schemas.GlobalState) {
     guard global.paused else { return nil }
     message =
-      "Lance's kill switch is on, so no agent acts until it is released. "
+      "Ian's kill switch is on, so no agent acts until it is released. "
       + "You cannot change this here."
       + (global.pausedReason.map { " Reason: \($0)" } ?? "")
   }

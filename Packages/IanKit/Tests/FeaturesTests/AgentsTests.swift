@@ -22,9 +22,20 @@ struct AgentRowTests {
     #expect(row.name == "Calendar job")
     #expect(row.kind == "Job")
     #expect(row.state == "Breaker open")
-    #expect(row.breaker == "Breaker open")
+    #expect(row.breaker == nil)
     #expect(row.cost == "£1.50")
     #expect(row.share == "10%")
+  }
+
+  @Test("names a half open breaker beside a state that does not say it")
+  func halfOpenBreaker() {
+    var agent = Fixtures.agent(state: "running")
+    agent.breaker = .halfOpen
+    var closed = Fixtures.agent(state: "idle")
+    closed.breaker = .closed
+
+    #expect(AgentRow(agent: agent).breaker == "Breaker half open")
+    #expect(AgentRow(agent: closed).breaker == nil)
   }
 
   @Test("says so when an agent has not run or has nothing planned")
@@ -57,12 +68,6 @@ struct AgentRowTests {
   @Test("offers no command for an agent that is not pausable")
   func noCommandWhenNotPausable() {
     #expect(AgentRow(agent: Fixtures.agent(pausable: false)).command == nil)
-  }
-
-  @Test("keeps the order the server sent")
-  func keepsOrder() {
-    let agents = ["b", "a", "c"].map { Fixtures.agent(id: $0) }
-    #expect(agents.map { AgentRow(agent: $0).id } == ["b", "a", "c"])
   }
 }
 

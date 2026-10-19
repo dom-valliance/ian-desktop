@@ -154,7 +154,7 @@ private struct AgentTable: View {
         Text("Pending")
           .font(.system(size: 12))
           .foregroundStyle(ClientPalette.secondary())
-          .accessibilityLabel("\(row.name): waiting for Lance")
+          .accessibilityLabel("\(row.name): waiting for Ian")
       } else if let command = row.command {
         let title = command == .pause ? "Pause" : "Resume"
         Button(title) {

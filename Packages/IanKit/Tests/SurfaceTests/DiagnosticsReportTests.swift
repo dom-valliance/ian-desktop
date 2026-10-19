@@ -1,6 +1,8 @@
+import Client
 import Contract
 import Foundation
 import Store
+import TestSupport
 import Testing
 
 @testable import Features
@@ -26,10 +28,37 @@ struct DiagnosticsReportTests {
     return strings(in: try JSONSerialization.jsonObject(with: data))
   }
 
-  @Test("holds ids, versions and timings from the normal scenario and no item text")
+  private static let labels = [
+    "App version", "Contract version", "Environment", "Event lag", "Last snapshot",
+    "Principal id", "State", "Connection", "Last event id", "Open items", "Agents", "Generated",
+  ]
+
+  /// A store holding the normal scenario with free text in every place the snapshot allows it.
+  private func store(_ scenario: OrbitScenario) async -> IanStore {
+    var snapshot = Fixtures.snapshot()
+    snapshot.today = scenario.today
+    snapshot.items = scenario.items
+    snapshot.settings = Fixtures.settings(
+      paused: true, pausedReason: "Private pause reason text", globalPaused: true,
+      globalReason: "Private kill switch reason")
+    snapshot.agents = Fixtures.agentsOverview([
+      Fixtures.agent(id: "agent_1", name: "Private agent name"),
+      Fixtures.agent(id: "agent_2", name: "Another private agent"),
+    ])
+    let store = IanStore(
+      service: ScriptedService(snapshots: [.success(snapshot)]), profile: .mock,
+      appVersion: SemanticVersion(major: 0, minor: 1, patch: 0))
+    store.start()
+    for _ in 0..<200 where store.state.today == nil {
+      try? await Task.sleep(for: .milliseconds(10))
+    }
+    return store
+  }
+
+  @Test("holds ids, versions and timings from the normal scenario and no free text")
   func carriesNoItemText() async throws {
     let scenario = OrbitScenario.load("normal")
-    let store = await loadedStore(scenario)
+    let store = await store(scenario)
     defer { store.stop() }
 
     let report = DiagnosticsReport.text(
@@ -38,6 +67,7 @@ struct DiagnosticsReportTests {
     #expect(report.contains("App version: 0.1.0"))
     #expect(report.contains("Contract version: 1.0.0"))
     #expect(report.contains("Open items: \(scenario.items.count)"))
+    #expect(report.contains("Agents: 2"))
     #expect(!scenario.items.isEmpty)
     for item in scenario.items {
       #expect(!report.contains(item.title))
@@ -47,6 +77,23 @@ struct DiagnosticsReportTests {
         #expect(!report.contains(text), "the report repeats \(text)")
       }
     }
+    for text in ["Private pause reason text", "Private kill switch reason", "Private agent name"] {
+      #expect(!report.contains(text))
+    }
+    #expect(!report.contains("Another private agent"))
     #expect(!report.contains(store.state.me?.displayName ?? "[PERSON]"))
+  }
+
+  @Test("starts every line with a label from a fixed list")
+  func linesStartWithKnownLabels() async {
+    let store = await store(OrbitScenario.load("normal"))
+    defer { store.stop() }
+
+    let lines = DiagnosticsReport.text(for: store, generatedAt: Date()).split(separator: "\n")
+
+    #expect(lines.first == "Ian diagnostics")
+    for line in lines.dropFirst() {
+      #expect(Self.labels.contains { line.hasPrefix($0 + ": ") }, "unexpected line \(line)")
+    }
   }
 }
