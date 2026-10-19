@@ -34,6 +34,11 @@ public struct PillarsDrawingView: View {
   public var body: some View {
     Canvas { context, size in
       Self.draw(drawing, in: &context, fit: PillarsFit(size: size))
+    } symbols: {
+      ForEach(Array(PillarsRenderer.rowTitles.enumerated()), id: \.offset) { row, title in
+        Text(title).font(.system(size: 11, design: .monospaced)).tracking(1.6)
+          .foregroundColor(PillarsRenderer.labelColour.color).tag(row)
+      }
     }
   }
 
@@ -41,6 +46,14 @@ public struct PillarsDrawingView: View {
     _ drawing: PillarsDrawing, in context: inout GraphicsContext, fit: PillarsFit
   ) {
     fill(drawing.plate, in: &context, fit: fit)
+    for (row, label) in drawing.rowLabels.enumerated() {
+      guard let symbol = context.resolveSymbol(id: row) else { continue }
+      var layer = context
+      let anchor = fit.toView(label.anchor)
+      layer.translateBy(x: anchor.x, y: anchor.y)
+      layer.scaleBy(x: fit.scale, y: fit.scale)
+      layer.draw(symbol, at: .zero, anchor: .trailing)
+    }
     for cell in drawing.cells {
       if cell.faces.isEmpty || cell.opacity < 1 {
         fill(cell.tile, in: &context, fit: fit)
@@ -63,12 +76,6 @@ public struct PillarsDrawingView: View {
           ellipseIn: CGRect(
             x: centre.x - radius, y: centre.y - radius, width: radius * 2, height: radius * 2)),
         with: .color(particle.colour.color))
-    }
-    for label in drawing.rowLabels {
-      context.draw(
-        Text(label.text).font(.system(size: 11 * fit.scale, design: .monospaced))
-          .tracking(1.6 * fit.scale).foregroundColor(PillarsRenderer.labelColour.color),
-        at: fit.toView(label.anchor), anchor: .trailing)
     }
   }
 
