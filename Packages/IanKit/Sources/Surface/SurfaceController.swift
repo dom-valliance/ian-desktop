@@ -14,7 +14,7 @@ public final class SurfaceController {
   private static let hoverGap: CGFloat = 8
 
   public private(set) var corner: Corner
-  /// False once the Orbit's panel is fully covered or off screen. The clock stops then.
+  /// False once the Orbit's panel is fully covered or off screen. Its animations are removed then.
   public private(set) var isOrbitOnScreen = true
   /// The spec 6.4 motion setting. The system's Reduce Motion forces reduced regardless.
   public var reducedMotionSetting: Bool
@@ -86,6 +86,10 @@ public final class SurfaceController {
   /// Whether the expanded client's animation should run: it is on screen and nothing suppresses
   /// it (spec 6.9, AGENTS.md rule 7).
   public var isExpandedAnimating: Bool { isExpandedOnScreen && !suppression.isActive }
+
+  /// Whether the Orbit's motion should run: it is on screen and nothing suppresses it (spec 6.9,
+  /// AGENTS.md rule 7). Reduce Motion is applied by the view that has the system setting.
+  public var isOrbitAnimating: Bool { isOrbitOnScreen && !suppression.isActive }
 
   public var suppression: Suppression {
     let context = store.state.today?.context

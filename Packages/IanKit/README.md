@@ -11,7 +11,7 @@ Each folder under `Sources/` is one SwiftPM target.
 | `Client` | HTTP through `swift-openapi-urlsession`, the SSE reader with `Last-Event-ID` replay and backoff, environment profiles | Contract, Auth, OpenAPIRuntime, OpenAPIURLSession, HTTPTypes, os | D3 |
 | `Store` | Observable state, the reducer that applies a snapshot and each event, pending marks on actions | Contract, Client, Observation, os | D3 |
 | `Attention` | Local notifications, the attention ladder, suppression (camera, external meeting, quiet hours, user pause), the session heartbeat | Store, CoreMediaIO, os, Observation | D4, D8 |
-| `Surface` | Orbit and Pillars renderers (`Canvas` in `TimelineView`), the window model (`NSPanel`s, menu bar extra) | Store, Attention, AppKit, SwiftUI, Observation | D4, D5 |
+| `Surface` | Orbit and Pillars renderers (`Canvas`; the Orbit's motion is Core Animation layers, ADR 0017), the window model (`NSPanel`s, menu bar extra) | Store, Attention, AppKit, SwiftUI, QuartzCore, Observation | D4, D5, P1 |
 | `Features` | The seven views | Contract (generated types only), Store, Surface, Attention, SwiftUI, Observation | D5 to D7 |
 
 The import column is the intended dependency graph. D1 encodes it in `Package.swift`; a change to it needs an ADR (0012 and 0013 record the system frameworks, 0015 the `Features` import of `Contract`).
