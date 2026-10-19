@@ -76,7 +76,7 @@ let package = Package(
     .testTarget(
       name: "SurfaceTests",
       dependencies: [
-        "Surface", "Features", "Store", "Attention", "Contract", "TestSupport",
+        "Surface", "Store", "Attention", "Contract", "TestSupport",
         .product(name: "SnapshotTesting", package: "swift-snapshot-testing"),
       ],
       exclude: ["__Snapshots__"]

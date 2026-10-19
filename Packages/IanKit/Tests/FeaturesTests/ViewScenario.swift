@@ -4,12 +4,14 @@ import Store
 import TestSupport
 
 /// A mock scenario as `scripts/export-scenario-fixtures.sh` exported it: the `views`, the `items`
-/// they name and the principal, taken at a fixed mock time.
+/// they name, the principal, the agents and the settings, taken at a fixed mock time.
 struct ViewScenario: Decodable {
   let today: Components.Schemas.Today
   let views: Components.Schemas.Views
   let items: [Components.Schemas.Item]
   let me: Components.Schemas.Me
+  let agents: Components.Schemas.AgentsOverview
+  let settings: Components.Schemas.Settings
 
   static let names = ScenarioFixtures.names
 

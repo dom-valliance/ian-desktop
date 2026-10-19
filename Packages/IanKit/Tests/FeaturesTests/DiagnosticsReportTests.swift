@@ -7,7 +7,6 @@ import Testing
 
 @testable import Features
 
-/// The report lives in Features, and the scenario fixtures live here with the Orbit's tests.
 @Suite("Diagnostics report")
 @MainActor
 struct DiagnosticsReportTests {
@@ -34,9 +33,10 @@ struct DiagnosticsReportTests {
   ]
 
   /// A store holding the normal scenario with free text in every place the snapshot allows it.
-  private func store(_ scenario: OrbitScenario) async -> IanStore {
+  private func store(_ scenario: ViewScenario) async -> IanStore {
     var snapshot = Fixtures.snapshot()
     snapshot.today = scenario.today
+    snapshot.views = scenario.views
     snapshot.items = scenario.items
     snapshot.settings = Fixtures.settings(
       paused: true, pausedReason: "Private pause reason text", globalPaused: true,
@@ -46,7 +46,7 @@ struct DiagnosticsReportTests {
       Fixtures.agent(id: "agent_2", name: "Another private agent"),
     ])
     let store = IanStore(
-      service: ScriptedService(snapshots: [.success(snapshot)]), profile: .mock,
+      service: ScriptedService(me: scenario.me, snapshots: [.success(snapshot)]), profile: .mock,
       appVersion: SemanticVersion(major: 0, minor: 1, patch: 0))
     store.start()
     for _ in 0..<200 where store.state.today == nil {
@@ -57,7 +57,7 @@ struct DiagnosticsReportTests {
 
   @Test("holds ids, versions and timings from the normal scenario and no free text")
   func carriesNoItemText() async throws {
-    let scenario = OrbitScenario.load("normal")
+    let scenario = ViewScenario.load("normal")
     let store = await store(scenario)
     defer { store.stop() }
 
@@ -65,7 +65,7 @@ struct DiagnosticsReportTests {
       for: store, generatedAt: Date(timeIntervalSince1970: 1_792_137_600))
 
     #expect(report.contains("App version: 0.1.0"))
-    #expect(report.contains("Contract version: 1.0.0"))
+    #expect(report.contains("Contract version: \(scenario.me.contractVersion)"))
     #expect(report.contains("Open items: \(scenario.items.count)"))
     #expect(report.contains("Agents: 2"))
     #expect(!scenario.items.isEmpty)
@@ -86,7 +86,7 @@ struct DiagnosticsReportTests {
 
   @Test("starts every line with a label from a fixed list")
   func linesStartWithKnownLabels() async {
-    let store = await store(OrbitScenario.load("normal"))
+    let store = await store(ViewScenario.load("normal"))
     defer { store.stop() }
 
     let lines = DiagnosticsReport.text(for: store, generatedAt: Date()).split(separator: "\n")
