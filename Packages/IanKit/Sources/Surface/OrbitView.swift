@@ -4,20 +4,29 @@ import SwiftUI
 /// no state. Snapshot tests render this view.
 public struct OrbitDrawingView: View {
   private let drawing: OrbitDrawing
+  private let layered: OrbitMotion
 
   public init(drawing: OrbitDrawing) {
+    self.init(drawing: drawing, layered: .still)
+  }
+
+  /// `layered` names the parts that Core Animation layers draw over this view, which it leaves
+  /// out so they are not drawn twice.
+  init(drawing: OrbitDrawing, layered: OrbitMotion) {
     self.drawing = drawing
+    self.layered = layered
   }
 
   public var body: some View {
     Canvas { context, size in
       let scale = min(size.width, size.height) / OrbitRenderer.boxSize
-      Self.draw(drawing, in: &context, scale: scale)
+      Self.draw(drawing, layered: layered, in: &context, scale: scale)
     }
   }
 
   private static func draw(
-    _ drawing: OrbitDrawing, in context: inout GraphicsContext, scale: Double
+    _ drawing: OrbitDrawing, layered: OrbitMotion, in context: inout GraphicsContext,
+    scale: Double
   ) {
     let centre = CGPoint(
       x: OrbitRenderer.centre.x * scale, y: OrbitRenderer.centre.y * scale)
@@ -33,17 +42,19 @@ public struct OrbitDrawingView: View {
         style: StrokeStyle(lineWidth: OrbitRenderer.trackWidth * scale, lineCap: .round))
     }
 
-    context.fill(
-      circle(
-        CGPoint(x: centre.x, y: centre.y), drawing.core.radius * scale),
-      with: .color(drawing.core.colour.color))
+    if layered.core == nil {
+      context.fill(
+        circle(
+          CGPoint(x: centre.x, y: centre.y), drawing.core.radius * scale),
+        with: .color(drawing.core.colour.color))
+    }
 
     for satellite in drawing.satellites {
       let shape = circle(
         CGPoint(x: satellite.centre.x * scale, y: satellite.centre.y * scale),
         satellite.radius * scale)
       context.fill(shape, with: .color(satellite.colour.color))
-      if let rim = satellite.rim {
+      if let rim = satellite.rim, !layered.rims.contains(where: { $0.slot == satellite.slot }) {
         context.stroke(shape, with: .color(rim.colour.color), lineWidth: rim.width * scale)
       }
     }
@@ -89,16 +100,14 @@ extension OrbitColour {
   }
 }
 
-/// The Orbit at rest: the drawing, driven by a clock that runs only while something moves.
+/// The Orbit at rest: the still pose, with the core's breath and each alert's pulse as Core
+/// Animation layers over it (ADR 0017).
 ///
-/// The clock stops when the Orbit is off screen or suppressed (`isAnimating` false), when
-/// Reduce Motion is on, and whenever nothing in the model moves. A stopped Orbit is drawn in its
-/// still pose.
+/// The still pose is drawn when the model, the size or the motion changes, and not on a clock.
+/// The layers run, and the still pose leaves out the parts they draw, only while the Orbit is on
+/// screen and unsuppressed, Reduce Motion is off and something in the model moves. Otherwise there
+/// are no layers and the still pose shows the resting state.
 public struct OrbitView: View {
-  /// The breath takes 4.2 seconds and the pulse about 1.3, so 20 frames a second looks smooth
-  /// and keeps the idle Orbit inside the spec 6.9 budget.
-  private static let frameInterval = 1.0 / 20
-
   private let model: OrbitModel
   private let reducedMotion: Bool
   private let isAnimating: Bool
@@ -109,13 +118,22 @@ public struct OrbitView: View {
     self.isAnimating = isAnimating
   }
 
+  /// The motion to show: the model's moving parts, or none unless the Orbit is on screen and
+  /// unsuppressed (`isAnimating`), Reduce Motion is off and something in the model moves.
+  static func motion(model: OrbitModel, reducedMotion: Bool, isAnimating: Bool) -> OrbitMotion {
+    guard isAnimating, !reducedMotion, OrbitRenderer.hasMotion(model) else { return .still }
+    return OrbitRenderer.motion(for: model)
+  }
+
   public var body: some View {
-    let moves = isAnimating && !reducedMotion && OrbitRenderer.hasMotion(model)
-    TimelineView(.animation(minimumInterval: Self.frameInterval, paused: !moves)) { timeline in
+    let motion = Self.motion(model: model, reducedMotion: reducedMotion, isAnimating: isAnimating)
+    ZStack {
       OrbitDrawingView(
-        drawing: OrbitRenderer.drawing(
-          for: model, time: timeline.date.timeIntervalSinceReferenceDate,
-          reducedMotion: !moves))
+        drawing: OrbitRenderer.drawing(for: model, time: 0, reducedMotion: true),
+        layered: motion)
+      OrbitMotionLayers(motion: motion)
+        .allowsHitTesting(false)
+        .accessibilityHidden(true)
     }
   }
 }

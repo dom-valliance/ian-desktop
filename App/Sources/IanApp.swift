@@ -20,6 +20,10 @@ struct IanApp: App {
       ExpandedClientView(store: store, controller: surface, model: ClientModel()))
     _store = State(initialValue: store)
     _surface = State(initialValue: surface)
+    // Read from the argument domain only, so it is never saved (scripts/measure-cpu.sh).
+    let opensPanelOnLaunch =
+      UserDefaults.standard.volatileDomain(forName: UserDefaults.argumentDomain)[
+        "IanOpenPanelOnLaunch"] as? String == "YES"
     // Start once launching has finished, when the screens and the status bar exist.
     NotificationCenter.default.addObserver(
       forName: NSApplication.didFinishLaunchingNotification, object: nil, queue: nil
@@ -27,6 +31,7 @@ struct IanApp: App {
       MainActor.assumeIsolated {
         store.start()
         surface.start()
+        if opensPanelOnLaunch { surface.showExpandedAfterFirstSnapshot() }
       }
     }
   }

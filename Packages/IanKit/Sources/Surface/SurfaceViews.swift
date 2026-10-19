@@ -22,7 +22,7 @@ struct OrbitRootView: View {
     OrbitView(
       model: presentation.model,
       reducedMotion: controller.reducedMotionSetting || systemReducesMotion,
-      isAnimating: controller.isOrbitOnScreen && !presentation.isSuppressed
+      isAnimating: controller.isOrbitAnimating
     )
     .frame(width: OrbitPlacement.avatarSize, height: OrbitPlacement.avatarSize)
     .accessibilityElement(children: .ignore)

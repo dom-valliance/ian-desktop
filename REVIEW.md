@@ -25,7 +25,7 @@ How to review changes in this repository. These rules apply to human reviewers a
    - **Contract:** hand edits to generated code; a field used that the contract does not define; a change to `v1` that breaks an existing client.
    - **Disk:** `FileManager` writes, `URLCache` or a non-ephemeral `URLSession`, `UserDefaults` keys outside spec 6.4 and ADR 0016, item text in `os.Logger` without `.private`, or in any log at all where an id would do.
    - **Screen:** a window or panel without `sharingType = .none`; item text visible on the Orbit, in a hover or in a notification while suppressed.
-   - **Rendering:** a `TimelineView` or timer that keeps running while hidden, occluded or suppressed; motion that ignores Reduce Motion.
+   - **Rendering:** a `TimelineView`, timer, display link or Core Animation animation that keeps running while hidden, occluded or suppressed; motion that ignores Reduce Motion; a rendering change without a `scripts/measure-cpu.sh` run.
    - **Accessibility:** an item or action reachable only through the field; a control without a VoiceOver label; urgency carried by colour alone.
 3. **Spec and ADR drift** (Blocking)
    - An architectural deviation from the spec has an ADR in the same pull request. An accepted ADR is never edited, only superseded.

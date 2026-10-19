@@ -14,7 +14,7 @@ public final class SurfaceController {
   private static let hoverGap: CGFloat = 8
 
   public private(set) var corner: Corner
-  /// False once the Orbit's panel is fully covered or off screen. The clock stops then.
+  /// False once the Orbit's panel is fully covered or off screen. Its animations are removed then.
   public private(set) var isOrbitOnScreen = true
   /// The spec 6.4 motion setting. The system's Reduce Motion forces reduced regardless.
   public var reducedMotionSetting: Bool
@@ -87,6 +87,10 @@ public final class SurfaceController {
   /// it (spec 6.9, AGENTS.md rule 7).
   public var isExpandedAnimating: Bool { isExpandedOnScreen && !suppression.isActive }
 
+  /// Whether the Orbit's motion should run: it is on screen and nothing suppresses it (spec 6.9,
+  /// AGENTS.md rule 7). Reduce Motion is applied by the view that has the system setting.
+  public var isOrbitAnimating: Bool { isOrbitOnScreen && !suppression.isActive }
+
   public var suppression: Suppression {
     let context = store.state.today?.context
     return signals.suppression(
@@ -149,6 +153,20 @@ public final class SurfaceController {
       onOpenSettings?()
     case .togglePause: signals.isPaused.toggle()
     case .quit: quit()
+    }
+  }
+
+  /// Opens the expanded client once, as soon as the first snapshot is in. `scripts/measure-cpu.sh`
+  /// uses it to measure the open panel without a pointer.
+  public func showExpandedAfterFirstSnapshot() {
+    guard store.state.today == nil else {
+      showExpanded()
+      return
+    }
+    withObservationTracking {
+      _ = store.state.today
+    } onChange: { [weak self] in
+      Task { @MainActor in self?.showExpandedAfterFirstSnapshot() }
     }
   }
 

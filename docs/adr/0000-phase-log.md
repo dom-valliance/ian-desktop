@@ -17,7 +17,7 @@ Each entry records:
 | D4 | Done, 19 October 2026 |
 | D5 | Done, 19 October 2026 |
 | D5.1 | Done, 19 October 2026 |
-| P1 | Not started |
+| P1 | Done, 19 October 2026 |
 | D6 | Not started |
 | D7 | Not started |
 | D8 | Not started |
@@ -383,3 +383,67 @@ The last three were measured by the lead on the app's own process with `ps -o ti
 
 - An Opus review against REVIEW.md found 1 Blocking (the rules still naming only spec 6.4), 5 Should fix and 9 Suggestions. All are fixed except the optional accessible dividers.
 - P1 measures CPU at the default pane sizes.
+
+### P1. Rendering within the budget
+
+- Date: 19 October 2026
+- Branch: `perf/rendering-budget`, from `main` at `33f615a`. Commits `7c2a9f7..f6cc303`, plus this entry.
+- The field work was built in parallel in `.worktrees/p1-field` and cherry-picked as `428a389` and `ae91595`. One build fix, `89292e3`, removed a duplicate colour helper both halves had added.
+- Machine: MacBook Pro, Apple M4 Pro (Mac16,7), macOS 27.0.1, Xcode 27.1 (27A9275), with external displays.
+
+#### Commands and exit codes
+
+| Command | Exit |
+|---|---|
+| `swift format lint --recursive --strict Packages App scripts` | 0 |
+| `swift build --package-path Packages/IanKit --force-resolved-versions` | 0 |
+| `swift test --package-path Packages/IanKit --force-resolved-versions`, three runs | 0 each: 429 tests |
+| `scripts/check-generated.sh` | 0 |
+| `xcodebuild -project App/Ian.xcodeproj -scheme Ian -configuration Debug -destination 'platform=macOS' -onlyUsePackageVersionsFromResolvedFile -derivedDataPath build/DerivedData build` | 0 |
+| `scripts/measure-cpu.sh` | 0, every target met (below) |
+
+#### Done when
+
+1. **`scripts/measure-cpu.sh` reports the targets.**
+   - How the script measures: it builds Release, starts the mock and runs Ian with the display kept awake. It measures Ian's own process from `ps -o time` over 30 seconds after a 10-second warm-up, and fails if the panel did not open.
+   - The final run on the machine above, with the Mac left alone:
+
+     | State | Before P1 (baseline run) | After P1 | Target | WindowServer, after |
+     |---|---|---|---|---|
+     | Orbit only, `quiet` | 0.47% | 0.07% | none | 29.6% |
+     | Orbit only, `normal` (core breathing) | 8.89% | 0.07% | under 0.7% | 32.6% |
+     | Orbit only, `incident` (alert pulsing) | 5.56% | 0.07% | under 0.7% | 35.3% |
+     | Panel open on Today, `normal` | 15.22% | 7.46% | under 10% | 41.3% |
+
+   - WindowServer is the system compositor, which includes the external displays; it has no target. The motion now runs there, adding about 3 to 6 points for the Orbit and about 12 with the panel open over `quiet`.
+2. **Traces.**
+   - A Time Profiler trace (`xcrun xctrace record --template 'Time Profiler' --attach`) ran for 15 seconds on the Release app with the panel open on Today in `normal`. It recorded 1,504 samples, about 10% of one core, on the main thread:
+     - painting the field with Core Graphics (`PillarsPainter`, rasterising in `argb32_mark` and `aa_render`) is about 57%;
+     - the field's maths (`PillarsRenderer`) is 5%;
+     - SwiftUI's view graph (AttributeGraph) is under 1%.
+   - Before P1, the field agent's `sample` traces showed most of the time in SwiftUI's per-frame layout, view-graph update and commit, and an empty `Canvas` in the same timeline cost as much as the field.
+   - The traces are kept locally in the lead's scratchpad (`p1-panel-open.trace`) and in `/private/tmp/claude-501/scratch-p1/`, not in the repository.
+3. **Snapshots.** The Orbit snapshots pass unchanged. The ten Pillars snapshots were re-recorded once, because Core Graphics draws the row titles about a point lower than SwiftUI did; the polygons and colours match, and the field agent looked at every image.
+4. **Stopping and Reduce Motion are tested.**
+   - The Orbit's layers are removed when it is hidden, occluded or suppressed (each of the four triggers), and under Reduce Motion.
+   - The field's display link pauses when nothing moves, when the field is hidden, occluded or suppressed, or under Reduce Motion with no transition running.
+   - A resize repaints the field even with the link paused.
+5. **Hand check.** Dom checked on screen on 19 October 2026 and reported everything as good:
+   - the Orbit's breath and the alert's pulse are smooth, and the breath does not restart when satellites change;
+   - the field's sway, ripple, particles and sinking are smooth;
+   - resizing never stretches the field;
+   - Reduce Motion stills both, while dragging still turns the field and resizing still redraws.
+
+#### Choices recorded
+
+- **ADR 0017.** The Orbit's still pose is a `Canvas` drawn only when its state changes. The breath and pulse are Core Animation animations (eased, the same limits and periods, 20 to 30 frames a second), so Ian's process does nothing per frame.
+- **ADR 0018.** The field is Core Graphics in a layer-backed `NSView` on a display link, with an 8-bit backing store and row titles laid out once. A frame is repainted only when a point moves by a device pixel or a colour by a visible step. Dom accepted on 19 October 2026 that this meets spec 6.9's "60 frames per second": every visible change appears on the next display frame, and identical frames are not repainted.
+- **ADR 0004** is amended by 0017 and 0018. AGENTS.md, REVIEW.md, the IanKit and design READMEs and D9's plan now describe the new drawing, and say to run `scripts/measure-cpu.sh` after any rendering change.
+- **Opening the panel for measurement.** `-IanOpenPanelOnLaunch YES` opens the panel on Today once after the first snapshot. It is read from the launch arguments only and never saved.
+- **No M1 was available,** so the targets were two thirds of spec 6.9's budgets, on the M4 Pro (Dom's decision in D5).
+
+#### Reviews and what is left
+
+- **Review.** An Opus review against REVIEW.md found 2 Blocking (the field stretched after a resize; stale docs), 6 Should fix and 10 Suggestions. All are fixed.
+- **An agent's crash.** During the work, a measurement harness crashed three times from a recursion bug and put dialogs on Dom's screen. The bug was fixed and tested before the code was used, and the lesson is in `.claude/notes/global.md`.
+- **For D9.** D9 re-runs `scripts/measure-cpu.sh`. If the field ever needs to cost less, the remaining cost is pixel filling, not SwiftUI.

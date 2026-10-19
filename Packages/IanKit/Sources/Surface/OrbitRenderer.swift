@@ -51,6 +51,14 @@ public enum OrbitRenderer {
   /// Degrees from 3 o'clock, clockwise on screen. The first satellite is at 12 o'clock.
   public static let satelliteAngles: [Double] = [-90, -18, 54, 126, 198]
 
+  /// The breath is `0.5 + 0.5 sin(breathRate t)` and the pulse `0.5 + 0.5 sin(pulseRate t)`, in
+  /// radians a second. Core Animation reads the same rates for the live layers (ADR 0017).
+  static let breathRate = 1.5
+  static let pulseRate = 5.0
+  /// The breath adds up to this much to the core's radius.
+  static let breathRange = 1.0
+  /// The rim's opacity runs from this to 1 as the pulse runs from 0 to 1.
+  static let rimMinimumAlpha = 0.5
   static let restingCoreRadius = 6.0
   static let satelliteRadius = 4.5
   static let alertRadius = 6.5
@@ -74,11 +82,21 @@ public enum OrbitRenderer {
     max(0, min(1, Double(load) / median - 1))
   }
 
+  /// The parts that move while the Orbit is animating: the core while it is working, and the
+  /// rim of each alert. Their geometry comes from the drawing, so the live layers and the still
+  /// pose share one source (ADR 0017).
+  static func motion(for model: OrbitModel) -> OrbitMotion {
+    let resting = drawing(for: model, time: 0, reducedMotion: true)
+    return OrbitMotion(
+      core: model.working ? resting.core : nil,
+      rims: resting.satellites.filter { $0.rim != nil })
+  }
+
   public static func drawing(
     for model: OrbitModel, time: Double, reducedMotion: Bool
   ) -> OrbitDrawing {
-    let breath = reducedMotion ? 0.5 : 0.5 + 0.5 * sin(1.5 * time)
-    let pulse = reducedMotion ? 1.0 : 0.5 + 0.5 * sin(5 * time)
+    let breath = reducedMotion ? 0.5 : 0.5 + 0.5 * sin(breathRate * time)
+    let pulse = reducedMotion ? 1.0 : 0.5 + 0.5 * sin(pulseRate * time)
 
     let inner = loadFraction(load: model.load, median: model.median)
     let outer = overMedianFraction(load: model.load, median: model.median)
@@ -86,7 +104,7 @@ public enum OrbitRenderer {
     let core =
       model.working
       ? OrbitDrawing.Core(
-        radius: restingCoreRadius + breath, colour: OrbitPalette.workingCore)
+        radius: restingCoreRadius + breathRange * breath, colour: OrbitPalette.workingCore)
       : OrbitDrawing.Core(radius: restingCoreRadius, colour: OrbitPalette.restingCore)
 
     let satellites = model.satellites.compactMap { satellite -> OrbitDrawing.Satellite? in
@@ -101,7 +119,9 @@ public enum OrbitRenderer {
         colour: OrbitPalette.colour(for: satellite.kind),
         rim: isAlert
           ? OrbitDrawing.Rim(
-            width: rimWidth, colour: OrbitPalette.rim.withAlpha(0.5 + 0.5 * pulse)) : nil)
+            width: rimWidth,
+            colour: OrbitPalette.rim.withAlpha(rimMinimumAlpha + (1 - rimMinimumAlpha) * pulse))
+          : nil)
     }
 
     return OrbitDrawing(
