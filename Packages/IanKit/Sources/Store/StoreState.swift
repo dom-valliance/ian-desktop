@@ -29,6 +29,10 @@ public struct StoreState: Equatable, Sendable {
     /// The action or hand-off that caused the event, which clears its pending mark.
     public var correlationID: String?
     public var removedItemID: String?
+    /// The item as it was held when `item.removed` or `alert.cleared` took it away.
+    public var removedItem: Item?
+    /// The one-line `outcome` of `item.removed`. An `alert.cleared` event carries none.
+    public var removalOutcome: String?
     /// The minimum version from `client.deprecated`.
     public var deprecatedBelow: String?
   }
@@ -63,10 +67,13 @@ public struct StoreState: Equatable, Sendable {
       items[event.item.id] = event.item
       effects.correlationID = event.correlationId
     case .item_removed(let event):
+      effects.removedItem = items[event.itemId]
+      effects.removalOutcome = event.outcome
       items[event.itemId] = nil
       effects.removedItemID = event.itemId
       effects.correlationID = event.correlationId
     case .alert_cleared(let event):
+      effects.removedItem = items[event.itemId]
       items[event.itemId] = nil
       effects.removedItemID = event.itemId
       effects.correlationID = event.correlationId
@@ -89,5 +96,15 @@ public struct StoreState: Equatable, Sendable {
       break
     }
     return effects
+  }
+
+  /// Whether Today still names the item: in the Orbit, a field cell, the Now list or a week
+  /// group. A membership test on what the server sent; nothing is counted or chosen.
+  public func todayNames(_ itemID: String) -> Bool {
+    guard let today else { return false }
+    return today.orbit.itemIds.contains(itemID)
+      || today.field.cells.contains { $0.itemIds.contains(itemID) }
+      || today.lists.now.contains(itemID)
+      || today.lists.week.contains { $0.itemIds.contains(itemID) }
   }
 }

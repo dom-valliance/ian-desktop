@@ -128,11 +128,12 @@ public enum Fixtures {
   }
 
   public static func snapshotJSON(
-    cursor: String = "10", items: [String] = [itemJSON()], load: Int? = nil
+    cursor: String = "10", items: [String] = [itemJSON()], load: Int? = nil,
+    today: String? = nil, views: String? = nil
   ) -> String {
     """
     {"cursor":"\(cursor)","serverTime":"2026-10-16T08:00:00.000Z",\
-    "today":\(todayJSON(load: load ?? items.count)),"views":\(viewsJSON()),\
+    "today":\(today ?? todayJSON(load: load ?? items.count)),"views":\(views ?? viewsJSON()),\
     "items":[\(items.joined(separator: ","))],\
     "agents":{"agents":[\(agentJSON())],"costToday":\(costJSON())},\
     "settings":\(settingsJSON())}
@@ -140,9 +141,10 @@ public enum Fixtures {
   }
 
   public static func snapshot(
-    cursor: String = "10", items: [String] = [itemJSON()], load: Int? = nil
+    cursor: String = "10", items: [String] = [itemJSON()], load: Int? = nil,
+    today: String? = nil, views: String? = nil
   ) -> Schemas.Snapshot {
-    decode(snapshotJSON(cursor: cursor, items: items, load: load))
+    decode(snapshotJSON(cursor: cursor, items: items, load: load, today: today, views: views))
   }
 
   // MARK: Events

@@ -41,6 +41,15 @@ public final class IanStore {
     public let sentVersion: Int
   }
 
+  /// An item the server removed, kept for a short time after it left the open set.
+  public struct Removal: Equatable, Sendable {
+    /// The item as the store held it when the event arrived.
+    public let item: StoreState.Item
+    /// The server's one-line account of what happened. Nil for a cleared alert.
+    public let outcome: String?
+    public let removedAt: Date
+  }
+
   /// Something the principal should see on an item.
   public enum Notice: Equatable, Sendable {
     /// An action failed, with the reason.
@@ -55,6 +64,11 @@ public final class IanStore {
   /// Item id to its unsettled action.
   public private(set) var pending: [String: Pending] = [:]
   public private(set) var notices: [String: Notice] = [:]
+  /// Items the server removed a moment ago, by id, so a settled row and its pillar can finish
+  /// leaving the screen with the server's outcome line. A record clears when a later
+  /// `today.updated` or snapshot no longer names the item, when the item comes back, or after
+  /// `removalLifetime`, whichever is first.
+  public private(set) var removals: [String: Removal] = [:]
   /// When the server last confirmed the data: a snapshot, an event or a heartbeat.
   public private(set) var lastUpdatedAt: Date?
   /// A sign-in is open, in the browser or on its way, so a second one is not started.
@@ -67,6 +81,8 @@ public final class IanStore {
 
   private static let log = Logger(subsystem: "ai.valliance.ian.desktop", category: "store")
   private static let rememberedCorrelations = 32
+  /// How long a removal is kept when no later `today` update has dropped it first.
+  public static let removalLifetime: Duration = .seconds(10)
 
   private let service: any DesktopService
   public let appVersion: SemanticVersion
@@ -80,6 +96,8 @@ public final class IanStore {
   private var signInAttempted = false
   /// Correlation ids from events that arrived while an action's answer was still in flight.
   private var earlyCorrelations: [String] = []
+  /// The task that clears each removal when its lifetime ends.
+  private var removalExpiries: [String: Task<Void, Never>] = [:]
 
   public init(
     service: any DesktopService,
@@ -160,6 +178,7 @@ public final class IanStore {
     case .snapshot(let snapshot):
       state.apply(snapshot: snapshot)
       dropPendingMarksForMissingItems()
+      dropRemovalsNotNamedByToday()
       lastUpdatedAt = now()
     case .connected:
       connection = .live
@@ -180,6 +199,15 @@ public final class IanStore {
     if let removed = effects.removedItemID {
       pending[removed] = nil
       notices[removed] = nil
+      if let item = effects.removedItem {
+        recordRemoval(item, outcome: effects.removalOutcome)
+      }
+    }
+    switch event {
+    case .item_upserted(let upserted): forgetRemoval(of: upserted.item.id)
+    case .alert_raised(let raised): forgetRemoval(of: raised.item.id)
+    case .today_updated: dropRemovalsNotNamedByToday()
+    default: break
     }
     if let correlationID = effects.correlationID { settle(correlationID: correlationID) }
     if let minimum = effects.deprecatedBelow,
@@ -197,6 +225,28 @@ public final class IanStore {
       earlyCorrelations.append(correlationID)
       earlyCorrelations = Array(earlyCorrelations.suffix(Self.rememberedCorrelations))
     }
+  }
+
+  private func recordRemoval(_ item: StoreState.Item, outcome: String?) {
+    removals[item.id] = Removal(item: item, outcome: outcome, removedAt: now())
+    removalExpiries[item.id]?.cancel()
+    let id = item.id
+    removalExpiries[id] = Task { [weak self, clock = self.clock] in
+      try? await clock.sleep(for: Self.removalLifetime)
+      guard !Task.isCancelled else { return }
+      self?.forgetRemoval(of: id)
+    }
+  }
+
+  private func forgetRemoval(of itemID: String) {
+    removals[itemID] = nil
+    removalExpiries.removeValue(forKey: itemID)?.cancel()
+  }
+
+  /// A removal clears once Today no longer names its item. While Today still names it, the
+  /// server's update has not caught up and the record stays.
+  private func dropRemovalsNotNamedByToday() {
+    for id in removals.keys where !state.todayNames(id) { forgetRemoval(of: id) }
   }
 
   private func dropPendingMarksForMissingItems() {
@@ -331,6 +381,9 @@ public final class IanStore {
     pending = [:]
     notices = [:]
     earlyCorrelations = []
+    for task in removalExpiries.values { task.cancel() }
+    removalExpiries = [:]
+    removals = [:]
     lastUpdatedAt = nil
     connection = .connecting
   }
