@@ -128,7 +128,7 @@ Promoted here when the same lesson appears more than twice in `.claude/notes/`. 
 - SwiftUI's per-frame layout and commit cost more than the drawing: an empty `Canvas` in a 60 frames a second `TimelineView` cost as much as the Pillars field. Continuous motion is a Core Animation layer animation (the Orbit, ADR 0017) or a display link that pauses when nothing moves and paints with Core Graphics (the field, ADR 0018), never a `TimelineView`. After any rendering change, run `scripts/measure-cpu.sh`.
 - On a wide-colour display the system gives a layer a half-float backing store, and Core Graphics fills into it cost several times more. A view painted every frame asks for `.RGBA8Uint`.
 - `UserDefaults.removePersistentDomain` leaves an empty plist in `~/Library/Preferences`. Tests that write settings use a scratch suite (`withScratchDefaults`) that deletes the file too.
-- The Orbit snapshot fixtures are exported from the mock by `scripts/export-orbit-fixtures.sh` with a fixed clock. Re-run it, and re-record the snapshots, when the mock's scenarios change.
+- The scenario fixtures in `Packages/IanKit/Tests/TestSupport/Fixtures` are exported from the mock by `scripts/export-scenario-fixtures.sh` with a fixed clock. Re-run it, and re-record the Orbit, Pillars and view snapshots, when the mock's scenarios or the contract change.
 - The `lance-dev` profile reads Dom's real dev data. Keep it out of every test, snapshot and recording.
 
 ## Review guidelines
