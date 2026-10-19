@@ -24,6 +24,9 @@ public struct PaneDivider: View {
   /// True while a drag is live. SwiftUI resets it when a drag is cancelled, which `onEnded`
   /// never reports, so a change to false clears the remembered start.
   @GestureState private var isDragging = false
+  /// Whether the pointer is over the strip, tracked through a drag so the arrow can come back
+  /// when the drag lets go outside it.
+  @State private var isHovering = false
 
   /// `value` is the size of the pane the divider resizes. `onChange` receives that size as the
   /// drag moves it, and `onEnd` fires when the drag lets go.
@@ -44,6 +47,10 @@ public struct PaneDivider: View {
       .zIndex(1)
   }
 
+  private var resizeCursor: NSCursor {
+    direction == .vertical ? .resizeLeftRight : .resizeUpDown
+  }
+
   @ViewBuilder private var line: some View {
     switch direction {
     case .vertical: colour.frame(width: 1)
@@ -58,15 +65,27 @@ public struct PaneDivider: View {
         height: direction == .horizontal ? Self.grabWidth : nil
       )
       .contentShape(Rectangle())
-      .background(
-        ResizeCursor(cursor: direction == .vertical ? .resizeLeftRight : .resizeUpDown)
-      )
+      .background(ResizeCursor(cursor: resizeCursor))
+      // The hosting view may reset the arrow when the pointer moves, so the cursor is set again
+      // on every move over the strip.
+      .onContinuousHover { phase in
+        switch phase {
+        case .active:
+          isHovering = true
+          resizeCursor.set()
+        case .ended:
+          isHovering = false
+          if !isDragging { NSCursor.arrow.set() }
+        }
+      }
       // Global coordinates, because the divider moves under the pointer as it drags and a local
       // translation would feed back on itself.
       .gesture(
         DragGesture(minimumDistance: 1, coordinateSpace: .global)
           .updating($isDragging) { _, state, _ in state = true }
           .onChanged { drag in
+            // Held through the drag, so it stays when the drag stops at a pane limit.
+            resizeCursor.set()
             let origin = startValue ?? value()
             startValue = origin
             let travel = direction == .vertical ? drag.translation.width : drag.translation.height
@@ -74,6 +93,7 @@ public struct PaneDivider: View {
           }
           .onEnded { _ in
             startValue = nil
+            if !isHovering { NSCursor.arrow.set() }
             onEnd()
           }
       )
@@ -85,34 +105,39 @@ public struct PaneDivider: View {
   }
 }
 
-/// Asks the window for a cursor over the view's bounds. A cursor rect is the system's own
-/// mechanism, so it cannot stick when the panel hides mid-hover, and it does not drop when a
-/// drag stops at a limit.
-private struct ResizeCursor: NSViewRepresentable {
+/// Keeps the resize cursor over the view's bounds with a tracking area, which the SwiftUI
+/// hosting view's own cursor handling does not reset the way it does cursor rects. It is a
+/// second line of defence beside the strip's hover handler.
+struct ResizeCursor: NSViewRepresentable {
   let cursor: NSCursor
 
-  func makeNSView(context: Context) -> CursorView { CursorView(cursor: cursor) }
-  func updateNSView(_ view: CursorView, context: Context) { view.cursor = cursor }
+  func makeNSView(context: Context) -> ResizeCursorView { ResizeCursorView(cursor: cursor) }
+  func updateNSView(_ view: ResizeCursorView, context: Context) { view.cursor = cursor }
+}
 
-  final class CursorView: NSView {
-    var cursor: NSCursor {
-      didSet { window?.invalidateCursorRects(for: self) }
-    }
+final class ResizeCursorView: NSView {
+  static let trackingOptions: NSTrackingArea.Options = [
+    .cursorUpdate, .mouseEnteredAndExited, .activeAlways, .inVisibleRect,
+  ]
 
-    init(cursor: NSCursor) {
-      self.cursor = cursor
-      super.init(frame: .zero)
-    }
+  var cursor: NSCursor
 
-    @available(*, unavailable) required init?(coder: NSCoder) { fatalError("Not used.") }
-
-    override func resetCursorRects() { addCursorRect(bounds, cursor: cursor) }
-    override func viewDidMoveToWindow() { window?.invalidateCursorRects(for: self) }
-    override func layout() {
-      super.layout()
-      window?.invalidateCursorRects(for: self)
-    }
-    // Clicks and drags belong to the SwiftUI gesture above this view.
-    override func hitTest(_ point: NSPoint) -> NSView? { nil }
+  init(cursor: NSCursor) {
+    self.cursor = cursor
+    super.init(frame: .zero)
   }
+
+  @available(*, unavailable) required init?(coder: NSCoder) { fatalError("Not used.") }
+
+  override func updateTrackingAreas() {
+    super.updateTrackingAreas()
+    for area in trackingAreas { removeTrackingArea(area) }
+    addTrackingArea(
+      NSTrackingArea(rect: .zero, options: Self.trackingOptions, owner: self, userInfo: nil))
+  }
+
+  override func cursorUpdate(with event: NSEvent) { cursor.set() }
+  override func mouseEntered(with event: NSEvent) { cursor.set() }
+  // Clicks and drags belong to the SwiftUI gesture above this view.
+  override func hitTest(_ point: NSPoint) -> NSView? { nil }
 }
