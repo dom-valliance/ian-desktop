@@ -1,3 +1,4 @@
+import Contract
 import Store
 import Surface
 import SwiftUI
@@ -24,12 +25,14 @@ public struct ExpandedClientView: View {
         store: store, isTicking: controller?.isExpandedOnScreen ?? false,
         close: { controller?.hideExpanded() })
       Divider().overlay(ClientPalette.line)
-      HStack(spacing: 0) {
-        SidebarView(
-          counts: store.state.views?.counts,
-          selection: Binding(get: { model.section }, set: { model.section = $0 }))
-        Divider().overlay(ClientPalette.line)
-        content
+      GeometryReader { geometry in
+        HStack(spacing: 0) {
+          SidebarPane(
+            layout: model.layout, containerWidth: geometry.size.width,
+            counts: store.state.views?.counts,
+            selection: Binding(get: { model.section }, set: { model.section = $0 }))
+          content
+        }
       }
     }
     .foregroundStyle(ClientPalette.text)
@@ -43,11 +46,31 @@ public struct ExpandedClientView: View {
         store: store, model: model.today, openedAt: controller?.expandedOpenedAt,
         isAnimating: controller?.isExpandedAnimating ?? false,
         reducedMotion: (controller?.reducedMotionSetting ?? false) || systemReducesMotion,
-        onNavigate: { model.section = $0 })
+        layout: model.layout, onNavigate: { model.section = $0 })
     case .proposals, .commitments, .tasks, .alerts, .agents, .settings:
       Text(model.section.title)
         .font(.system(size: 18, weight: .medium))
         .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+  }
+}
+
+/// The sidebar and the divider that resizes it. Only this view reads the width, so a drag does
+/// not rebuild the selected view.
+private struct SidebarPane: View {
+  let layout: PaneLayout
+  let containerWidth: Double
+  let counts: Components.Schemas.ViewCounts?
+  @Binding var selection: ClientSection
+
+  var body: some View {
+    let width = layout.sidebarWidth(containerWidth: containerWidth)
+    HStack(spacing: 0) {
+      SidebarView(counts: counts, width: width, selection: $selection)
+      PaneDivider(
+        direction: .vertical, colour: ClientPalette.line, value: { width },
+        onChange: { layout.resizeSidebar(to: $0, containerWidth: containerWidth) },
+        onEnd: { layout.commitPanes() })
     }
   }
 }

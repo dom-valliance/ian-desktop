@@ -12,6 +12,7 @@ struct TodayView: View {
   let openedAt: TimeInterval?
   let isAnimating: Bool
   let reducedMotion: Bool
+  let layout: PaneLayout
   let onNavigate: (ClientSection) -> Void
 
   /// What makes the scene stale: any applied event or snapshot, the selection, or a new opening.
@@ -32,20 +33,28 @@ struct TodayView: View {
     let selection = model.resolvedSelection(in: store)
     // Each rebuild redraws the rows, so a row leaving with its pillar goes when it is done.
     let _ = model.revision
-    VStack(spacing: 0) {
-      field
-      Divider().overlay(ClientPalette.line)
-      TodayListsView(
-        list: TodayListModel(
-          state: store.state, removals: store.removals, statuses: ItemStatuses(store: store),
-          at: Date.now),
-        hasToday: store.state.today != nil,
-        selection: Binding(get: { selection }, set: { model.select($0) })
-      )
-      Divider().overlay(ClientPalette.line)
-      SelectionFooter(
-        store: store, selection: selection, onSelect: { model.select($0) },
-        onNavigate: onNavigate)
+    GeometryReader { geometry in
+      VStack(spacing: 0) {
+        FieldPane(
+          layout: layout, containerHeight: geometry.size.height, scene: model.scene,
+          isAnimating: isAnimating, reducedMotion: reducedMotion,
+          onSelect: { key in
+            if let today = store.state.today {
+              model.selectPillar(key, in: today)
+            }
+          })
+        TodayListsView(
+          list: TodayListModel(
+            state: store.state, removals: store.removals, statuses: ItemStatuses(store: store),
+            at: Date.now),
+          hasToday: store.state.today != nil,
+          selection: Binding(get: { selection }, set: { model.select($0) })
+        )
+        Divider().overlay(ClientPalette.line)
+        SelectionFooter(
+          store: store, selection: selection, onSelect: { model.select($0) },
+          onNavigate: onNavigate)
+      }
     }
     .task(id: trigger) { await keepSceneCurrent() }
   }
@@ -63,25 +72,34 @@ struct TodayView: View {
   }
 }
 
-extension TodayView {
-  /// The field in a fixed frame, scaled to fit its 540 by 420 box, so its per-frame redraws never
-  /// re-lay out the lists or the footer. Its clock lives inside `PillarsFieldView` alone.
-  @ViewBuilder fileprivate var field: some View {
+/// The field in the top pane, and the divider under it that resizes it. The field fills the
+/// pane and scales its 540 by 420 box to fit, so its per-frame redraws never re-lay out the lists
+/// or the footer. Its clock lives inside `PillarsFieldView` alone, and only this view reads the
+/// pane's height, so a drag does not rebuild the rest of Today.
+private struct FieldPane: View {
+  let layout: PaneLayout
+  let containerHeight: Double
+  let scene: FieldSceneModel?
+  let isAnimating: Bool
+  let reducedMotion: Bool
+  let onSelect: (PillarCellKey) -> Void
+
+  var body: some View {
+    let height = layout.fieldHeight(containerHeight: containerHeight)
     Group {
-      if let scene = model.scene {
+      if let scene {
         PillarsFieldView(
           scene: scene.pillarsScene, isAnimating: isAnimating, reducedMotion: reducedMotion,
-          onSelect: { key in
-            if let today = store.state.today {
-              model.selectPillar(key, in: today)
-            }
-          })
+          angle: layout.angle, onTurn: { layout.commitAngle($0) }, onSelect: onSelect)
       } else {
         Color.clear
       }
     }
-    .aspectRatio(PillarsRenderer.boxSize, contentMode: .fit)
     .frame(maxWidth: .infinity)
-    .frame(height: 300)
+    .frame(height: height)
+    PaneDivider(
+      direction: .horizontal, colour: ClientPalette.line, value: { height },
+      onChange: { layout.resizeField(to: $0, containerHeight: containerHeight) },
+      onEnd: { layout.commitPanes() })
   }
 }
