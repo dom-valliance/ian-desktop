@@ -7,6 +7,14 @@ public struct EnvironmentProfile: Equatable, Sendable {
   public enum Name: String, CaseIterable, Sendable {
     case mock
     case lanceDev = "lance-dev"
+
+    /// What the header and the Settings picker call the profile.
+    public var displayName: String {
+      switch self {
+      case .mock: "Mock"
+      case .lanceDev: "Lance dev"
+      }
+    }
   }
 
   public enum SignIn: Equatable, Sendable {
@@ -25,13 +33,13 @@ public struct EnvironmentProfile: Equatable, Sendable {
   public var isMock: Bool { name == .mock }
 
   public static let mock = EnvironmentProfile(
-    name: .mock, displayName: "Mock",
+    name: .mock, displayName: Name.mock.displayName,
     baseURL: URL(string: "http://localhost:4317/desktop/v1")!, signIn: .devToken)
 
   /// The dev api host is erratum E3. The Entra settings come from build settings.
   public static func lanceDev(entra: EntraConfiguration) -> EnvironmentProfile {
     EnvironmentProfile(
-      name: .lanceDev, displayName: "Lance dev",
+      name: .lanceDev, displayName: Name.lanceDev.displayName,
       baseURL: URL(
         string:
           "https://ca-lance-api-dev.graygrass-c682ce2c.uksouth.azurecontainerapps.io/desktop/v1")!,

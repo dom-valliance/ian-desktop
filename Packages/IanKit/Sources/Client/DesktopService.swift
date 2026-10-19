@@ -31,4 +31,18 @@ public protocol DesktopService: Sendable {
   /// Hands an item to Ian with an optional instruction, and returns the correlation id the
   /// resulting event carries. Offered only when `Me.capabilities.handoff` is true.
   func handOff(itemID: String, instruction: String?) async throws -> String
+
+  /// The agents and today's cost, in the server's order (`GET /agents`).
+  func agents() async throws -> Components.Schemas.AgentsOverview
+
+  /// `PATCH /settings`. Only the fields the patch holds change. The reply is not applied: the
+  /// server's `settings.updated` event moves the store.
+  func updateSettings(
+    _ patch: Components.Schemas.SettingsPatch
+  ) async throws -> Components.Schemas.Settings
+
+  /// Pause or resume an agent within the principal's own scope. A `403` is thrown as
+  /// `DesktopError.rejected`.
+  func pauseAgent(id: String) async throws -> Components.Schemas.Agent
+  func resumeAgent(id: String) async throws -> Components.Schemas.Agent
 }

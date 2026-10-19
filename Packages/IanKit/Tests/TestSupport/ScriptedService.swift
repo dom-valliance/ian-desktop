@@ -171,4 +171,86 @@ public final class ScriptedService: DesktopService, @unchecked Sendable {
     }
     return try await handler(call)
   }
+
+  // MARK: Agents and settings
+
+  /// What the agents and settings calls were told to answer, and what they were asked. Read and
+  /// written only while holding `lock`.
+  private var agentsAndSettings = AgentsAndSettingsScript()
+
+  private struct AgentsAndSettingsScript {
+    var overviews: [Result<Components.Schemas.AgentsOverview, DesktopError>] = []
+    var overviewCalls = 0
+    var patches: [Components.Schemas.SettingsPatch] = []
+    var patchResult: Result<Components.Schemas.Settings, DesktopError> = .success(
+      Fixtures.decode(Fixtures.settingsJSON()))
+    var agentCalls: [AgentCall] = []
+    var agentResult: Result<Components.Schemas.Agent, DesktopError> = .success(
+      Fixtures.decode(Fixtures.agentJSON()))
+  }
+
+  public struct AgentCall: Equatable, Sendable {
+    public let id: String
+    public let pause: Bool
+
+    public init(id: String, pause: Bool) {
+      self.id = id
+      self.pause = pause
+    }
+  }
+
+  public var agentsCalls: Int { lock.withLock { agentsAndSettings.overviewCalls } }
+  public var settingsPatches: [Components.Schemas.SettingsPatch] {
+    lock.withLock { agentsAndSettings.patches }
+  }
+  public var agentCommands: [AgentCall] { lock.withLock { agentsAndSettings.agentCalls } }
+
+  /// Queues what `agents()` answers next; once one is left it repeats.
+  public func planAgents(_ results: [Result<Components.Schemas.AgentsOverview, DesktopError>]) {
+    lock.withLock { agentsAndSettings.overviews = results }
+  }
+
+  public func planSettingsPatch(_ result: Result<Components.Schemas.Settings, DesktopError>) {
+    lock.withLock { agentsAndSettings.patchResult = result }
+  }
+
+  public func planAgentCommand(_ result: Result<Components.Schemas.Agent, DesktopError>) {
+    lock.withLock { agentsAndSettings.agentResult = result }
+  }
+
+  public func agents() async throws -> Components.Schemas.AgentsOverview {
+    let result = lock.withLock {
+      agentsAndSettings.overviewCalls += 1
+      let overviews = agentsAndSettings.overviews
+      return overviews.count > 1 ? agentsAndSettings.overviews.removeFirst() : overviews.first
+    }
+    guard let result else { throw DesktopError.unexpectedStatus(404) }
+    return try result.get()
+  }
+
+  public func updateSettings(
+    _ patch: Components.Schemas.SettingsPatch
+  ) async throws -> Components.Schemas.Settings {
+    let result = lock.withLock {
+      agentsAndSettings.patches.append(patch)
+      return agentsAndSettings.patchResult
+    }
+    return try result.get()
+  }
+
+  public func pauseAgent(id: String) async throws -> Components.Schemas.Agent {
+    try recordAgentCommand(id: id, pause: true)
+  }
+
+  public func resumeAgent(id: String) async throws -> Components.Schemas.Agent {
+    try recordAgentCommand(id: id, pause: false)
+  }
+
+  private func recordAgentCommand(id: String, pause: Bool) throws -> Components.Schemas.Agent {
+    let result = lock.withLock {
+      agentsAndSettings.agentCalls.append(AgentCall(id: id, pause: pause))
+      return agentsAndSettings.agentResult
+    }
+    return try result.get()
+  }
 }

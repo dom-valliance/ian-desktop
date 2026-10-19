@@ -403,3 +403,92 @@ private func readsLateBody() {
 
   #expect(bodyText(of: request) == "{\"version\":4}")
 }
+
+// MARK: Agents and settings
+
+private let forbiddenProblem =
+  "{\"type\":\"about:blank\",\"title\":\"Outside your scope\",\"status\":403,"
+  + "\"detail\":\"Inbox watcher is not yours to pause.\"}"
+
+@Test("reads the agents and today's cost in the server's order")
+private func readsAgents() async throws {
+  let captured = Captured()
+  let service = api { request in
+    captured.record(request)
+    return .json(
+      "{\"agents\":[\(Fixtures.agentJSON(id: "b")),\(Fixtures.agentJSON(id: "a"))],"
+        + "\"costToday\":\(Fixtures.costJSON())}")
+  }
+
+  let overview = try await service.agents()
+
+  #expect(overview.agents.map(\.id) == ["b", "a"])
+  #expect(captured.all.first?.url?.path == "/desktop/v1/agents")
+}
+
+@Test("posts a pause and a resume to the agent's own path")
+private func postsPauseAndResume() async throws {
+  let captured = Captured()
+  let service = api { request in
+    captured.record(request)
+    return .json(Fixtures.agentJSON(id: "agent_1", state: "paused"))
+  }
+
+  let paused = try await service.pauseAgent(id: "agent_1")
+  _ = try await service.resumeAgent(id: "agent_1")
+
+  #expect(paused.state == .paused)
+  #expect(
+    captured.all.map { $0.url?.path } == [
+      "/desktop/v1/agents/agent_1/pause", "/desktop/v1/agents/agent_1/resume",
+    ])
+  #expect(captured.all.allSatisfy { $0.httpMethod == "POST" })
+}
+
+@Test("maps 403 on a pause to a refusal carrying the server's detail")
+private func mapsForbiddenPause() async {
+  let service = api { _ in .problem(forbiddenProblem, status: 403) }
+
+  await #expect(
+    throws: DesktopError.rejected(status: 403, detail: "Inbox watcher is not yours to pause.")
+  ) {
+    try await service.pauseAgent(id: "agent_1")
+  }
+}
+
+@Test("patches only the fields it was given")
+private func patchesOnlyGivenFields() async throws {
+  let captured = Captured()
+  let service = api { request in
+    captured.record(request)
+    return .json(Fixtures.settingsJSON(pushBudget: 9))
+  }
+
+  let settings = try await service.updateSettings(
+    .init(quietHours: .init(start: "20:00", end: "06:30"), paused: true, pausedReason: "Leave"))
+
+  #expect(settings.pushBudgetPerHour == 9)
+  let request = try #require(captured.all.first)
+  #expect(request.httpMethod == "PATCH")
+  #expect(request.url?.path == "/desktop/v1/settings")
+  let text = try #require(captured.allBodies.first)
+  let fields = try #require(
+    try JSONSerialization.jsonObject(with: Data(text.utf8)) as? [String: Any])
+  #expect(Set(fields.keys) == ["quietHours", "paused", "pausedReason"])
+  #expect(fields["paused"] as? Bool == true)
+}
+
+@Test("maps 422 on a settings change to a refusal carrying the server's detail")
+private func mapsRefusedSettings() async {
+  let service = api { _ in
+    .problem(
+      "{\"type\":\"about:blank\",\"title\":\"Not eligible\",\"status\":422,"
+        + "\"detail\":\"Going live opens on 23 October.\"}", status: 422)
+  }
+
+  await #expect(
+    throws: DesktopError.rejected(status: 422, detail: "Going live opens on 23 October.")
+  ) {
+    try await service.updateSettings(.init(mode: .live))
+  }
+}
