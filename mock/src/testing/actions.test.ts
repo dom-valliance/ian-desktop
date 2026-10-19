@@ -371,6 +371,23 @@ describe('agents and settings', () => {
     expect(((await h.call('GET', '/desktop/v1/me')).body as { mode: string }).mode).toBe('live');
   });
 
+  it('answers a patch that changes nothing with the current settings and no event', async () => {
+    const h = await started({ scenario: 'normal' });
+    const stream = await openStream(h);
+    const current = (await h.call('GET', '/desktop/v1/settings')).body as {
+      pushBudgetPerHour: number;
+    };
+    const reply = await h.call('PATCH', '/desktop/v1/settings', {
+      body: { pushBudgetPerHour: current.pushBudgetPerHour },
+    });
+    expectContract('PATCH', '/settings', reply, 200);
+    expect(reply.body).toEqual(current);
+    await h.call('POST', '/__mock/emit', { body: { recipe: 'alert', severity: 'P1' } });
+    const [event] = await stream.next(1);
+    stream.close();
+    expect(event?.event).not.toBe('settings.updated');
+  });
+
   it('answers 400 for an empty or invalid settings patch', async () => {
     const h = await started();
     expectContract(
