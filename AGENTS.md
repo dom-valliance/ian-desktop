@@ -125,6 +125,9 @@ Promoted here when the same lesson appears more than twice in `.claude/notes/`. 
 - Contract times are UTC with milliseconds. Configure OpenAPIRuntime with the `.iso8601WithFractionalSeconds` date transcoder, and decode event `data` with a `JSONDecoder` whose date strategy matches; the default `.iso8601` rejects them.
 - `asDecodedServerSentEventsWithJSONData` throws on the first event it cannot decode, which ends the stream, and the generated `StreamEvent` rejects an unknown `type`. Use `asDecodedServerSentEvents()`, skip events whose `event` field is not a known type, and refetch the snapshot when a known type fails to decode.
 - An event stream must write bytes the moment it opens. URLSession hands the Swift client nothing until the first bytes, and may hold a `text/*` body while it sniffs, so a quiet stream looks dead until its first heartbeat. The server writes `: open` with `X-Content-Type-Options: nosniff` (contract 1.0.1).
+- `TimelineView(.animation)` redraws at the display's rate and costs real CPU even for a small `Canvas`; the Orbit passes a `minimumInterval` (20 frames a second) and runs its timeline only while something moves.
+- `UserDefaults.removePersistentDomain` leaves an empty plist in `~/Library/Preferences`. Tests that write settings use a scratch suite (`withScratchDefaults`) that deletes the file too.
+- The Orbit snapshot fixtures are exported from the mock by `scripts/export-orbit-fixtures.sh` with a fixed clock. Re-run it, and re-record the snapshots, when the mock's scenarios change.
 - The `lance-dev` profile reads Dom's real dev data. Keep it out of every test, snapshot and recording.
 
 ## Review guidelines

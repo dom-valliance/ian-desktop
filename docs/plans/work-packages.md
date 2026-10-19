@@ -166,7 +166,7 @@ Build:
 
 - Agents: a table of watchers, agents and jobs with state, last run, next run, cost today and share of the ceiling; pause and resume within the principal's own scope; a read-only banner when the global kill switch is on. D3's store appends an agent first seen in `agent.updated` at the end of its list, so D7 decides with the server how a new agent is ordered.
 - Settings, client side, in `UserDefaults`: corner, motion, notification level per rung, the two suppression toggles, launch at login (best effort through `SMAppService`), environment profile (changing it signs out and clears the store), sign out, and diagnostics (app version, contract version, event lag, last snapshot time, copy report with ids only).
-- Settings, principal side, through `PATCH /settings`: quiet hours, push budget, own pause, and mode, whose dry-run-to-live switch is enabled only when the server reports eligibility and asks for confirmation. Time zone, cost ceiling and global state are read-only.
+- Settings, principal side, through `PATCH /settings`: quiet hours, push budget, own pause (the principal's pause in Lance, separate from D4's in-memory "Pause me", which only pauses this Mac's notifications, spec 6.5), and mode, whose dry-run-to-live switch is enabled only when the server reports eligibility and asks for confirmation. Time zone, cost ceiling and global state are read-only.
 
 Done when:
 
