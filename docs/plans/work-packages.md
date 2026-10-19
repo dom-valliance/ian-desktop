@@ -253,7 +253,7 @@ Read: spec sections 6.8, 6.9 and 11; every ADR.
 Build and check:
 
 - A VoiceOver pass and a keyboard-only pass through every view; Reduce Motion stops every animation.
-- Instruments traces for idle (Orbit only) and expanded (Pillars animating) on an M1 or later, against spec 6.9. If `Canvas` misses the budget, stop and report with the traces before any fallback (ADR 0004).
+- Instruments traces for idle (Orbit only) and expanded (Pillars animating) on an M1 or later, against spec 6.9. P1 met the budget on an M4 Pro with Core Animation for the Orbit and Core Graphics on a display link for the field (ADRs 0017 and 0018); D9 re-runs `scripts/measure-cpu.sh` and, if a target is missed, stops and reports with the traces before changing route.
 - Snapshot tests for every Orbit and pillar state not yet covered.
 - `docs/run-local.md`: a fresh clone to the `normal` scenario on screen, then the switch to `lance-dev`.
 - The demo against the mock, then against Lance dev once DL1 to DL4 are merged.

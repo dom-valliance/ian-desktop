@@ -49,7 +49,7 @@ From Recommended. The avatar is drawn in a 100 by 100 unit box, rendered at 96 p
 | Track | Circle r 34, stroke `rgba(255,255,255,0.10)`, width 2.5 | Always drawn |
 | Load arc | Circle r 34, stroke `#8D8989`, width 2.5, round caps, from 12 o'clock clockwise | Length is `min(1, load / median)` of the circumference |
 | Over-median arc | Circle r 42, stroke `#F3A982`, width 2.5, round caps, from 12 o'clock | Length is `clamp(load / median - 1, 0, 1)` of the circumference |
-| Core | Circle at centre, r 6, `#A19A9A` | While any item is `working`: fill `#B0C1E3`, r `6 + b` with `b = 0.5 + 0.5 sin(1.5 t)` (a 4.2 second breath) |
+| Core | Circle at centre, r 6, `#A19A9A` | While any item is `working`: fill `#B0C1E3`, r `6 + b` with `b = 0.5 + 0.5 sin(1.5 t)` (a 4.2 second breath). The live breath and the alerts' rim pulse are Core Animation animations, eased between the same limits over the same periods (ADR 0017) |
 | Satellites | On r 34 at -90, -18, 54, 126 and 198 degrees, in the server's order | r 4.5 in the kind colour. Alerts r 6.5 with a rim of width 1.5 in `rgba(242,238,238, 0.5 + 0.5 p)`, `p = 0.5 + 0.5 sin(5 t)` |
 | Overflow chip | From Scale, whose 160 unit box maps to the 100 unit box at 100/160: pill 20 by 15, radius 7.5, fill `#2E2E2E`, stroke `rgba(255,255,255,0.3)` width 0.625, "+n" at 7.5 units in white | Shown when `overflow > 0`. Centred at -126 degrees on radius 40, between the first and last satellites. The Scale artboard's own position would overlap the 198 degree satellite on Recommended's layout |
 | Whisper | Pill, padding 4 by 10, fill `#2E2E2E`, border `rgba(216,140,140,0.5)`, white 12-point text, to the left of the avatar | Urgent rung only, eight seconds, never while suppressed |
@@ -63,7 +63,7 @@ VoiceOver label (spec 6.1): "Ian, three need you now, forty-one open, one urgent
 
 ## Pillars
 
-From Recommended and Pillars. The field is a 5 by 3 grid drawn in a 540 by 420 unit box.
+From Recommended and Pillars. The field is a 5 by 3 grid drawn in a 540 by 420 unit box. It is painted with Core Graphics on a display link, and a frame is repainted only when a point has moved by a device pixel or a colour by a visible step, so motion stays smooth without repainting identical frames (ADR 0018).
 
 Constants: cell pitch `S = 64`, half-width of a pillar's base `HW = 25`, vertical squash `TILT = 0.52`, origin `CX = 300, CY = 250`, height for pressure 1 `MAXH = 120`, plate margin `pad = 0.62 S`.
 
