@@ -1,12 +1,11 @@
 import AppKit
 import SnapshotTesting
-import SwiftUI
 import Testing
 
 @testable import Surface
 
 /// The field drawn from each scenario's fixture, fully grown and nothing selected, through the
-/// same pure renderer the app uses. Motion on is drawn at a fixed time, so the yaw is off its
+/// same renderer and Core Graphics painter the app uses. Motion on is drawn at a fixed time, so the yaw is off its
 /// resting angle.
 @Suite("Pillars snapshots")
 @MainActor
@@ -20,15 +19,7 @@ struct PillarsSnapshotTests {
     let drawing = PillarsRenderer.drawing(
       for: OrbitScenario.load(scenario).pillarsScene, time: Self.time,
       reducedMotion: reducedMotion, angle: angle)
-    let view = PillarsDrawingView(drawing: drawing)
-      .frame(width: PillarsRenderer.boxSize.width, height: PillarsRenderer.boxSize.height)
-      .background(OrbitPalette.ground.color)
-    let renderer = ImageRenderer(content: view)
-    renderer.scale = Self.scale
-    guard let image = renderer.nsImage else {
-      preconditionFailure("The Pillars field did not render to an image.")
-    }
-    return image
+    return PillarsBitmap.image(of: drawing, scale: Self.scale)
   }
 
   @Test("matches the reference with motion on", arguments: OrbitScenario.names)
