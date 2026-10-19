@@ -14,7 +14,7 @@ Each entry records:
 | D1 | Done, 18 October 2026 |
 | D2 | Done, 18 October 2026 |
 | D3 | Done, 18 October 2026 |
-| D4 | Not started |
+| D4 | Done, 19 October 2026 |
 | D5 | Not started |
 | D6 | Not started |
 | D7 | Not started |
@@ -189,3 +189,61 @@ A committed CLI run, not the build plugin. `scripts/generate-contract.sh` runs `
 
 - Reviewed by an Opus review against REVIEW.md: 1 Blocking (this entry), 8 Should fix and 13 Suggestions; all fixed except three left for later packages, now in the plan: a record of removed items for D5, the order of a new agent for D7, and the readout showing a count rather than a list.
 - A pending mark has no timeout; the contract has no signal for an action that never settles. Revisit if one is seen in use.
+
+### D4. Window model, Orbit, menu bar extra, suppression
+
+- Date: 19 October 2026
+- Branch: `feat/d4-orbit`, from `main` at `92fa69e`. Commits `588fba3..98d1d02`, plus this entry.
+- Machine: MacBook Pro, Apple M4 Pro, macOS 27.0.1, Xcode 27.1 (27A9275), with an external display.
+
+#### Commands and exit codes
+
+| Command | Exit |
+|---|---|
+| `swift format lint --recursive --strict Packages App scripts` | 0 |
+| `swift build --package-path Packages/IanKit --force-resolved-versions` | 0 |
+| `swift test --package-path Packages/IanKit --force-resolved-versions`, three runs | 0 each: 194 tests (Surface 62 including 8 snapshot tests, Store 50, Client 43, Auth 25, Attention 9, Contract 5) |
+| `scripts/check-generated.sh` | 0 |
+| `xcodebuild -project App/Ian.xcodeproj -scheme Ian -configuration Debug -destination 'platform=macOS' -onlyUsePackageVersionsFromResolvedFile -derivedDataPath build/DerivedData build` | 0, `BUILD SUCCEEDED` |
+| `scripts/export-orbit-fixtures.sh`, twice | Byte-identical fixtures both times |
+
+The mock and the contract did not change.
+
+#### Done when
+
+1. Snapshot tests of the Orbit for `quiet`, `normal`, `overloaded` and `incident`, with motion on at a fixed time (0.6 seconds) and with motion off: eight references in `Packages/IanKit/Tests/SurfaceTests/__Snapshots__/OrbitSnapshotTests/`, at `precision: 0.998, perceptualPrecision: 0.98`. The fixtures are the mock's own snapshots at `2026-10-16T09:30:00.000Z`. The lead compared the images with the Scale and Recommended artboards: the ring and over-median arc, the kind colours, the larger alert with its rim, the overflow chip and the working core match.
+2. A test calls `start()` and asserts `sharingType == .none` on every entry in `NSApp.windows`, including the panels from the factory and windows the system creates (ADR 0014).
+3. Suppression: for each trigger alone (camera, external meeting, quiet hours, user pause), driven through the controller, the hover text is absent, the hover label paints nothing, and the accessibility label carries no title. The menu bar label, the menu and the D3 status lines carry no item text.
+4. Manual check by Dom on 19 October 2026, on the machine above, against the mock with `scripts/dev.sh`, all reported good:
+   - The Orbit appears bottom-right of the primary display, and hover shows the top item's title.
+   - A click opens and closes the expanded panel; Escape closes it; clicking the Orbit while Ian is active closes it.
+   - Clicks beside the Orbit, including inside the square around the circle, reach the app beneath.
+   - A drag snaps to the nearest corner, and the corner survives a relaunch.
+   - Right-click opens Open, Pause me, Settings and Quit Ian; Pause me hides the hover.
+   - The Orbit stays visible on another Space and over a full-screen app.
+   - The menu bar reads "Ian 9" in `normal`.
+   - `incident` draws the larger alert with its rim, and `external-meeting` hides the hover.
+   - VoiceOver reads the Orbit's label from the menu bar item.
+
+#### Choices recorded
+
+- **Click-through route (ADR 0005).** The Orbit panel is 96 by 96 points and starts with `ignoresMouseEvents` set. Global and local mouse-moved monitors clear it only while the pointer is inside the avatar's circle, writing only on change. The hosting view's hit test also ignores points outside the circle. The expanded panel accepts mouse-moved events, so the Orbit stays clickable while Ian is active. Hiding the panel deactivates Ian, so focus returns to the previous app.
+- **Hover label.** The hover label is a separate panel from the factory that takes no mouse events, so the Orbit panel never grows.
+- **Frame rate.** At the display's rate, a Debug build in `normal` used about 17% CPU in `top` while the core breathed. At 20 frames a second it used 0.0 to 0.7%, on this M4 Pro. Spec 6.9's budget is for an M1; D9 measures a Release build with Instruments. The timeline runs only while the Orbit is on screen, unsuppressed, with motion on and something moving.
+- **Settings.** The corner is the spec 6.4 setting, stored as `IanOrbitCorner`; the Orbit snaps to the corners of the main display. "Pause me" is the spec 6.5 user pause of this Mac's notifications, held in memory only. It is not the principal's own pause in spec 6.4, which D7 wires through `PATCH /settings`.
+- **Right-click menu.** It holds the shared entries; D3's status lines stay in the menu bar extra until D5 removes them.
+- **Overflow chip.** It uses the Scale artboard's geometry scaled into the 100-unit box, and zero-length arcs are omitted, as `docs/design/README.md` now records.
+- **Snapshot testing.** `swift-snapshot-testing` 1.19.6 is added for `SurfaceTests` only, as the plan says.
+
+#### Spec section 11 criteria evidenced
+
+- Orbit and Pillars match the design: the Orbit half, by the snapshot tests and the comparison above.
+- Suppression holds: on the Orbit and its hover, by the trigger tests. Notifications are D8's.
+- Windows stay out of screen captures: every app window is set to `.none` and tested. The recording with the system screenshot tool is part of D9.
+- Accessibility holds: the Orbit's VoiceOver label is read from the menu bar item.
+
+#### ADRs and what is left
+
+- ADR 0013 records the imports Attention and Surface gained. ADR 0014 records that windows the system creates are swept to `.none`, because the factory cannot build them.
+- Reviewed by an Opus review against REVIEW.md: 3 Blocking (this entry, the system windows, the import ADR), 5 Should fix and 10 Suggestions, all fixed.
+- D9 measures the Orbit's idle cost on a Release build against spec 6.9.

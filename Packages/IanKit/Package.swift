@@ -15,6 +15,9 @@ let package = Package(
     .package(url: "https://github.com/apple/swift-openapi-runtime", .upToNextMinor(from: "1.13.1")),
     .package(
       url: "https://github.com/apple/swift-openapi-urlsession", .upToNextMinor(from: "1.3.2")),
+    // Test-only: the Orbit snapshot tests. 1.19.6 was released on 21 September 2026.
+    .package(
+      url: "https://github.com/pointfreeco/swift-snapshot-testing", .upToNextMinor(from: "1.19.6")),
   ],
   targets: [
     .target(
@@ -69,7 +72,15 @@ let package = Package(
       dependencies: ["Client", "Contract", "Store", "TestSupport"]
     ),
     .testTarget(name: "AttentionTests", dependencies: ["Attention"]),
-    .testTarget(name: "SurfaceTests", dependencies: ["Surface"]),
+    .testTarget(
+      name: "SurfaceTests",
+      dependencies: [
+        "Surface", "Store", "Attention", "Contract", "TestSupport",
+        .product(name: "SnapshotTesting", package: "swift-snapshot-testing"),
+      ],
+      exclude: ["__Snapshots__"],
+      resources: [.copy("Fixtures")]
+    ),
     .testTarget(name: "FeaturesTests", dependencies: ["Features"]),
   ],
   swiftLanguageModes: [.v6]

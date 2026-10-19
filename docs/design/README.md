@@ -51,8 +51,11 @@ From Recommended. The avatar is drawn in a 100 by 100 unit box, rendered at 96 p
 | Over-median arc | Circle r 42, stroke `#F3A982`, width 2.5, round caps, from 12 o'clock | Length is `clamp(load / median - 1, 0, 1)` of the circumference |
 | Core | Circle at centre, r 6, `#A19A9A` | While any item is `working`: fill `#B0C1E3`, r `6 + b` with `b = 0.5 + 0.5 sin(1.5 t)` (a 4.2 second breath) |
 | Satellites | On r 34 at -90, -18, 54, 126 and 198 degrees, in the server's order | r 4.5 in the kind colour. Alerts r 6.5 with a rim of width 1.5 in `rgba(242,238,238, 0.5 + 0.5 p)`, `p = 0.5 + 0.5 sin(5 t)` |
-| Overflow chip | From Scale: pill 32 by 24, radius 12, fill `#2E2E2E`, stroke `rgba(255,255,255,0.3)`, "+n" at 12 points | Shown when `overflow > 0`, upper left of the ring |
+| Overflow chip | From Scale, whose 160 unit box maps to the 100 unit box at 100/160: pill 20 by 15, radius 7.5, fill `#2E2E2E`, stroke `rgba(255,255,255,0.3)` width 0.625, "+n" at 7.5 units in white | Shown when `overflow > 0`. Centred at -126 degrees on radius 40, between the first and last satellites. The Scale artboard's own position would overlap the 198 degree satellite on Recommended's layout |
 | Whisper | Pill, padding 4 by 10, fill `#2E2E2E`, border `rgba(216,140,140,0.5)`, white 12-point text, to the left of the avatar | Urgent rung only, eight seconds, never while suppressed |
+| Hover label | Pill, padding 4 by 10, fill `#2E2E2E`, border `rgba(255,255,255,0.15)` width 1, white 12-point text on one line | The top item's title, beside the avatar on the side facing the screen's centre, 8 points away. Not shown while suppressed |
+
+Zero-length arcs are omitted: no load arc when `load` is 0 and no over-median arc when `load / median` is at most 1, since a round cap would draw a dot at 12 o'clock.
 
 `load`, `median`, `working`, the satellite list and `overflow` all come from `GET /today`. The client draws them; it never counts or sorts them.
 
