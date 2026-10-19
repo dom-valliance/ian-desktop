@@ -83,7 +83,8 @@ let package = Package(
     ),
     .testTarget(
       name: "FeaturesTests",
-      dependencies: ["Features", "Client", "Contract", "Store", "TestSupport"]
+      dependencies: ["Features", "Client", "Contract", "Store", "TestSupport"],
+      resources: [.copy("Fixtures")]
     ),
   ],
   swiftLanguageModes: [.v6]

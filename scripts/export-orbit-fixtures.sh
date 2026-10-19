@@ -1,13 +1,17 @@
 #!/usr/bin/env bash
-# Writes the Orbit snapshot tests' fixtures: the `today` and `items` of the mock's `quiet`,
-# `normal`, `overloaded` and `incident` snapshots, taken at a fixed mock time, to
-# Packages/IanKit/Tests/SurfaceTests/Fixtures/<scenario>.json. Starts the mock on a free port and
-# stops it on exit. Running it twice gives byte-identical files.
+# Writes the scenario fixtures: the `today`, `views` and `items` of the mock's `quiet`, `normal`,
+# `overloaded` and `incident` snapshots, and `me`, taken at a fixed mock time, to
+# Packages/IanKit/Tests/SurfaceTests/Fixtures/<scenario>.json (the Orbit snapshot tests) and the
+# same file under Tests/FeaturesTests/Fixtures (the view tests). Starts the mock on a free port
+# and stops it on exit. Running it twice gives byte-identical files.
 set -euo pipefail
 
 repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 mock_dir="$repo_root/mock"
-out_dir="$repo_root/Packages/IanKit/Tests/SurfaceTests/Fixtures"
+out_dirs=(
+  "$repo_root/Packages/IanKit/Tests/SurfaceTests/Fixtures"
+  "$repo_root/Packages/IanKit/Tests/FeaturesTests/Fixtures"
+)
 host="127.0.0.1"
 fixed_time="2026-10-16T09:30:00.000Z"
 scenarios=(quiet normal overloaded incident)
@@ -64,20 +68,28 @@ for _ in $(seq 1 50); do
 done
 [[ "$ready" == "1" ]] || fail "the mock did not report that it was listening within ten seconds."
 
-mkdir -p "$out_dir"
+mkdir -p "${out_dirs[@]}"
 for scenario in "${scenarios[@]}"; do
   curl -fsS -X POST "$base/__mock/scenario" -H 'content-type: application/json' \
     -d "{\"scenario\":\"$scenario\"}" >/dev/null || fail "the mock refused the scenario '$scenario'."
   curl -fsS -X POST "$base/__mock/clock" -H 'content-type: application/json' \
     -d "{\"set\":\"$fixed_time\"}" >/dev/null || fail "the mock refused the clock setting."
-  curl -fsS "$base/desktop/v1/snapshot" -H 'Authorization: Bearer dev-fixtures' |
+  snapshot_file="$(mktemp -t ian-fixtures-snapshot.XXXXXX)"
+  me_file="$(mktemp -t ian-fixtures-me.XXXXXX)"
+  curl -fsS "$base/desktop/v1/snapshot" -H 'Authorization: Bearer dev-fixtures' >"$snapshot_file" ||
+    fail "could not read the '$scenario' snapshot."
+  curl -fsS "$base/desktop/v1/me" -H 'Authorization: Bearer dev-fixtures' >"$me_file" ||
+    fail "could not read the '$scenario' principal."
+  for out_dir in "${out_dirs[@]}"; do
     node -e '
-      const chunks = [];
-      process.stdin.on("data", (chunk) => chunks.push(chunk));
-      process.stdin.on("end", () => {
-        const snapshot = JSON.parse(Buffer.concat(chunks).toString("utf8"));
-        process.stdout.write(JSON.stringify({ today: snapshot.today, items: snapshot.items }, null, 2) + "\n");
-      });
-    ' >"$out_dir/$scenario.json" || fail "could not read the '$scenario' snapshot."
-  echo "Wrote $out_dir/$scenario.json"
+      const fs = require("fs");
+      const snapshot = JSON.parse(fs.readFileSync(process.argv[1], "utf8"));
+      const me = JSON.parse(fs.readFileSync(process.argv[2], "utf8"));
+      process.stdout.write(
+        JSON.stringify({ today: snapshot.today, views: snapshot.views, items: snapshot.items, me }, null, 2) + "\n",
+      );
+    ' "$snapshot_file" "$me_file" >"$out_dir/$scenario.json" || fail "could not write the '$scenario' fixture."
+    echo "Wrote $out_dir/$scenario.json"
+  done
+  rm -f "$snapshot_file" "$me_file"
 done
