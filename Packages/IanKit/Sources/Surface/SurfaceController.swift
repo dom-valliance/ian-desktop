@@ -18,6 +18,11 @@ public final class SurfaceController {
   public private(set) var isOrbitOnScreen = true
   /// The spec 6.4 motion setting. The system's Reduce Motion forces reduced regardless.
   public var reducedMotionSetting: Bool
+  /// False once the expanded client is hidden or fully covered. Its animation stops then.
+  public private(set) var isExpandedOnScreen = false
+  /// When the expanded client last opened, in seconds since the reference date, for the
+  /// pillars' rise. Nil before the first opening.
+  public private(set) var expandedOpenedAt: TimeInterval?
 
   @ObservationIgnored private let store: IanStore
   @ObservationIgnored private let signals: SuppressionSignals
@@ -63,7 +68,7 @@ public final class SurfaceController {
     host.menuProvider = { [weak self] in self?.makeMenu() }
     orbitPanel.contentView = host
     hoverPanel.contentView = NSHostingView(rootView: HoverLabelView(controller: self))
-    expandedPanel.contentView = NSHostingView(rootView: ExpandedPlaceholderView())
+    expandedPanel.contentView = NSHostingView(rootView: ExpandedPanelSurface { Color.clear })
     placeOrbit()
   }
 
@@ -73,6 +78,10 @@ public final class SurfaceController {
   public var windows: [NSWindow] { [orbitPanel, hoverPanel, expandedPanel] }
 
   public var isExpandedVisible: Bool { expandedPanel.isVisible }
+
+  /// Whether the expanded client's animation should run: it is on screen and nothing suppresses
+  /// it (spec 6.9, AGENTS.md rule 7).
+  public var isExpandedAnimating: Bool { isExpandedOnScreen && !suppression.isActive }
 
   public var suppression: Suppression {
     let context = store.state.today?.context
@@ -92,6 +101,12 @@ public final class SurfaceController {
   }
 
   // MARK: Lifecycle
+
+  /// Puts the app's content in the expanded client's panel, on the panel's own surface. Surface
+  /// does not import Features, so the app passes the view in (ADR 0004).
+  public func setExpandedContent<Content: View>(_ content: Content) {
+    expandedPanel.contentView = NSHostingView(rootView: ExpandedPanelSurface { content })
+  }
 
   public func start() {
     signals.start()
@@ -135,14 +150,17 @@ public final class SurfaceController {
   }
 
   public func showExpanded() {
+    if !expandedPanel.isVisible { expandedOpenedAt = Date().timeIntervalSinceReferenceDate }
     repositionExpanded()
     NSApplication.shared.activate()
     expandedPanel.makeKeyAndOrderFront(nil)
+    isExpandedOnScreen = true
   }
 
   /// Hides the expanded client and gives focus back to the app the principal was in.
   public func hideExpanded() {
     expandedPanel.orderOut(nil)
+    isExpandedOnScreen = false
     NSApplication.shared.deactivate()
   }
 
@@ -249,6 +267,13 @@ public final class SurfaceController {
     return menu
   }
 
+  /// Escape closes the panel without going through `hideExpanded`, and another window can cover
+  /// it, so the panel's own occlusion state decides whether it is on screen.
+  private func syncExpandedOnScreen() {
+    let onScreen = expandedPanel.isVisible && expandedPanel.occlusionState.contains(.visible)
+    if onScreen != isExpandedOnScreen { isExpandedOnScreen = onScreen }
+  }
+
   // MARK: System
 
   /// Notifications are delivered on the posting thread, which is the main thread for each of
@@ -268,6 +293,7 @@ public final class SurfaceController {
           guard let self else { return }
           self.secureSystemWindows()
           self.isOrbitOnScreen = self.orbitPanel.occlusionState.contains(.visible)
+          self.syncExpandedOnScreen()
         }
       })
     observers.append(
