@@ -152,6 +152,20 @@ public final class SurfaceController {
     }
   }
 
+  /// Opens the expanded client once, as soon as the first snapshot is in. `scripts/measure-cpu.sh`
+  /// uses it to measure the open panel without a pointer.
+  public func showExpandedAfterFirstSnapshot() {
+    guard store.state.today == nil else {
+      showExpanded()
+      return
+    }
+    withObservationTracking {
+      _ = store.state.today
+    } onChange: { [weak self] in
+      Task { @MainActor in self?.showExpandedAfterFirstSnapshot() }
+    }
+  }
+
   public func toggleExpanded() {
     if expandedPanel.isVisible { hideExpanded() } else { showExpanded() }
   }
