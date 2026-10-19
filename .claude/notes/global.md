@@ -78,3 +78,10 @@ Append-only. Lessons from corrections during the Ian desktop build. The first en
 **Correction**: "Are you still stress testing my CPU? I can see a bunch of YES processes still running." `$!` had held the subshells' ids, so the `yes` processes kept every core busy overnight.
 **Rule**: Start a background process without a subshell wrapper so `$!` is its own id, or start it as a tracked background task and stop that task. After cleanup, confirm with `pgrep` that nothing is left, and say so. In zsh, pass a list of ids through `xargs kill`, since `$pids` is not word-split.
 **Applies to**: global
+
+### [2026-10-19] A GUI process Claude starts runs on Dom's screen
+
+**Context**: A P1 agent measured CPU with a small GUI harness app. A recursion bug crashed it three times in two minutes, and it was relaunched each time.
+**Correction**: Dom sent a screenshot of "Harness quit unexpectedly" and asked "Is this you?". Each crash put a macOS dialog in front of his work.
+**Rule**: Any app Claude or its agents launch shows windows and crash dialogs on Dom's screen. Say so before running one. After every run, check its exit status and the newest report in `~/Library/Logs/DiagnosticReports`, and never relaunch after a crash without a fix and a test that reproduces it. This is the second lesson about Claude's processes affecting Dom's machine (see the `yes` entry above); a third promotes it to the AGENTS.md Gotchas.
+**Applies to**: global
