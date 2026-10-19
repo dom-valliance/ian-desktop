@@ -9,6 +9,8 @@ struct TodayView: View {
   let model: TodayModel
   /// When the expanded client last opened, for the pillars' rise.
   let openedAt: TimeInterval?
+  let isAnimating: Bool
+  let reducedMotion: Bool
   let onNavigate: (ClientSection) -> Void
 
   /// What makes the scene stale: any applied event or snapshot, the selection, or a new opening.
@@ -28,8 +30,7 @@ struct TodayView: View {
   var body: some View {
     let selection = model.resolvedSelection(in: store)
     VStack(spacing: 0) {
-      FieldPlaceholder()
-        .frame(height: 300)
+      field
       Divider().overlay(ClientPalette.line)
       ScrollView {
         TodayListsView(
@@ -58,10 +59,25 @@ struct TodayView: View {
   }
 }
 
-/// Stands where the Pillars field goes until it is wired in. It draws no item text.
-private struct FieldPlaceholder: View {
-  var body: some View {
-    Color.clear
-      .accessibilityHidden(true)
+extension TodayView {
+  /// The field in a fixed frame, scaled to fit its 540 by 420 box, so its per-frame redraws never
+  /// re-lay out the lists or the footer. Its clock lives inside `PillarsFieldView` alone.
+  @ViewBuilder fileprivate var field: some View {
+    Group {
+      if let scene = model.scene {
+        PillarsFieldView(
+          scene: scene.pillarsScene, isAnimating: isAnimating, reducedMotion: reducedMotion,
+          onSelect: { key in
+            if let today = store.state.today {
+              model.selectPillar(key, in: today)
+            }
+          })
+      } else {
+        Color.clear
+      }
+    }
+    .aspectRatio(PillarsRenderer.boxSize, contentMode: .fit)
+    .frame(maxWidth: .infinity)
+    .frame(height: 300)
   }
 }

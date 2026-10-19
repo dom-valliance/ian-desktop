@@ -2,6 +2,7 @@ import Contract
 import Foundation
 import Observation
 import Store
+import Surface
 
 /// The Today view's own state: what the list has selected, and the field's scene. The scene is
 /// rebuilt when the store, the selection or the opening time changes, so a pillar can keep
@@ -24,6 +25,11 @@ final class TodayModel {
   /// A pillar was chosen in the field: select its row.
   func selectPillar(_ pillar: FieldCellRef, in today: Components.Schemas.Today) {
     selection = TodaySelectionModel.selection(forPillar: pillar, in: today)
+  }
+
+  /// The field reported a tap on a pillar: select its row.
+  func selectPillar(_ key: PillarCellKey, in today: Components.Schemas.Today) {
+    selectPillar(FieldCellRef(key), in: today)
   }
 
   /// The selection, unless it names an item the store no longer holds and has no record of.

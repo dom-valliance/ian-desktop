@@ -9,11 +9,13 @@ public struct ExpandedClientView: View {
   // Weak, so the controller, its panel and this view do not keep each other alive.
   private weak var controller: SurfaceController?
   private let model: ClientModel
+  @Environment(\.accessibilityReduceMotion) private var systemReducesMotion
 
   public init(store: IanStore, controller: SurfaceController, model: ClientModel) {
     self.store = store
     self.controller = controller
     self.model = model
+    controller.onOpenSettings = { [weak model] in model?.section = .settings }
   }
 
   public var body: some View {
@@ -39,6 +41,8 @@ public struct ExpandedClientView: View {
     case .today:
       TodayView(
         store: store, model: model.today, openedAt: controller?.expandedOpenedAt,
+        isAnimating: controller?.isExpandedAnimating ?? false,
+        reducedMotion: (controller?.reducedMotionSetting ?? false) || systemReducesMotion,
         onNavigate: { model.section = $0 })
     case .proposals, .commitments, .tasks, .alerts, .agents, .settings:
       Text(model.section.title)
