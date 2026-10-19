@@ -16,6 +16,7 @@ Each entry records:
 | D3 | Done, 18 October 2026 |
 | D4 | Done, 19 October 2026 |
 | D5 | Not started |
+| P1 | Not started |
 | D6 | Not started |
 | D7 | Not started |
 | D8 | Not started |
