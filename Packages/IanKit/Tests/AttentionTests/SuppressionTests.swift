@@ -106,6 +106,35 @@ struct SuppressionSignalsTests {
     #expect(suppression.triggers == [.externalMeeting, .quietHours])
   }
 
+  @Test("ignores a live camera when the camera toggle is off")
+  func cameraToggleOff() {
+    let camera = FakeCamera()
+    camera.isLive = true
+    let signals = SuppressionSignals(camera: camera)
+    signals.start()
+    let toggles = SuppressionToggles(camera: false, externalMeeting: true)
+    #expect(
+      signals.suppression(externalMeeting: false, quietHours: false, toggles: toggles) == .none)
+  }
+
+  @Test("ignores an external meeting when its toggle is off")
+  func meetingToggleOff() {
+    let signals = SuppressionSignals(camera: FakeCamera())
+    let toggles = SuppressionToggles(camera: true, externalMeeting: false)
+    #expect(
+      signals.suppression(externalMeeting: true, quietHours: false, toggles: toggles) == .none)
+  }
+
+  @Test("still suppresses for quiet hours and the pause whatever the toggles say")
+  func quietHoursAndPauseAreNotToggles() {
+    let signals = SuppressionSignals(camera: FakeCamera())
+    signals.isPaused = true
+    let toggles = SuppressionToggles(camera: false, externalMeeting: false)
+    #expect(
+      signals.suppression(externalMeeting: true, quietHours: true, toggles: toggles).triggers
+        == [.quietHours, .userPaused])
+  }
+
   @Test("stops the camera monitor and clears its state")
   func stopsCamera() {
     let camera = FakeCamera()
@@ -129,5 +158,25 @@ struct CoreMediaCameraMonitorTests {
     monitor.stop()
     monitor.stop()
     #expect(!monitor.isLive)
+  }
+}
+
+@Suite("Notification levels")
+struct NotificationLevelTests {
+  @Test("defaults follow the ladder: only Urgent and Stop notify")
+  func defaultsFollowTheLadder() {
+    #expect(NotificationRung.ambient.defaultLevel == .off)
+    #expect(NotificationRung.needsYou.defaultLevel == .off)
+    #expect(NotificationRung.urgent.defaultLevel == .banner)
+    #expect(NotificationRung.stop.defaultLevel == .banner)
+  }
+
+  @Test("Stop is fixed and has no key to save, and every other rung has its own key")
+  func stopIsFixed() {
+    #expect(!NotificationRung.stop.isConfigurable)
+    #expect(NotificationRung.stop.defaultsKey == nil)
+    let keys = NotificationRung.allCases.compactMap(\.defaultsKey)
+    #expect(keys.count == 3)
+    #expect(Set(keys).count == 3)
   }
 }
