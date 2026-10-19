@@ -138,7 +138,7 @@ struct FieldSceneStoreTests {
     let (store, service, feed) = await TodayScenario.liveStore()
     defer { store.stop() }
     let model = TodayModel()
-    let now = Date().timeIntervalSinceReferenceDate
+    let now = TodayScenario.epoch.timeIntervalSinceReferenceDate
 
     await store.run(actionID: "act_later", on: "alrt_b1", until: Date().addingTimeInterval(60))
     #expect(service.actionCalls.count == 1)
@@ -156,7 +156,7 @@ struct FieldSceneStoreTests {
     let (store, _, feed) = await TodayScenario.liveStore()
     defer { store.stop() }
     let model = TodayModel()
-    let start = Date().timeIntervalSinceReferenceDate
+    let start = TodayScenario.epoch.timeIntervalSinceReferenceDate
 
     await TodayScenario.send(Fixtures.removedJSON("alrt_b1"), id: 11, to: feed, on: store)
     model.refresh(store: store, openedAt: nil, now: start)

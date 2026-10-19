@@ -15,6 +15,10 @@ import TestSupport
 enum TodayScenario {
   typealias Schemas = Components.Schemas
 
+  /// The store's clock in these tests, so a removal's time never depends on how fast the machine
+  /// runs.
+  static let epoch = Date(timeIntervalSinceReferenceDate: 800_000_000)
+
   static let approve = Schemas.ItemAction(
     id: "act_yes", label: "Go ahead", style: .primary, confirm: nil, input: .none)
   static let decline = Schemas.ItemAction(
@@ -118,12 +122,13 @@ enum TodayScenario {
   @MainActor
   static func liveStore(
     service: ScriptedService = ScriptedService(snapshots: [.success(snapshot)]),
-    clock: ManualClock = ManualClock()
+    clock: ManualClock = ManualClock(), now: Date = TodayScenario.epoch
   ) async -> (store: IanStore, service: ScriptedService, feed: Feed) {
     let feed = service.planStream()
     let store = IanStore(
       service: service, profile: .mock, appVersion: SemanticVersion(major: 0, minor: 1, patch: 0),
-      clock: clock, jitter: { 1 })
+      clock: clock, jitter: { 1 },
+      now: { now })
     store.start()
     _ = await eventually("live") { await MainActor.run { store.connection == .live } }
     return (store, service, feed)
