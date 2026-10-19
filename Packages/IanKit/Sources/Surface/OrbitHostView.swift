@@ -2,7 +2,7 @@ import AppKit
 import SwiftUI
 
 /// The Orbit panel's content view. It owns the pointer: a click toggles the expanded client, a
-/// drag moves the Orbit, a right-click opens the menu. Only the avatar's circle takes events.
+/// drag moves the Orbit, a right-click or control-click opens the menu. Only the avatar's circle takes events.
 ///
 /// SwiftUI draws the avatar and carries its accessibility; this view sits above it and answers
 /// the mouse, so no gesture recogniser competes with the drag.
@@ -13,7 +13,7 @@ final class OrbitHostView: NSView {
   var onClick: () -> Void = {}
   var onDrag: (CGPoint) -> Void = { _ in }
   var onDragEnd: () -> Void = {}
-  var onContextMenu: (NSEvent, NSView) -> Void = { _, _ in }
+  var menuProvider: () -> NSMenu? = { nil }
 
   private var pressedAt: CGPoint?
   private var originAtPress: CGPoint = .zero
@@ -38,7 +38,16 @@ final class OrbitHostView: NSView {
     return OrbitPlacement.hitsAvatar(local, in: bounds) ? self : nil
   }
 
+  override func menu(for event: NSEvent) -> NSMenu? {
+    menuProvider()
+  }
+
   override func mouseDown(with event: NSEvent) {
+    if event.modifierFlags.contains(.control) {
+      // A control-click is a right-click, but only `super` would open the menu for it.
+      if let menu = menu(for: event) { NSMenu.popUpContextMenu(menu, with: event, for: self) }
+      return
+    }
     pressedAt = NSEvent.mouseLocation
     originAtPress = window?.frame.origin ?? .zero
     isDragging = false
@@ -66,9 +75,5 @@ final class OrbitHostView: NSView {
     } else if pressedAt != nil {
       onClick()
     }
-  }
-
-  override func rightMouseDown(with event: NSEvent) {
-    onContextMenu(event, self)
   }
 }

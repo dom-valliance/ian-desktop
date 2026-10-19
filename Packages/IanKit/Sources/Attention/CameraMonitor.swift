@@ -64,7 +64,11 @@ public final class CoreMediaCameraMonitor: CameraMonitoring {
       var runningAddress = Self.address(
         CMIOObjectPropertySelector(kCMIODevicePropertyDeviceIsRunningSomewhere))
       for device in devices {
-        CMIOObjectAddPropertyListenerBlock(device, &runningAddress, .main, block)
+        let status = CMIOObjectAddPropertyListenerBlock(device, &runningAddress, .main, block)
+        if status != noErr {
+          Self.log.error(
+            "camera \(device, privacy: .public) listener failed: \(status, privacy: .public)")
+        }
       }
       watchedDevices = devices
     }

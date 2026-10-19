@@ -8,26 +8,29 @@ struct DebugStatus: View {
   let store: IanStore
 
   var body: some View {
-    if !store.profile.isMock {
-      Text(store.profile.displayName)
-    }
-    Text(openItemsLine)
-    if let line = ageLine {
+    ForEach(Array(lines.enumerated()), id: \.offset) { _, line in
       Text(line)
     }
-    Text(stateLine)
-    if case .signInRequired(let message) = store.phase {
-      if let message {
-        Text(message)
-      }
-      if store.isSigningIn {
-        Text("Signing in")
-      } else {
-        Button("Sign in") {
-          Task { await store.signIn() }
-        }
+    if case .signInRequired = store.phase, !store.isSigningIn {
+      Button("Sign in") {
+        Task { await store.signIn() }
       }
     }
+  }
+
+  /// Every line of text the readout shows. None of it is item text: the environment, counts, an
+  /// age, a connection state and a sign-in message.
+  var lines: [String] {
+    var lines: [String] = []
+    if !store.profile.isMock { lines.append(store.profile.displayName) }
+    lines.append(openItemsLine)
+    if let line = ageLine { lines.append(line) }
+    lines.append(stateLine)
+    if case .signInRequired(let message) = store.phase {
+      if let message { lines.append(message) }
+      if store.isSigningIn { lines.append("Signing in") }
+    }
+    return lines
   }
 
   /// The server's own count of open items, from the Orbit block.

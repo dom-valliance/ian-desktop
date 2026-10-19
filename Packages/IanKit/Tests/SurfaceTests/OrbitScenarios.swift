@@ -1,3 +1,5 @@
+import Attention
+import Client
 import Contract
 import Foundation
 import Store
@@ -47,4 +49,54 @@ func withScratchDefaults<Result>(_ body: (UserDefaults) throws -> Result) rethro
     try? FileManager.default.removeItem(at: file)
   }
   return try body(defaults)
+}
+
+/// Runs `body` with scratch settings, for tests that await.
+@MainActor
+func withScratchDefaultsAsync(_ body: (UserDefaults) async -> Void) async {
+  let name = "ian.tests.\(UUID().uuidString)"
+  let defaults = UserDefaults(suiteName: name)!
+  await body(defaults)
+  defaults.removePersistentDomain(forName: name)
+  let file = URL.libraryDirectory.appending(path: "Preferences/\(name).plist")
+  try? FileManager.default.removeItem(at: file)
+}
+
+/// Holds the store a test must stop.
+@MainActor
+struct IanStoreBox {
+  let store: IanStore
+  init(_ store: IanStore) { self.store = store }
+}
+
+/// A camera monitor the test drives. It never touches CoreMediaIO.
+@MainActor
+final class FakeCamera: CameraMonitoring {
+  var isLive = false
+  private(set) var started = false
+  private(set) var stopped = false
+
+  func start(onChange: @escaping @MainActor () -> Void) { started = true }
+  func stop() { stopped = true }
+}
+
+/// A store that has loaded `scenario` through a scripted service, with the context flags
+/// overridden. The caller stops it.
+@MainActor
+func loadedStore(
+  _ scenario: OrbitScenario, externalMeeting: Bool = false, quietHours: Bool = false
+) async -> IanStore {
+  var snapshot = Fixtures.snapshot()
+  snapshot.today = scenario.today
+  snapshot.today.context.inExternalMeeting = externalMeeting
+  snapshot.today.context.quietHoursActive = quietHours
+  snapshot.items = scenario.items
+  let store = IanStore(
+    service: ScriptedService(snapshots: [.success(snapshot)]), profile: .mock,
+    appVersion: SemanticVersion(major: 0, minor: 1, patch: 0))
+  store.start()
+  for _ in 0..<200 where store.state.today == nil {
+    try? await Task.sleep(for: .milliseconds(10))
+  }
+  return store
 }

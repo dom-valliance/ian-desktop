@@ -3,10 +3,21 @@ import SwiftUI
 /// The Orbit's SwiftUI content: the avatar, its accessibility label, and the press action
 /// VoiceOver uses (the mouse is handled by `OrbitHostView`).
 struct OrbitRootView: View {
-  let controller: SurfaceController
+  // Weak, so the controller, its panels and their views do not keep each other alive.
+  private weak var controller: SurfaceController?
   @Environment(\.accessibilityReduceMotion) private var systemReducesMotion
 
+  init(controller: SurfaceController) {
+    self.controller = controller
+  }
+
   var body: some View {
+    if let controller {
+      avatar(of: controller)
+    }
+  }
+
+  @ViewBuilder private func avatar(of controller: SurfaceController) -> some View {
     let presentation = controller.presentation
     OrbitView(
       model: presentation.model,
@@ -23,9 +34,19 @@ struct OrbitRootView: View {
 
 /// The top item's title beside the Orbit. It draws nothing while suppressed.
 struct HoverLabelView: View {
-  let controller: SurfaceController
+  private weak var controller: SurfaceController?
+
+  init(controller: SurfaceController) {
+    self.controller = controller
+  }
 
   var body: some View {
+    if let controller {
+      label(of: controller)
+    }
+  }
+
+  @ViewBuilder private func label(of controller: SurfaceController) -> some View {
     HStack {
       if controller.corner.isRight { Spacer(minLength: 0) }
       if let text = controller.presentation.hoverText {

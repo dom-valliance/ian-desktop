@@ -11,7 +11,7 @@ public enum WindowFactory {
       OrbitPanel.self, style: [.borderless, .nonactivatingPanel],
       frame: CGRect(
         x: 0, y: 0, width: OrbitPlacement.avatarSize, height: OrbitPlacement.avatarSize),
-      content: content)
+      content: content, stationary: true)
     panel.hasShadow = false
     panel.ignoresMouseEvents = true
     return panel
@@ -21,7 +21,7 @@ public enum WindowFactory {
   public static func makeHoverPanel(content: NSView, size: CGSize) -> NSPanel {
     let panel = make(
       OrbitPanel.self, style: [.borderless, .nonactivatingPanel],
-      frame: CGRect(origin: .zero, size: size), content: content)
+      frame: CGRect(origin: .zero, size: size), content: content, stationary: true)
     panel.hasShadow = false
     panel.ignoresMouseEvents = true
     return panel
@@ -33,18 +33,23 @@ public enum WindowFactory {
       ExpandedPanel.self, style: [.borderless, .resizable],
       frame: CGRect(origin: .zero, size: OrbitPlacement.expandedDefaultSize), content: content)
     panel.minSize = OrbitPlacement.expandedMinimumSize
+    // While Ian is active, pointer movement goes to its key window, and the Orbit's monitor
+    // needs to see it to open the Orbit to clicks.
+    panel.acceptsMouseMovedEvents = true
     panel.hasShadow = true
     return panel
   }
 
   private static func make<Panel: NSPanel>(
-    _ type: Panel.Type, style: NSWindow.StyleMask, frame: CGRect, content: NSView
+    _ type: Panel.Type, style: NSWindow.StyleMask, frame: CGRect, content: NSView,
+    stationary: Bool = false
   ) -> Panel {
     let panel = Panel(contentRect: frame, styleMask: style, backing: .buffered, defer: true)
     panel.contentView = content
     panel.sharingType = .none
     panel.level = .floating
     panel.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary, .ignoresCycle]
+    if stationary { panel.collectionBehavior.insert(.stationary) }
     panel.isFloatingPanel = true
     panel.hidesOnDeactivate = false
     panel.isReleasedWhenClosed = false
@@ -64,7 +69,13 @@ private final class ExpandedPanel: NSPanel {
   override var canBecomeKey: Bool { true }
   override var canBecomeMain: Bool { false }
 
+  /// Escape closes the panel when nothing in it, such as a text field, has taken the key.
+  override func keyDown(with event: NSEvent) {
+    if event.keyCode == 53 { cancelOperation(nil) } else { super.keyDown(with: event) }
+  }
+
   override func cancelOperation(_ sender: Any?) {
     orderOut(sender)
+    NSApplication.shared.deactivate()
   }
 }

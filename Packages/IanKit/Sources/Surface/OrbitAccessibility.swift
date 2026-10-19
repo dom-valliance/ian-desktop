@@ -13,13 +13,17 @@ public enum OrbitAccessibility {
     ].joined(separator: ", ")
   }
 
-  /// The number spelled out in British English, and "none" for zero.
-  static func words(_ number: Int) -> String {
-    guard number != 0 else { return "none" }
+  private static let spellOut: NumberFormatter = {
     let formatter = NumberFormatter()
     formatter.locale = Locale(identifier: "en_GB")
     formatter.numberStyle = .spellOut
-    guard var text = formatter.string(from: NSNumber(value: number)) else { return String(number) }
+    return formatter
+  }()
+
+  /// The number spelled out in British English, and "none" for zero.
+  static func words(_ number: Int) -> String {
+    guard number != 0 else { return "none" }
+    guard var text = spellOut.string(from: NSNumber(value: number)) else { return String(number) }
     // The formatter omits British English's "and" after hundreds and thousands.
     for (word, divisor) in [("thousand", 1000), ("hundred", 100)]
     where number >= divisor && (1..<100).contains(number % divisor) {

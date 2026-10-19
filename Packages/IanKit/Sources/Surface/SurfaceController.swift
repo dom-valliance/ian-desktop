@@ -60,7 +60,7 @@ public final class SurfaceController {
     host.onClick = { [weak self] in self?.toggleExpanded() }
     host.onDrag = { [weak self] origin in self?.dragOrbit(to: origin) }
     host.onDragEnd = { [weak self] in self?.finishDrag() }
-    host.onContextMenu = { [weak self] event, view in self?.showMenu(event: event, in: view) }
+    host.menuProvider = { [weak self] in self?.makeMenu() }
     orbitPanel.contentView = host
     hoverPanel.contentView = NSHostingView(rootView: HoverLabelView(controller: self))
     expandedPanel.contentView = NSHostingView(rootView: ExpandedPlaceholderView())
@@ -87,7 +87,9 @@ public final class SurfaceController {
 
   public var menuEntries: [AppMenu.Entry] { AppMenu.entries(isPaused: signals.isPaused) }
 
-  public var menuBarTitle: String { AppMenu.barTitle(nowCount: presentation.nowCount) }
+  public var menuBarTitle: String {
+    AppMenu.barTitle(nowCount: store.state.today?.orbit.nowCount ?? 0)
+  }
 
   // MARK: Lifecycle
 
@@ -96,6 +98,26 @@ public final class SurfaceController {
     orbitPanel.orderFrontRegardless()
     installPointerMonitors()
     observeSystem()
+    secureSystemWindows()
+  }
+
+  /// Removes the pointer monitors and observers, stops the camera watch and hides every panel.
+  public func stop() {
+    for monitor in monitors { NSEvent.removeMonitor(monitor) }
+    monitors = []
+    for observer in observers { NotificationCenter.default.removeObserver(observer) }
+    observers = []
+    signals.stop()
+    for window in windows { window.orderOut(nil) }
+    isHovering = false
+  }
+
+  /// Sets `sharingType = .none` on every window the app has, including those AppKit and SwiftUI
+  /// make outside the factory: the status item's window and the menus (ADR 0014).
+  func secureSystemWindows() {
+    for window in NSApplication.shared.windows where window.sharingType != .none {
+      window.sharingType = .none
+    }
   }
 
   // MARK: Commands
@@ -113,6 +135,19 @@ public final class SurfaceController {
   }
 
   public func showExpanded() {
+    repositionExpanded()
+    NSApplication.shared.activate()
+    expandedPanel.makeKeyAndOrderFront(nil)
+  }
+
+  /// Hides the expanded client and gives focus back to the app the principal was in.
+  public func hideExpanded() {
+    expandedPanel.orderOut(nil)
+    NSApplication.shared.deactivate()
+  }
+
+  /// Moves the expanded client under its anchor without taking focus.
+  private func repositionExpanded() {
     let size = CGSize(
       width: max(expandedPanel.frame.width, OrbitPlacement.expandedMinimumSize.width),
       height: max(expandedPanel.frame.height, OrbitPlacement.expandedMinimumSize.height))
@@ -120,12 +155,6 @@ public final class SurfaceController {
       OrbitPlacement.expandedFrame(
         size: size, orbit: orbitPanel.frame, corner: corner, in: screenArea()),
       display: false)
-    NSApplication.shared.activate()
-    expandedPanel.makeKeyAndOrderFront(nil)
-  }
-
-  public func hideExpanded() {
-    expandedPanel.orderOut(nil)
   }
 
   // MARK: Placement and dragging
@@ -147,7 +176,7 @@ public final class SurfaceController {
     cornerSetting.corner = corner
     orbitPanel.setFrame(
       OrbitPlacement.orbitFrame(corner: corner, in: area), display: true, animate: true)
-    if expandedPanel.isVisible { showExpanded() }
+    if expandedPanel.isVisible { repositionExpanded() }
     updatePointer()
   }
 
@@ -180,7 +209,9 @@ public final class SurfaceController {
 
   private func updatePointer() {
     let inside = OrbitPlacement.hitsAvatar(NSEvent.mouseLocation, in: orbitPanel.frame)
-    if !isDragging { orbitPanel.ignoresMouseEvents = !inside }
+    if !isDragging, orbitPanel.ignoresMouseEvents == inside {
+      orbitPanel.ignoresMouseEvents = !inside
+    }
     guard inside != isHovering, !isDragging else { return }
     isHovering = inside
     syncHoverPanel()
@@ -200,7 +231,8 @@ public final class SurfaceController {
     hoverPanel.orderFrontRegardless()
   }
 
-  private func showMenu(event: NSEvent, in view: NSView) {
+  /// The menu the Orbit opens on right-click and control-click, built from the shared model.
+  func makeMenu() -> NSMenu {
     let menu = NSMenu()
     for entry in menuEntries {
       switch entry {
@@ -214,31 +246,43 @@ public final class SurfaceController {
         menu.addItem(item)
       }
     }
-    NSMenu.popUpContextMenu(menu, with: event, for: view)
+    return menu
   }
 
   // MARK: System
 
+  /// Notifications are delivered on the posting thread, which is the main thread for each of
+  /// these, so the handlers run at once and `assumeIsolated` holds.
+  ///
+  /// The window sweep runs when a menu starts tracking and when any window's occlusion state
+  /// changes. A window that is newly shown changes state from unknown to visible, so the second
+  /// catches system windows (the status item's, the menus') without polling.
   private func observeSystem() {
     guard observers.isEmpty else { return }
     let center = NotificationCenter.default
     observers.append(
       center.addObserver(
-        forName: NSWindow.didChangeOcclusionStateNotification, object: orbitPanel, queue: .main
+        forName: NSWindow.didChangeOcclusionStateNotification, object: nil, queue: nil
       ) { [weak self] _ in
         MainActor.assumeIsolated {
           guard let self else { return }
+          self.secureSystemWindows()
           self.isOrbitOnScreen = self.orbitPanel.occlusionState.contains(.visible)
         }
       })
     observers.append(
+      center.addObserver(forName: NSMenu.didBeginTrackingNotification, object: nil, queue: nil) {
+        [weak self] _ in
+        MainActor.assumeIsolated { self?.secureSystemWindows() }
+      })
+    observers.append(
       center.addObserver(
-        forName: NSApplication.didChangeScreenParametersNotification, object: nil, queue: .main
+        forName: NSApplication.didChangeScreenParametersNotification, object: nil, queue: nil
       ) { [weak self] _ in
         MainActor.assumeIsolated {
           guard let self else { return }
           self.placeOrbit()
-          if self.expandedPanel.isVisible { self.showExpanded() }
+          if self.expandedPanel.isVisible { self.repositionExpanded() }
         }
       })
   }

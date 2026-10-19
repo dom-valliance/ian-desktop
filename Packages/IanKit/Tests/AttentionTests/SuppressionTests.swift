@@ -117,3 +117,17 @@ struct SuppressionSignalsTests {
     #expect(!signals.cameraLive)
   }
 }
+
+@Suite("Core Media camera monitor")
+@MainActor
+struct CoreMediaCameraMonitorTests {
+  @Test("starts and stops against the real devices without failing")
+  func startsAndStops() {
+    let monitor = CoreMediaCameraMonitor()
+    monitor.start {}
+    monitor.start {}
+    monitor.stop()
+    monitor.stop()
+    #expect(!monitor.isLive)
+  }
+}
