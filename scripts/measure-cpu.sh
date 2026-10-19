@@ -59,10 +59,12 @@ stop_pid() {
   [[ -n "$pid" ]] || return 0
   kill "$pid" 2>/dev/null || return 0
   for _ in $(seq 1 25); do
-    kill -0 "$pid" 2>/dev/null || return 0
+    kill -0 "$pid" 2>/dev/null || break
     sleep 0.2
   done
   kill -9 "$pid" 2>/dev/null || true
+  # Reaps a child of this shell, so bash does not print its "Terminated" notice.
+  wait "$pid" 2>/dev/null || true
 }
 
 stop_app() {
