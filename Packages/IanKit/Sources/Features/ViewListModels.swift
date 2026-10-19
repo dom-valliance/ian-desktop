@@ -2,20 +2,42 @@ import Contract
 import Foundation
 import Store
 
+/// An item a view lists: the one the store holds, or the one the server has just removed, which
+/// the view draws leaving (the contract allows `views` to name an item that has just left).
+struct ListedItem: Equatable, Identifiable {
+  let item: Components.Schemas.Item
+  let removal: IanStore.Removal?
+
+  var id: String { item.id }
+
+  /// Resolves an id from the open items, then from the removals. An id found in neither is nil:
+  /// nothing is invented, and the server's next `views.updated` settles it.
+  static func resolve(_ id: String, in state: StoreState, removals: [String: IanStore.Removal])
+    -> ListedItem?
+  {
+    if let item = state.items[id] { return ListedItem(item: item, removal: nil) }
+    return removals[id].map { ListedItem(item: $0.item, removal: $0) }
+  }
+}
+
 /// One labelled group of items, as `views` sent it.
 struct ListedGroup: Equatable, Identifiable {
-  typealias Item = Components.Schemas.Item
-
   let id: String
   let label: String
-  let items: [Item]
+  let entries: [ListedItem]
+  /// The server asked for this group to stay in view above the groups that scroll.
+  let isPinned: Bool
 
-  /// Names each item id the server listed. An id the store does not hold yet is skipped, never
-  /// invented; the server sends `views.updated` with the item event that brings it.
-  init(_ group: Components.Schemas.ViewGroup, in state: StoreState, idPrefix: String = "") {
+  var items: [Components.Schemas.Item] { entries.map(\.item) }
+
+  init(
+    _ group: Components.Schemas.ViewGroup, in state: StoreState,
+    removals: [String: IanStore.Removal], idPrefix: String = ""
+  ) {
     id = idPrefix + group.id
     label = group.label
-    items = group.itemIds.compactMap { state.items[$0] }
+    isPinned = group.pinned ?? false
+    entries = group.itemIds.compactMap { ListedItem.resolve($0, in: state, removals: removals) }
   }
 }
 
@@ -26,9 +48,9 @@ struct ProposalsListModel: Equatable {
   let isLoaded: Bool
   let groups: [ListedGroup]
 
-  init(state: StoreState) {
+  init(state: StoreState, removals: [String: IanStore.Removal] = [:]) {
     isLoaded = state.views != nil
-    groups = (state.views?.proposals ?? []).map { ListedGroup($0, in: state) }
+    groups = (state.views?.proposals ?? []).map { ListedGroup($0, in: state, removals: removals) }
   }
 }
 
@@ -57,21 +79,23 @@ struct CommitmentsListModel: Equatable {
   }
 
   let isLoaded: Bool
-  private let byTab: [Tab: [ListedGroup.Item]]
+  private let byTab: [Tab: [ListedItem]]
 
-  init(state: StoreState) {
+  init(state: StoreState, removals: [String: IanStore.Removal] = [:]) {
     isLoaded = state.views != nil
     let tabs = state.views?.commitments
-    func items(_ ids: [String]?) -> [ListedGroup.Item] {
-      (ids ?? []).compactMap { state.items[$0] }
+    func entries(_ ids: [String]?) -> [ListedItem] {
+      (ids ?? []).compactMap { ListedItem.resolve($0, in: state, removals: removals) }
     }
     byTab = [
-      .owedByMe: items(tabs?.owedByMe), .owedToMe: items(tabs?.owedToMe),
-      .toConfirm: items(tabs?.toConfirm),
+      .owedByMe: entries(tabs?.owedByMe), .owedToMe: entries(tabs?.owedToMe),
+      .toConfirm: entries(tabs?.toConfirm),
     ]
   }
 
-  func items(in tab: Tab) -> [ListedGroup.Item] { byTab[tab] ?? [] }
+  func entries(in tab: Tab) -> [ListedItem] { byTab[tab] ?? [] }
+
+  func items(in tab: Tab) -> [Components.Schemas.Item] { entries(in: tab).map(\.item) }
 }
 
 /// Tasks: the horizon sections of `views.tasks`, each holding its unit groups, as sent.
@@ -86,32 +110,33 @@ struct TasksListModel: Equatable {
   let isLoaded: Bool
   let sections: [Section]
 
-  init(state: StoreState) {
+  init(state: StoreState, removals: [String: IanStore.Removal] = [:]) {
     isLoaded = state.views != nil
     sections = (state.views?.tasks ?? []).map { section in
       Section(
         horizon: section.horizon, label: section.label,
         // A unit repeats across horizons, so its group id is scoped by the horizon.
         groups: section.groups.map {
-          ListedGroup($0, in: state, idPrefix: "\(section.horizon.rawValue)/")
+          ListedGroup($0, in: state, removals: removals, idPrefix: "\(section.horizon.rawValue)/")
         })
     }
   }
 }
 
-/// Alerts: the groups of `views.alerts` in the order sent, which the server says is P0 first.
-/// The leading groups whose alerts are P0 are pinned, so they stay on screen while the rest
-/// scrolls. Which groups lead, and their order, is the server's.
+/// Alerts: the groups of `views.alerts` in the order sent. A group the server marks `pinned`
+/// is drawn above the list and stays in view; the others scroll. Which groups are pinned is the
+/// server's, never read from an item's severity.
 struct AlertsListModel: Equatable {
   let isLoaded: Bool
   let pinned: [ListedGroup]
   let scrolling: [ListedGroup]
 
-  init(state: StoreState) {
+  init(state: StoreState, removals: [String: IanStore.Removal] = [:]) {
     isLoaded = state.views != nil
-    let groups = (state.views?.alerts ?? []).map { ListedGroup($0, in: state) }
-    let pinnedCount = groups.prefix { $0.items.first?.severity == .p0 }.count
-    pinned = Array(groups.prefix(pinnedCount))
-    scrolling = Array(groups.dropFirst(pinnedCount))
+    let groups = (state.views?.alerts ?? []).map {
+      ListedGroup($0, in: state, removals: removals)
+    }
+    pinned = groups.filter(\.isPinned)
+    scrolling = groups.filter { !$0.isPinned }
   }
 }

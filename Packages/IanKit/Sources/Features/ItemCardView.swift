@@ -9,10 +9,13 @@ extension ClientPalette {
 
 /// A card for one item in Proposals, Commitments, Tasks or Alerts (the Context artboard): the
 /// kind, title and meta line, the fields of its kind, links to Lance and the source, "Hand to
-/// Ian" when the server offers it, and the item's own actions through the shared component.
+/// Ian" when the server offers it, and the item's own actions through the shared component. An
+/// item the server has just removed is dimmed and shows the server's outcome line instead.
 struct ItemCardView: View {
   let store: IanStore
-  let item: Components.Schemas.Item
+  let entry: ListedItem
+
+  private var item: Components.Schemas.Item { entry.item }
 
   @Environment(\.openURL) private var openURL
   @State private var isHandingOff = false
@@ -21,11 +24,9 @@ struct ItemCardView: View {
 
   private var model: ItemCardModel {
     ItemCardModel(
-      item: item, statuses: ItemStatuses(store: store), actionsEnabled: store.actionsEnabled,
-      isConnecting: store.connection == .connecting, handoffOffered: store.offersHandoff)
+      item: item, statuses: ItemStatuses(store: store), removal: entry.removal,
+      timeZone: CardDate.timeZone(for: store.state.me))
   }
-
-  private var isUrgentAlert: Bool { item.kind == .alert && item.severity == .p0 }
 
   var body: some View {
     let model = model
@@ -43,16 +44,23 @@ struct ItemCardView: View {
           lineView(line)
         }
       }
-      footer(model)
-      if isHandingOff { handoffField }
+      if let settlement = model.settlement {
+        Text(settlement)
+          .font(.system(size: 13))
+          .foregroundStyle(ClientPalette.resolved)
+      } else {
+        footer(model)
+        if isHandingOff { handoffField }
+      }
     }
+    .opacity(model.settlement == nil ? 1 : 0.35)
     .padding(14)
     .frame(maxWidth: .infinity, alignment: .leading)
     .background(RoundedRectangle(cornerRadius: 10).fill(ClientPalette.card))
     .overlay(
       RoundedRectangle(cornerRadius: 10)
         .stroke(
-          isUrgentAlert ? ItemKindStyle.colour(.alert).opacity(0.6) : ClientPalette.line,
+          model.isUrgent ? ItemKindStyle.colour(.alert).opacity(0.6) : ClientPalette.line,
           lineWidth: 1)
     )
     .accessibilityElement(children: .contain)
@@ -100,16 +108,14 @@ struct ItemCardView: View {
     }
   }
 
+  /// Links on one row and the controls on the next, so the action component is created once
+  /// and keeps its prompt and field state whatever the card's width.
   private func footer(_ model: ItemCardModel) -> some View {
-    ViewThatFits(in: .horizontal) {
+    VStack(alignment: .leading, spacing: 4) {
+      links(model)
       HStack(alignment: .top, spacing: 8) {
-        links(model)
-        Spacer(minLength: 12)
-        controls(model)
-      }
-      VStack(alignment: .leading, spacing: 8) {
-        links(model)
-        controls(model)
+        Spacer(minLength: 0)
+        controls
       }
     }
   }
@@ -127,11 +133,11 @@ struct ItemCardView: View {
     }
   }
 
-  private func controls(_ model: ItemCardModel) -> some View {
+  private var controls: some View {
     HStack(alignment: .top, spacing: 8) {
-      if model.showsHandoff {
+      if store.offersHandoff {
         Button("Hand to Ian") { isHandingOff.toggle() }
-          .buttonStyle(ActionButtonStyle(style: .secondary))
+          .buttonStyle(HandoffButtonStyle())
           .disabled(!store.actionsEnabled || store.pending[item.id] != nil)
           .accessibilityLabel("Hand to Ian, \(item.title)")
       }
@@ -140,17 +146,16 @@ struct ItemCardView: View {
   }
 
   private var handoffField: some View {
-    let isTooLong = instruction.count > IanStore.handoffInstructionLimit
+    let isTooLong = !IanStore.instructionFits(instruction)
     return VStack(alignment: .leading, spacing: 4) {
       HStack(spacing: 8) {
         TextField("Instruction for Ian (optional)", text: $instruction)
           .textFieldStyle(.roundedBorder)
           .focused($instructionFocused)
-          .onSubmit(sendHandoff)
         Button("Send", action: sendHandoff)
           .buttonStyle(ActionButtonStyle(style: .primary))
           .keyboardShortcut(.defaultAction)
-          .disabled(isTooLong || !store.actionsEnabled)
+          .disabled(isTooLong || !store.actionsEnabled || store.pending[item.id] != nil)
         Button("Cancel", action: closeHandoff)
           .buttonStyle(ActionButtonStyle(style: .quiet))
           .keyboardShortcut(.cancelAction)
@@ -165,7 +170,7 @@ struct ItemCardView: View {
   }
 
   private func sendHandoff() {
-    guard instruction.count <= IanStore.handoffInstructionLimit else { return }
+    guard IanStore.instructionFits(instruction) else { return }
     let text = instruction
     closeHandoff()
     Task { await store.handOff(itemID: item.id, instruction: text) }
@@ -174,5 +179,26 @@ struct ItemCardView: View {
   private func closeHandoff() {
     isHandingOff = false
     instruction = ""
+  }
+}
+
+/// "Hand to Ian": outline `rgba(176,193,227,0.45)` and text `#C7D3EB`, at least 36 points tall
+/// with radius 6, like the action buttons (design README, selection footer).
+struct HandoffButtonStyle: ButtonStyle {
+  @Environment(\.isEnabled) private var isEnabled
+
+  func makeBody(configuration: Configuration) -> some View {
+    configuration.label
+      .font(.system(size: 13))
+      .padding(.horizontal, 14)
+      .padding(.vertical, 6)
+      .frame(minHeight: 36)
+      .foregroundStyle(ClientPalette.rgb(0xC7, 0xD3, 0xEB))
+      .overlay(
+        RoundedRectangle(cornerRadius: 6)
+          .stroke(ClientPalette.rgb(176, 193, 227).opacity(0.45), lineWidth: 1)
+      )
+      .opacity(isEnabled ? (configuration.isPressed ? 0.75 : 1) : 0.4)
+      .contentShape(RoundedRectangle(cornerRadius: 6))
   }
 }

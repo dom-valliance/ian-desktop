@@ -5,7 +5,7 @@ import Store
 /// What a card in Proposals, Commitments, Tasks or Alerts says about one item, as plain values
 /// so it is tested without a view. Every word comes from the item the server sent: the client
 /// adds labels for enums and formats dates, and decides nothing (ADR 0001). The buttons are the
-/// item's own `actions`, drawn by the shared action component.
+/// item's own `actions`, which the card hands to the shared action component untouched.
 struct ItemCardModel: Equatable {
   struct Line: Equatable {
     enum Role: Equatable {
@@ -27,29 +27,27 @@ struct ItemCardModel: Equatable {
   let title: String
   let meta: String
   let lines: [Line]
-  let actions: ItemActionsModel
   let lanceURL: URL?
   let sourceURL: URL?
-  /// "Hand to Ian" is drawn only when the server offers it (`capabilities.handoff`).
-  let showsHandoff: Bool
+  /// The server's line for an item it has just removed. When present the card is dimmed and has
+  /// no actions and no hand-off, as a settled row on Today.
+  let settlement: String?
+  /// The server's attention rung is `urgent` or `stop`, which gives the card its rim (ADR 0009).
+  let isUrgent: Bool
   let accessibilityLabel: String
 
   init(
     item: Components.Schemas.Item, statuses: ItemStatuses = ItemStatuses(),
-    actionsEnabled: Bool = true, isConnecting: Bool = false, handoffOffered: Bool,
-    timeZone: TimeZone = .current
+    removal: IanStore.Removal? = nil, timeZone: TimeZone = .current
   ) {
     kind = item.kind
     kicker = ItemKindStyle.name(item.kind)
     title = item.title
     meta = item.meta
-    actions = ItemActionsModel(
-      item: item, isPending: statuses.pending.contains(item.id),
-      notice: statuses.notices[item.id], actionsEnabled: actionsEnabled,
-      isConnecting: isConnecting)
     lanceURL = Self.webURL(item.links.lance)
     sourceURL = item.links.source.flatMap(Self.webURL)
-    showsHandoff = handoffOffered
+    settlement = removal.map { $0.outcome ?? "Closed" }
+    isUrgent = item.attention == .urgent || item.attention == .stop
 
     let format = CardDate(timeZone: timeZone)
     switch item.detail {
@@ -69,7 +67,7 @@ struct ItemCardModel: Equatable {
 
     accessibilityLabel = TodayListModel.itemLabel(
       item, horizon: ItemKindStyle.name(item.horizon).lowercased(),
-      status: statuses.description(of: item.id))
+      status: removal != nil ? "settled" : statuses.description(of: item.id))
   }
 
   /// Only web addresses open from a card; anything else the server sent is dropped.
@@ -155,15 +153,44 @@ struct ItemCardModel: Equatable {
 
 /// A date as a card shows it: "16 Oct, 17:00", in the principal's time zone and British order.
 struct CardDate {
-  private let formatter = DateFormatter()
+  private let formatter: DateFormatter
 
-  init(timeZone: TimeZone) {
-    formatter.locale = Locale(identifier: "en_GB")
-    formatter.timeZone = timeZone
-    formatter.dateFormat = "d MMM, HH:mm"
+  init(timeZone: TimeZone) { formatter = CardDateFormatters.formatter(for: timeZone) }
+
+  /// The zone the server named for the principal (`me.timeZone`), or the Mac's when it does not
+  /// parse or `me` has not arrived.
+  static func timeZone(for me: Components.Schemas.Me?) -> TimeZone {
+    me.flatMap { TimeZone(identifier: $0.timeZone) } ?? .current
   }
 
   func string(_ date: Date) -> String { formatter.string(from: date) }
+}
+
+/// One formatter per time zone, since building a `DateFormatter` is costly and a card is built on
+/// every body evaluation.
+private enum CardDateFormatters {
+  // `DateFormatter` is safe to share once configured, and the lock guards the dictionary, so the
+  // unchecked conformance holds.
+  private final class Cache: @unchecked Sendable {
+    private let lock = NSLock()
+    private var byZone: [String: DateFormatter] = [:]
+
+    func formatter(for zone: TimeZone) -> DateFormatter {
+      lock.withLock {
+        if let cached = byZone[zone.identifier] { return cached }
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "en_GB")
+        formatter.timeZone = zone
+        formatter.dateFormat = "d MMM, HH:mm"
+        byZone[zone.identifier] = formatter
+        return formatter
+      }
+    }
+  }
+
+  private static let cache = Cache()
+
+  static func formatter(for zone: TimeZone) -> DateFormatter { cache.formatter(for: zone) }
 }
 
 extension Components.Schemas.TaskSource {
