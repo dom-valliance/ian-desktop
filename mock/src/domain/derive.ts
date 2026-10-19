@@ -274,6 +274,7 @@ export function buildViews(allItems: readonly Item[], agentCount: number): Views
       id: severity,
       label: SEVERITY_LABELS[severity],
       itemIds: inSeverity.map((item) => item.id),
+      ...(severity === 'P0' ? { pinned: true } : {}),
     });
   }
 
