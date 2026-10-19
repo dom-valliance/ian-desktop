@@ -39,7 +39,7 @@ public struct PillarsDrawing: Equatable, Sendable {
 }
 
 /// A pure function from the scene, the time and the motion setting to a drawing, following the
-/// design README's Pillars section (ADR 0004). Reduce Motion is a parameter: it fixes the yaw,
+/// design README's Pillars section (ADR 0004). Reduce Motion is a parameter: it drops the sway,
 /// stops the ripple, the pulse and the particles, and turns growth and sinking into a fade.
 public enum PillarsRenderer {
   public static let boxSize = CGSize(width: 540, height: 420)
@@ -78,8 +78,12 @@ public enum PillarsRenderer {
     max(0, min(1, x))
   }
 
-  public static func yaw(time: Double, reducedMotion: Bool) -> Double {
-    let degrees = 45 + (reducedMotion ? 0 : turn * sin(0.22 * time))
+  /// The sway carries on around `angle`, the degrees the principal has turned the field to.
+  /// Reduce Motion drops the sway and keeps the angle.
+  public static func yaw(
+    time: Double, reducedMotion: Bool, angle: Double = FieldTurn.defaultAngle
+  ) -> Double {
+    let degrees = angle + (reducedMotion ? 0 : turn * sin(0.22 * time))
     return degrees * .pi / 180
   }
 
@@ -123,9 +127,10 @@ public enum PillarsRenderer {
   }
 
   public static func drawing(
-    for scene: PillarsScene, time: Double, reducedMotion: Bool
+    for scene: PillarsScene, time: Double, reducedMotion: Bool,
+    angle: Double = FieldTurn.defaultAngle
   ) -> PillarsDrawing {
-    let yaw = yaw(time: time, reducedMotion: reducedMotion)
+    let yaw = yaw(time: time, reducedMotion: reducedMotion, angle: angle)
     let sinYaw = sin(yaw)
     let cosYaw = cos(yaw)
     let pulse = reducedMotion ? 1 : 0.5 + 0.5 * sin(5 * time)
