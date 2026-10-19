@@ -71,3 +71,10 @@ Append-only. Lessons from corrections during the Ian desktop build. The first en
 **Correction**: "I don't know what a scheme is and I can't see any menu bar showing." The app was running; its menu bar item was hidden from view, likely by a full menu bar on a notched MacBook or by being on another display.
 **Rule**: For a step Dom runs, give a terminal command where one exists (build, then `open` the app) instead of IDE terms, and say exactly where on screen the result appears and what can hide it. Second occurrence of the 2026-09-25 lesson "Say where and how to run a step"; a third promotes it to the AGENTS.md Gotchas.
 **Applies to**: global
+
+### [2026-10-19] Clean up every process Claude starts, and check it is gone
+
+**Context**: To mimic a slow CI machine, Claude started 14 `yes` load processes with `(yes > /dev/null) &` and later ran `kill $pids`.
+**Correction**: "Are you still stress testing my CPU? I can see a bunch of YES processes still running." `$!` had held the subshells' ids, so the `yes` processes kept every core busy overnight.
+**Rule**: Start a background process without a subshell wrapper so `$!` is its own id, or start it as a tracked background task and stop that task. After cleanup, confirm with `pgrep` that nothing is left, and say so. In zsh, pass a list of ids through `xargs kill`, since `$pids` is not word-split.
+**Applies to**: global

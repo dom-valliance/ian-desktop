@@ -368,3 +368,38 @@ private func knownTypesMatchContract() {
 
   #expect(StreamMessageDecoder.knownTypes == declared)
 }
+
+/// Hands an output stream to the writing thread. Safe because only that thread touches it after
+/// the hand-off.
+private final class LateWriter: @unchecked Sendable {
+  let stream: OutputStream
+  let bytes: [UInt8]
+
+  init(stream: OutputStream, bytes: [UInt8]) {
+    self.stream = stream
+    self.bytes = bytes
+  }
+
+  func write(after delay: TimeInterval) {
+    Thread.detachNewThread {
+      self.stream.open()
+      Thread.sleep(forTimeInterval: delay)
+      _ = self.bytes.withUnsafeBufferPointer {
+        self.stream.write($0.baseAddress!, maxLength: $0.count)
+      }
+      self.stream.close()
+    }
+  }
+}
+
+@Test("reads a request body that is still arriving when loading starts")
+private func readsLateBody() {
+  var input: InputStream?
+  var output: OutputStream?
+  Stream.getBoundStreams(withBufferSize: 4096, inputStream: &input, outputStream: &output)
+  var request = URLRequest(url: URL(string: "https://stub.test/body")!)
+  request.httpBodyStream = input
+  LateWriter(stream: output!, bytes: Array("{\"version\":4}".utf8)).write(after: 0.05)
+
+  #expect(bodyText(of: request) == "{\"version\":4}")
+}

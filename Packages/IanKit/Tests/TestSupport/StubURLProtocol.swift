@@ -101,7 +101,9 @@ public final class StubURLProtocol: URLProtocol, @unchecked Sendable {
   public override func stopLoading() {}
 }
 
-/// The body of a request as text. `URLProtocol` receives bodies as streams, not `httpBody`.
+/// The body of a request as text. `URLProtocol` receives bodies as streams, not `httpBody`, and a
+/// streamed body can still be arriving when loading starts, so this reads until the stream ends
+/// (`read` waits for bytes) instead of stopping as soon as none are available yet.
 public func bodyText(of request: URLRequest) -> String {
   if let body = request.httpBody { return String(decoding: body, as: UTF8.self) }
   guard let stream = request.httpBodyStream else { return "" }
@@ -109,7 +111,7 @@ public func bodyText(of request: URLRequest) -> String {
   defer { stream.close() }
   var data = Data()
   var buffer = [UInt8](repeating: 0, count: 4096)
-  while stream.hasBytesAvailable {
+  while true {
     let count = stream.read(&buffer, maxLength: buffer.count)
     if count <= 0 { break }
     data.append(buffer, count: count)
