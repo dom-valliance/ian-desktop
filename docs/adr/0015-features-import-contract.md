@@ -13,7 +13,7 @@ Features cannot read those through `Store` alone. `StoreState` holds the generat
 
 `Features` may import `Contract`, for the generated value types in `Components.Schemas` only. It never imports `Client` and never touches the generated `Client` type or its operations. Every call to the server goes through `Store`: actions through `IanStore.run(actionID:on:until:note:)`, and the sign-in through `IanStore.signIn()`.
 
-`Package.swift` adds `Contract` to the `Features` target. The README import column is updated to match.
+`Package.swift` adds `Contract` to the `Features` target. `Features` also draws with SwiftUI and holds its view state in `@Observable` classes, so it names SwiftUI and Observation, the same system frameworks `Surface` already uses (ADR 0013). The README import column is updated to match.
 
 ## Consequences
 

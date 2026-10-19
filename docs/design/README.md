@@ -108,6 +108,7 @@ The spec's table in 6.6 is authoritative. The Ladder artboard adds two columns t
 | The list is sorted on the client | The server sends the order |
 | Ladder holds notifications for Focus and screen sharing | Suppression list in 6.5; Focus is AGENTS.md Q13 |
 | The list sits beside the field | The Now list, This week and Later sit below the field (spec 6.3); the selection footer is pinned under them |
+| A rolled-up group's tag is not specified | The week tag shows the group's item count. A Later row takes its colour from the kind of its first count. Both follow the server's order |
 | Field panel 860 points wide | Expanded client 1,040 by 720 points, with Today's field inside it |
 | Scale shows a variant grouped by unit of work | Not in version 0 |
 | The fifth column is always Other | Columns are drawn left to right in the order the server sends `field.units`; Other is last when the server sends it (ADR 0009, item 20) |
