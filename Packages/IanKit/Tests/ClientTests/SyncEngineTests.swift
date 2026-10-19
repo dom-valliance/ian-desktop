@@ -38,11 +38,13 @@ private struct Rig {
   }
 }
 
-private func start(service: ScriptedService, jitter: Double = 1) -> Rig {
+private func start(
+  service: ScriptedService, jitter: Double = 1, wallClock: (@Sendable () -> Date)? = nil
+) -> Rig {
   let clock = ManualClock()
   let engine = SyncEngine(
     service: service, appVersion: SemanticVersion(major: 0, minor: 1, patch: 0), clock: clock,
-    jitter: { jitter })
+    jitter: { jitter }, wallClock: wallClock)
   let collector = Collector()
   let stream = engine.updates()
   let task = Task { await collector.run(stream) }
@@ -399,4 +401,42 @@ private func stopsOnTerminalFailure() async throws {
       $0 == .failed(.failed("The Keychain refused to store the sign-in."))
     })
   #expect(await eventually("the loop ends") { await rig.collector.finished })
+}
+
+private final class Readings: @unchecked Sendable {
+  // Read and written only while holding `lock`.
+  private let lock = NSLock()
+  private var remaining: [Date]
+
+  init(_ readings: [Date]) { remaining = readings }
+
+  func next() -> Date { lock.withLock { remaining.removeFirst() } }
+}
+
+@Test("reports how far the server's clock is ahead, from the midpoint of the me request")
+private func reportsClockOffset() async throws {
+  let serverTime = Fixtures.me().serverTime
+  // The request left 11 seconds before the server's stamp and came back 9 seconds before it, so
+  // its midpoint is 10 seconds before: the server is 10 seconds ahead.
+  let readings = Readings([serverTime.addingTimeInterval(-11), serverTime.addingTimeInterval(-9)])
+  let service = ScriptedService()
+  service.planStream()
+  let rig = start(service: service, wallClock: { readings.next() })
+  defer { rig.stop() }
+
+  #expect(await rig.waitFor("the offset") { $0 == .clockOffset(10) })
+}
+
+@Test("sends no clock offset when the engine has no wall clock")
+private func sendsNoOffsetWithoutAWallClock() async {
+  let service = ScriptedService()
+  service.planStream()
+  let rig = start(service: service)
+  defer { rig.stop() }
+
+  #expect(await rig.waitFor("connected", isConnected))
+  #expect(
+    await rig.collector.count(where: {
+      if case .clockOffset = $0 { true } else { false }
+    }) == 0)
 }

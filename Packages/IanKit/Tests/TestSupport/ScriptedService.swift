@@ -187,6 +187,9 @@ public final class ScriptedService: DesktopService, @unchecked Sendable {
     var agentCalls: [AgentCall] = []
     var agentResult: Result<Components.Schemas.Agent, DesktopError> = .success(
       Fixtures.decode(Fixtures.agentJSON()))
+    var agentsHook: (@Sendable () async -> Void)?
+    var patchHook: (@Sendable () async -> Void)?
+    var agentHook: (@Sendable () async -> Void)?
   }
 
   public struct AgentCall: Equatable, Sendable {
@@ -214,16 +217,33 @@ public final class ScriptedService: DesktopService, @unchecked Sendable {
     lock.withLock { agentsAndSettings.patchResult = result }
   }
 
+  /// Each hook runs inside its call after the call has taken its result and before it returns,
+  /// so a test can hold the call open while something else happens.
+  public func planAgentsHook(_ hook: @escaping @Sendable () async -> Void) {
+    lock.withLock { agentsAndSettings.agentsHook = hook }
+  }
+
+  public func planSettingsPatchHook(_ hook: @escaping @Sendable () async -> Void) {
+    lock.withLock { agentsAndSettings.patchHook = hook }
+  }
+
+  public func planAgentCommandHook(_ hook: @escaping @Sendable () async -> Void) {
+    lock.withLock { agentsAndSettings.agentHook = hook }
+  }
+
   public func planAgentCommand(_ result: Result<Components.Schemas.Agent, DesktopError>) {
     lock.withLock { agentsAndSettings.agentResult = result }
   }
 
   public func agents() async throws -> Components.Schemas.AgentsOverview {
-    let result = lock.withLock {
+    let (result, hook) = lock.withLock {
       agentsAndSettings.overviewCalls += 1
       let overviews = agentsAndSettings.overviews
-      return overviews.count > 1 ? agentsAndSettings.overviews.removeFirst() : overviews.first
+      let next =
+        overviews.count > 1 ? agentsAndSettings.overviews.removeFirst() : overviews.first
+      return (next, agentsAndSettings.agentsHook)
     }
+    await hook?()
     guard let result else { throw DesktopError.unexpectedStatus(404) }
     return try result.get()
   }
@@ -231,26 +251,30 @@ public final class ScriptedService: DesktopService, @unchecked Sendable {
   public func updateSettings(
     _ patch: Components.Schemas.SettingsPatch
   ) async throws -> Components.Schemas.Settings {
-    let result = lock.withLock {
+    let (result, hook) = lock.withLock {
       agentsAndSettings.patches.append(patch)
-      return agentsAndSettings.patchResult
+      return (agentsAndSettings.patchResult, agentsAndSettings.patchHook)
     }
+    await hook?()
     return try result.get()
   }
 
   public func pauseAgent(id: String) async throws -> Components.Schemas.Agent {
-    try recordAgentCommand(id: id, pause: true)
+    try await recordAgentCommand(id: id, pause: true)
   }
 
   public func resumeAgent(id: String) async throws -> Components.Schemas.Agent {
-    try recordAgentCommand(id: id, pause: false)
+    try await recordAgentCommand(id: id, pause: false)
   }
 
-  private func recordAgentCommand(id: String, pause: Bool) throws -> Components.Schemas.Agent {
-    let result = lock.withLock {
+  private func recordAgentCommand(id: String, pause: Bool) async throws
+    -> Components.Schemas.Agent
+  {
+    let (result, hook) = lock.withLock {
       agentsAndSettings.agentCalls.append(AgentCall(id: id, pause: pause))
-      return agentsAndSettings.agentResult
+      return (agentsAndSettings.agentResult, agentsAndSettings.agentHook)
     }
+    await hook?()
     return try result.get()
   }
 }

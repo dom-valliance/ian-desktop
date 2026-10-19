@@ -13,9 +13,17 @@ extension IanStore {
     }
     settingsNotice = nil
     settingsPending = true
+    let mine = generation
+    let service = service
     do {
-      _ = try await service.updateSettings(patch)
+      let reply = try await service.updateSettings(patch)
+      guard generation == mine else { return }
+      // A change that alters nothing sends no event, so the reply that matches what is held
+      // settles it. Anything else waits for `settings.updated`.
+      if reply == state.settings { settingsPending = false }
     } catch {
+      // A sign-out or a profile switch while the call was out has cleared this state already.
+      guard generation == mine else { return }
       settingsPending = false
       guard let failure = error as? DesktopError else {
         settingsNotice = error.localizedDescription

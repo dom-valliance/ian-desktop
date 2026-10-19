@@ -33,9 +33,13 @@ extension IanStore {
     }
     agentNotices[id] = nil
     agentPending.insert(id)
+    let mine = generation
+    let service = service
     do {
       _ = try await send(service)
     } catch {
+      // A sign-out or a profile switch while the call was out has cleared this state already.
+      guard generation == mine else { return }
       agentPending.remove(id)
       handleAgentFailure(error, agent: id)
     }
@@ -75,27 +79,31 @@ extension IanStore {
     case .settings_updated:
       settingsPending = false
     case .heartbeat(let beat):
-      eventLag = max(0, now().timeIntervalSince(beat.serverTime))
+      eventLag = now().timeIntervalSince(beat.serverTime) + (clockOffset ?? 0)
     default:
       break
     }
     if unseenAgent != nil { startAgentsRefetch() }
   }
 
+  /// The reducer appends a new agent at once, so it shows without waiting; this refetch then puts
+  /// the list in the server's order. A snapshot or a reset while it is in flight raises the token,
+  /// and the older response is dropped.
   private func startAgentsRefetch() {
     guard agentsTouchedDuringRefetch == nil else { return }
     agentsTouchedDuringRefetch = []
-    let mine = generation
+    agentsRefetchToken += 1
+    let token = agentsRefetchToken
+    let service = service
     Task { [weak self] in
-      guard let self else { return }
       do {
         let overview = try await service.agents()
-        guard generation == mine else { return }
+        guard let self, agentsRefetchToken == token else { return }
         replaceAgents(with: overview)
       } catch {
-        Self.agentsLog.error(
-          "agent list refetch failed: \(error.localizedDescription, privacy: .private)")
-        if generation == mine { agentsTouchedDuringRefetch = nil }
+        let kind = (error as? DesktopError)?.kind ?? "other"
+        Self.agentsLog.error("agent list refetch failed: \(kind, privacy: .public)")
+        if let self, agentsRefetchToken == token { agentsTouchedDuringRefetch = nil }
       }
     }
   }

@@ -71,12 +71,15 @@ struct SuppressionSignalsTests {
     let camera = FakeCamera()
     let signals = SuppressionSignals(camera: camera)
     signals.start()
-    #expect(signals.suppression(externalMeeting: false, quietHours: false) == .none)
+    #expect(
+      signals.suppression(externalMeeting: false, quietHours: false, toggles: SuppressionToggles())
+        == .none)
 
     camera.setLive(true)
     #expect(signals.cameraLive)
     #expect(
-      signals.suppression(externalMeeting: false, quietHours: false).triggers == [.cameraLive])
+      signals.suppression(externalMeeting: false, quietHours: false, toggles: SuppressionToggles())
+        .triggers == [.cameraLive])
 
     camera.setLive(false)
     #expect(!signals.cameraLive)
@@ -96,13 +99,15 @@ struct SuppressionSignalsTests {
     let signals = SuppressionSignals(camera: FakeCamera())
     signals.isPaused = true
     #expect(
-      signals.suppression(externalMeeting: false, quietHours: false).triggers == [.userPaused])
+      signals.suppression(externalMeeting: false, quietHours: false, toggles: SuppressionToggles())
+        .triggers == [.userPaused])
   }
 
   @Test("combines the server's context with the local signals")
   func combinesServerContext() {
     let signals = SuppressionSignals(camera: FakeCamera())
-    let suppression = signals.suppression(externalMeeting: true, quietHours: true)
+    let suppression = signals.suppression(
+      externalMeeting: true, quietHours: true, toggles: SuppressionToggles())
     #expect(suppression.triggers == [.externalMeeting, .quietHours])
   }
 

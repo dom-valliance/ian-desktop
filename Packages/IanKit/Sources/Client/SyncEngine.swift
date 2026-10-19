@@ -6,6 +6,9 @@ import os
 public enum SyncUpdate: Sendable, Equatable {
   /// `GET /me`, fetched once at the start.
   case me(Components.Schemas.Me)
+  /// How far the server's clock is ahead of this Mac's, in seconds, estimated from `GET /me`.
+  /// Only sent when the engine was given a wall clock.
+  case clockOffset(TimeInterval)
   /// A full snapshot, from the start, after a `410`, or from polling while the stream is down.
   case snapshot(Components.Schemas.Snapshot)
   /// The stream is open.
@@ -60,6 +63,7 @@ public struct SyncEngine: Sendable {
   private let clock: any SyncClock
   private let timing: Timing
   private let jitter: @Sendable () -> Double
+  private let wallClock: (@Sendable () -> Date)?
 
   /// - Parameter appVersion: The app's version. When `GET /me` reports a `minClientVersion`
   ///   above it, the loop fails with `upgradeRequired` before it fetches any data (spec section 4,
@@ -69,13 +73,15 @@ public struct SyncEngine: Sendable {
     appVersion: SemanticVersion,
     clock: any SyncClock = SystemSyncClock(),
     timing: Timing = Timing(),
-    jitter: @escaping @Sendable () -> Double = { Double.random(in: 0...1) }
+    jitter: @escaping @Sendable () -> Double = { Double.random(in: 0...1) },
+    wallClock: (@Sendable () -> Date)? = nil
   ) {
     self.service = service
     self.appVersion = appVersion
     self.clock = clock
     self.timing = timing
     self.jitter = jitter
+    self.wallClock = wallClock
   }
 
   /// Runs until the consumer stops iterating or the loop fails for good.
@@ -83,7 +89,7 @@ public struct SyncEngine: Sendable {
     let (stream, sink) = AsyncStream<SyncUpdate>.makeStream()
     let run = SyncRun(
       service: service, appVersion: appVersion, clock: clock, timing: timing, jitter: jitter,
-      sink: sink)
+      wallClock: wallClock, sink: sink)
     let task = Task { await run.run() }
     sink.onTermination = { _ in task.cancel() }
     return stream
@@ -105,6 +111,7 @@ private actor SyncRun {
   private let clock: any SyncClock
   private let timing: SyncEngine.Timing
   private let jitter: @Sendable () -> Double
+  private let wallClock: (@Sendable () -> Date)?
   private let sink: AsyncStream<SyncUpdate>.Continuation
 
   private var cursor: String?
@@ -120,13 +127,15 @@ private actor SyncRun {
   init(
     service: any DesktopService, appVersion: SemanticVersion, clock: any SyncClock,
     timing: SyncEngine.Timing,
-    jitter: @escaping @Sendable () -> Double, sink: AsyncStream<SyncUpdate>.Continuation
+    jitter: @escaping @Sendable () -> Double, wallClock: (@Sendable () -> Date)?,
+    sink: AsyncStream<SyncUpdate>.Continuation
   ) {
     self.service = service
     self.appVersion = appVersion
     self.clock = clock
     self.timing = timing
     self.jitter = jitter
+    self.wallClock = wallClock
     self.sink = sink
   }
 
@@ -175,8 +184,15 @@ private actor SyncRun {
 
   private func connect(connectedAt: inout Duration?) async throws {
     if needsMe {
+      let sent = wallClock?()
       let me = try await service.me()
       sink.yield(.me(me))
+      if let wallClock, let sent {
+        // The server stamped `serverTime` somewhere inside the request, taken as its midpoint.
+        let received = wallClock()
+        let midpoint = sent.addingTimeInterval(received.timeIntervalSince(sent) / 2)
+        sink.yield(.clockOffset(me.serverTime.timeIntervalSince(midpoint)))
+      }
       if let minimum = SemanticVersion(me.minClientVersion), minimum > appVersion {
         throw DesktopError.upgradeRequired(minClientVersion: minimum.description)
       }

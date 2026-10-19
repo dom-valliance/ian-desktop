@@ -33,7 +33,7 @@ public final class SuppressionSignals {
 
   /// A trigger the toggles switch off is treated as not holding.
   public func suppression(
-    externalMeeting: Bool, quietHours: Bool, toggles: SuppressionToggles = SuppressionToggles()
+    externalMeeting: Bool, quietHours: Bool, toggles: SuppressionToggles
   ) -> Suppression {
     Suppression(
       cameraLive: cameraLive && toggles.camera,

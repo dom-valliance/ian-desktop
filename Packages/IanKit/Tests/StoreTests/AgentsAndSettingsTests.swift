@@ -69,15 +69,77 @@ struct AgentStoreTests {
     #expect(store.state.agents.first?.name == "Calendar job")
   }
 
-  @Test("does not refetch when the agent is one it holds")
+  @Test("does not start a refetch when the agent is one it holds")
   func noRefetchForAKnownAgent() async {
     let (store, service, feed) = await liveStore()
     defer { store.stop() }
 
     feed.yield(agentEvent("agent_1", state: "paused", event: "11"))
+    // The refetch starts as the event is applied, so a later event is a barrier after it.
+    feed.yield(.event(id: "12", Fixtures.event(Fixtures.settingsUpdatedJSON(pushBudget: 9))))
 
-    #expect(await waitUntil("the update") { store.state.agents.first?.state == .paused })
+    #expect(await waitUntil("both events") { store.state.settings?.pushBudgetPerHour == 9 })
+    #expect(store.state.agents.first?.state == .paused)
+    #expect(store.agentsTouchedDuringRefetch == nil)
     #expect(service.agentsCalls == 0)
+  }
+
+  @Test("keeps an agent's newer event over an older refetch response")
+  func refetchKeepsNewerEvents() async {
+    let (store, service, feed) = await liveStore()
+    defer { store.stop() }
+    let gate = Gate()
+    service.planAgents([
+      .success(
+        Fixtures.agentsOverview([
+          Fixtures.agent(id: "agent_new", name: "Calendar job"), Fixtures.agent(id: "agent_1"),
+        ]))
+    ])
+    service.planAgentsHook { await gate.wait() }
+
+    feed.yield(agentEvent("agent_new", state: "running", event: "11"))
+    #expect(await waitUntil("the refetch is out") { service.agentsCalls == 1 })
+    feed.yield(agentEvent("agent_1", state: "paused", event: "12"))
+    #expect(await waitUntil("the newer event") { store.state.agents.first?.state == .paused })
+    await gate.open()
+
+    #expect(
+      await waitUntil("the server's order") {
+        store.state.agents.map(\.id) == ["agent_new", "agent_1"]
+      })
+    #expect(store.state.agents.last?.state == .paused)
+  }
+
+  @Test("lets a snapshot that arrives during a refetch win, so a dropped agent stays dropped")
+  func snapshotBeatsAnOlderRefetch() async {
+    let first = Fixtures.snapshot(cursor: "10")
+    var second = Fixtures.snapshot(cursor: "20")
+    second.agents = Fixtures.agentsOverview([Fixtures.agent(id: "agent_1")])
+    let service = ScriptedService(snapshots: [.success(first), .success(second)])
+    let feed = service.planStream()
+    service.planStream()
+    let gate = Gate()
+    service.planAgents([
+      .success(
+        Fixtures.agentsOverview([
+          Fixtures.agent(id: "agent_gone"), Fixtures.agent(id: "agent_1"),
+        ]))
+    ])
+    service.planAgentsHook { await gate.wait() }
+    let store = makeStore(service)
+    store.start()
+    defer { store.stop() }
+    #expect(await waitUntil("live") { store.connection == .live })
+
+    feed.yield(agentEvent("agent_gone", state: "running", event: "11"))
+    #expect(await waitUntil("the refetch is out") { service.agentsCalls == 1 })
+    feed.yield(.undecodable)
+    #expect(await waitUntil("the second snapshot") { service.snapshotCalls == 2 })
+    #expect(await waitUntil("its agents") { store.state.agents.map(\.id) == ["agent_1"] })
+    await gate.open()
+    try? await Task.sleep(for: .milliseconds(100))
+
+    #expect(store.state.agents.map(\.id) == ["agent_1"])
   }
 
   @Test("keeps the agent the event carried when the refetch fails")
@@ -163,6 +225,7 @@ struct SettingsStoreTests {
   func showsTheValueAfterTheEvent() async {
     let (store, service, feed) = await liveStore()
     defer { store.stop() }
+    service.planSettingsPatch(.success(Fixtures.decode(Fixtures.settingsJSON(pushBudget: 7))))
 
     await store.updateSettings(.init(pushBudgetPerHour: 7))
 
@@ -189,6 +252,29 @@ struct SettingsStoreTests {
     #expect(store.state.settings?.mode == .dryRun)
   }
 
+  @Test("clears the pending mark when the reply equals what it holds, since no event will come")
+  func unchangedReplySettlesAtOnce() async {
+    let (store, service, _) = await liveStore()
+    defer { store.stop() }
+    service.planSettingsPatch(.success(Fixtures.decode(Fixtures.settingsJSON())))
+
+    await store.updateSettings(.init(pushBudgetPerHour: 3))
+
+    #expect(!store.settingsPending)
+  }
+
+  @Test("keeps the pending mark when the reply differs, until the event shows it")
+  func changedReplyWaitsForTheEvent() async {
+    let (store, service, _) = await liveStore()
+    defer { store.stop() }
+    service.planSettingsPatch(.success(Fixtures.decode(Fixtures.settingsJSON(pushBudget: 9))))
+
+    await store.updateSettings(.init(pushBudgetPerHour: 9))
+
+    #expect(store.settingsPending)
+    #expect(store.state.settings?.pushBudgetPerHour == 3)
+  }
+
   @Test("sends nothing while offline")
   func offlineIsRefused() async {
     let (store, service, feed) = await liveStore()
@@ -203,19 +289,43 @@ struct SettingsStoreTests {
   }
 }
 
+/// A clock the test moves.
+private final class TestClock: @unchecked Sendable {
+  // Read and written only while holding `lock`.
+  private let lock = NSLock()
+  private var date: Date
+
+  init(_ date: Date) { self.date = date }
+
+  var now: Date { lock.withLock { date } }
+  func set(_ date: Date) { lock.withLock { self.date = date } }
+}
+
 @Suite("Diagnostics inputs in the store")
 @MainActor
 struct DiagnosticsInputTests {
-  @Test("measures event lag from a heartbeat's server time to its arrival")
-  func eventLagFromAHeartbeat() async {
-    let serverTime = Fixtures.decode("\"2026-10-16T08:00:25.000Z\"") as Date
-    let (store, _, feed) = await liveStore(now: serverTime.addingTimeInterval(1.5))
+  @Test("estimates event lag against the server's clock, offset taken from GET /me")
+  func eventLagCorrectsForTheClockOffset() async {
+    // `me.serverTime` is 08:00:00 and the local clock reads 07:59:58 for the whole request, so
+    // the server is 2 seconds ahead.
+    let meTime = Fixtures.decode("\"2026-10-16T08:00:00.000Z\"") as Date
+    let clock = TestClock(meTime.addingTimeInterval(-2))
+    let service = ScriptedService()
+    let feed = service.planStream()
+    let store = IanStore(
+      service: service, profile: .mock, appVersion: SemanticVersion("0.1.0")!,
+      clock: ManualClock(), jitter: { 1 }, now: { clock.now })
+    store.start()
     defer { store.stop() }
+    #expect(await waitUntil("live") { store.connection == .live })
+    #expect(store.clockOffset == 2)
     #expect(store.eventLag == nil)
 
+    // The heartbeat says 08:00:25 on the server, which is 08:00:23 here. It arrives at 08:00:24.
+    clock.set(meTime.addingTimeInterval(24))
     feed.yield(.event(id: nil, Fixtures.event(Fixtures.heartbeatJSON)))
 
-    #expect(await waitUntil("the heartbeat") { store.eventLag == 1.5 })
+    #expect(await waitUntil("the heartbeat") { store.eventLag == 1 })
   }
 
   @Test("records when the last snapshot arrived")
@@ -295,4 +405,137 @@ struct ProfileSwitchTests {
 private final class Box<Value> {
   var value: Value
   init(_ value: Value) { self.value = value }
+}
+
+/// Holds a scripted call open until the test lets it go.
+actor Gate {
+  private var isOpen = false
+  private var waiters: [CheckedContinuation<Void, Never>] = []
+
+  func wait() async {
+    if isOpen { return }
+    await withCheckedContinuation { waiters.append($0) }
+  }
+
+  func open() {
+    isOpen = true
+    for waiter in waiters { waiter.resume() }
+    waiters = []
+  }
+}
+
+@Suite("Calls that outlive the state they started in")
+@MainActor
+struct StaleCallTests {
+  @Test("drops a sign-in that finishes after a sign-out")
+  func signInAfterSignOutIsDropped() async {
+    let service = ScriptedService()
+    let gate = Gate()
+    service.planSignInHook { await gate.wait() }
+    let store = makeStore(service)
+
+    let signIn = Task { await store.signIn() }
+    #expect(await waitUntil("the sign-in is open") { service.signIns == 1 })
+    await store.signOut()
+    await gate.open()
+    await signIn.value
+
+    #expect(store.phase == .signInRequired(message: nil))
+    #expect(service.streamCalls.isEmpty)
+  }
+
+  @Test("drops a sign-in failure that arrives after a profile switch")
+  func signInFailureAfterSwitchIsDropped() async {
+    let first = ScriptedService()
+    let second = ScriptedService()
+    second.planStream()
+    first.planSignInFailure(DesktopError.failed("The browser was closed."))
+    let gate = Gate()
+    first.planSignInHook { await gate.wait() }
+    let store = IanStore(
+      service: first, profile: .mock, appVersion: SemanticVersion("0.1.0")!, clock: ManualClock(),
+      jitter: { 1 }, now: { serverNow },
+      profileSwitcher: ProfileSwitcher(
+        choices: [ProfileChoice(id: "lance-dev", displayName: "Lance dev")],
+        build: { _ in
+          (.lanceDev(entra: .init(tenantID: "t", clientID: "c", scope: "s")), second)
+        },
+        remember: { _ in }))
+
+    let signIn = Task { await store.signIn() }
+    #expect(await waitUntil("the sign-in is open") { first.signIns == 1 })
+    await store.switchProfile(to: "lance-dev")
+    await gate.open()
+    await signIn.value
+
+    #expect(store.phase == .running)
+    #expect(store.profileID == "lance-dev")
+  }
+
+  @Test("drops an agent command's failure after a sign-out, with no notice and no sign-in")
+  func agentFailureAfterSignOutIsDropped() async {
+    let (store, service, _) = await liveStore()
+    defer { store.stop() }
+    let gate = Gate()
+    service.planAgentCommand(.failure(.unauthorised))
+    service.planAgentCommandHook { await gate.wait() }
+
+    let pause = Task { await store.pause(agent: "agent_1") }
+    #expect(await waitUntil("the call is out") { service.agentCommands.count == 1 })
+    await store.signOut()
+    await gate.open()
+    await pause.value
+
+    #expect(service.signIns == 0)
+    #expect(store.agentNotices.isEmpty)
+    #expect(store.phase == .signInRequired(message: nil))
+  }
+
+  @Test("drops a settings refusal after a sign-out")
+  func settingsFailureAfterSignOutIsDropped() async {
+    let (store, service, _) = await liveStore()
+    defer { store.stop() }
+    let gate = Gate()
+    service.planSettingsPatch(.failure(.rejected(status: 422, detail: "Not yet.")))
+    service.planSettingsPatchHook { await gate.wait() }
+
+    let update = Task { await store.updateSettings(.init(mode: .live)) }
+    #expect(await waitUntil("the call is out") { service.settingsPatches.count == 1 })
+    await store.signOut()
+    await gate.open()
+    await update.value
+
+    #expect(store.settingsNotice == nil)
+  }
+}
+
+@Suite("The profile switcher the app builds")
+@MainActor
+struct ProfileSwitcherFactoryTests {
+  private func switcher(_ defaults: UserDefaults) -> ProfileSwitcher {
+    IanStore.makeProfileSwitcher(
+      info: [:], bundleIdentifier: "ai.valliance.ian.desktop.tests",
+      version: SemanticVersion("0.1.0")!, defaults: defaults, openURL: { _ in })
+  }
+
+  @Test("offers each profile, and builds none it does not know")
+  func offersTheProfiles() {
+    withScratchDefaults { defaults in
+      let switcher = switcher(defaults)
+      #expect(switcher.choices.map(\.id) == ["mock", "lance-dev"])
+      #expect(switcher.build("lance-dev")?.0.name == .lanceDev)
+      #expect(switcher.build("production") == nil)
+    }
+  }
+
+  @Test("saves the choice under IanEnvironment, and a fresh read returns it")
+  func choiceSurvivesARelaunch() throws {
+    try withScratchDefaults { defaults in
+      switcher(defaults).remember("lance-dev")
+
+      #expect(defaults.string(forKey: "IanEnvironment") == "lance-dev")
+      let profile = try EnvironmentProfile.resolve(defaults: defaults, info: [:])
+      #expect(profile.name == .lanceDev)
+    }
+  }
 }

@@ -171,6 +171,23 @@ private func signInStoresTokens() async throws {
   #expect(PKCE.challenge(for: verifier) == query(authorisation, "code_challenge"))
 }
 
+@Test("saves no token when the principal signs out while the exchange is in flight")
+private func signOutDuringSignInSavesNothing() async throws {
+  let harness = harness { _ in
+    StubResponse(
+      status: 200, headers: ["Content-Type": "application/json"], body: Data(grant.utf8),
+      delay: 0.3)
+  }
+  let provider = harness.provider
+
+  let signIn = Task { try await provider.signIn() }
+  try await Task.sleep(for: .milliseconds(100))
+  await provider.signOut()
+
+  await #expect(throws: AuthError.signInRequired) { try await signIn.value }
+  #expect(try harness.store.load() == nil)
+}
+
 @Test("rejects a redirect whose state is not the one sent and stores nothing")
 private func rejectsStateMismatch() async throws {
   let harness = harness(redirect: .forgedState) { _ in

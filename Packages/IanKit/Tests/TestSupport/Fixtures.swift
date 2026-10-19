@@ -121,12 +121,13 @@ public enum Fixtures {
   public static func settings(
     mode: String = "dry_run", liveEligible: Bool = false, liveOpensAt: String? = nil,
     paused: Bool = false, pausedReason: String? = nil, globalPaused: Bool = false,
-    globalReason: String? = nil
+    globalReason: String? = nil, quietStart: String = "19:00", quietEnd: String = "07:00"
   ) -> Schemas.Settings {
     decode(
       settingsJSON(
         mode: mode, liveEligible: liveEligible, liveOpensAt: liveOpensAt, paused: paused,
-        pausedReason: pausedReason, globalPaused: globalPaused, globalReason: globalReason))
+        pausedReason: pausedReason, globalPaused: globalPaused, globalReason: globalReason,
+        quietStart: quietStart, quietEnd: quietEnd))
   }
 
   public static func costJSON(cost: Double = 0.4) -> String {
@@ -136,11 +137,12 @@ public enum Fixtures {
   public static func settingsJSON(
     pushBudget: Int = 3, mode: String = "dry_run", liveEligible: Bool = false,
     liveOpensAt: String? = nil, paused: Bool = false, pausedReason: String? = nil,
-    globalPaused: Bool = false, globalReason: String? = nil
+    globalPaused: Bool = false, globalReason: String? = nil, quietStart: String = "19:00",
+    quietEnd: String = "07:00"
   ) -> String {
     func text(_ value: String?) -> String { value.map { "\"\($0)\"" } ?? "null" }
     return """
-      {"quietHours":{"start":"19:00","end":"07:00"},"pushBudgetPerHour":\(pushBudget),\
+      {"quietHours":{"start":"\(quietStart)","end":"\(quietEnd)"},"pushBudgetPerHour":\(pushBudget),\
       "mode":"\(mode)","liveEligible":\(liveEligible),"liveOpensAt":\(text(liveOpensAt)),\
       "paused":\(paused),"pausedReason":\(text(pausedReason)),\
       "timeZone":"Europe/London","costCeilingGbp":15,\
