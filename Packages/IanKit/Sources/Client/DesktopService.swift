@@ -27,4 +27,8 @@ public protocol DesktopService: Sendable {
 
   func signIn() async throws
   func signOut() async
+
+  /// Hands an item to Ian with an optional instruction, and returns the correlation id the
+  /// resulting event carries. Offered only when `Me.capabilities.handoff` is true.
+  func handOff(itemID: String, instruction: String?) async throws -> String
 }

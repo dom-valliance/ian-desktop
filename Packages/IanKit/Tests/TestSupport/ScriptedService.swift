@@ -27,6 +27,8 @@ public final class ScriptedService: DesktopService, @unchecked Sendable {
   private var _snapshotCalls = 0
   private var _streamCalls: [String?] = []
   private var _actionCalls: [ActionCall] = []
+  private var handoffResult: @Sendable (HandoffCall) async throws -> String = { _ in "corr_h" }
+  private var _handoffCalls: [HandoffCall] = []
   private var _signOuts = 0
   private var _signIns = 0
   private var signInFailure: (any Error)?
@@ -141,5 +143,32 @@ public final class ScriptedService: DesktopService, @unchecked Sendable {
 
   public func signOut() async {
     lock.withLock { _signOuts += 1 }
+  }
+
+  // MARK: Hand to Ian
+
+  public struct HandoffCall: Equatable, Sendable {
+    public let itemID: String
+    public let instruction: String?
+
+    public init(itemID: String, instruction: String?) {
+      self.itemID = itemID
+      self.instruction = instruction
+    }
+  }
+
+  public var handoffCalls: [HandoffCall] { lock.withLock { _handoffCalls } }
+
+  public func planHandoff(_ result: @escaping @Sendable (HandoffCall) async throws -> String) {
+    lock.withLock { handoffResult = result }
+  }
+
+  public func handOff(itemID: String, instruction: String?) async throws -> String {
+    let call = HandoffCall(itemID: itemID, instruction: instruction)
+    let handler = lock.withLock {
+      _handoffCalls.append(call)
+      return handoffResult
+    }
+    return try await handler(call)
   }
 }

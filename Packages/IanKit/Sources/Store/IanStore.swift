@@ -74,7 +74,7 @@ public final class IanStore {
   public private(set) var state = StoreState()
   /// Item id to its unsettled action.
   public private(set) var pending: [String: Pending] = [:]
-  public private(set) var notices: [String: Notice] = [:]
+  public internal(set) var notices: [String: Notice] = [:]
   /// Items the server removed a moment ago, by id, so a settled row and its pillar can finish
   /// leaving the screen with the server's outcome line. The server sends `item.removed` and then
   /// the `today.updated` that drops the item, so a Today update does not clear a record. A record
@@ -95,7 +95,7 @@ public final class IanStore {
   /// How long a removal is kept when no later `today` update has dropped it first.
   public static let removalLifetime: Duration = .seconds(10)
 
-  private let service: any DesktopService
+  let service: any DesktopService
   public let appVersion: SemanticVersion
   private let clock: any SyncClock
   private let timing: SyncEngine.Timing
@@ -291,13 +291,23 @@ public final class IanStore {
       break
     }
 
+    await markPendingAndSend(actionID: actionID, item: item) {
+      try await service.runAction(
+        itemID: itemID, actionID: actionID, version: item.version, until: input.until,
+        note: input.note)
+    }
+  }
+
+  /// Marks the item pending, makes the call and keeps the correlation id it returns, so the event
+  /// carrying that id clears the mark. A failure clears the mark and leaves a notice.
+  func markPendingAndSend(
+    actionID: String, item: StoreState.Item, _ call: () async throws -> String
+  ) async {
+    let itemID = item.id
     notices[itemID] = nil
     pending[itemID] = Pending(actionID: actionID, correlationID: nil, sentVersion: item.version)
     do {
-      let correlationID = try await service.runAction(
-        itemID: itemID, actionID: actionID, version: item.version, until: input.until,
-        note: input.note)
-      attach(correlationID: correlationID, to: itemID)
+      attach(correlationID: try await call(), to: itemID)
     } catch {
       handleActionFailure(error, itemID: itemID)
     }
