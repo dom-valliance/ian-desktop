@@ -88,13 +88,16 @@ public struct PillarsDrawingView: View {
 /// The Pillars field: the drawing, driven by a clock that runs only while something moves.
 ///
 /// The clock stops when the field is hidden, occluded or suppressed (`isAnimating` false). The
-/// yaw turns for as long as the field is visible, so under motion the clock runs at the display's
-/// rate (spec 6.9). Under Reduce Motion it runs only through a growth or a sink, which are then
+/// yaw turns for as long as the field is visible, so under motion the clock runs at 60 frames a
+/// second (spec 6.9). Under Reduce Motion it runs only through a growth or a sink, which are then
 /// fades. A stopped field is drawn in its still pose.
 ///
 /// The field is not the accessible path (non-negotiable 8): every pillar is also a row in the
 /// lists below it, so VoiceOver meets one label and none of the internals.
 public struct PillarsFieldView: View {
+  /// Spec 6.9 asks for 60 frames a second. A ProMotion display would otherwise draw at 120.
+  private static let frameInterval = 1.0 / 60
+
   private let scene: PillarsScene
   private let isAnimating: Bool
   private let reducedMotion: Bool
@@ -119,7 +122,8 @@ public struct PillarsFieldView: View {
 
   public var body: some View {
     GeometryReader { geometry in
-      TimelineView(.animation(paused: !runsClock)) { timeline in
+      TimelineView(.animation(minimumInterval: Self.frameInterval, paused: !runsClock)) {
+        timeline in
         let time = timeline.date.timeIntervalSinceReferenceDate
         PillarsDrawingView(drawing: drawing(at: time))
       }
