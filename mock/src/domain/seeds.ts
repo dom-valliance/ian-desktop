@@ -26,7 +26,7 @@ const person = (letter: string): { id: string; name: string } => ({
 });
 
 const PRINCIPAL_ID = 'prin_01JAXQ0000PRINCIPAL0000001';
-export const MOCK_CONTRACT_VERSION = '1.1.0';
+export const MOCK_CONTRACT_VERSION = '1.1.1';
 export const DEFAULT_MIN_CLIENT_VERSION = '0.1.0';
 export const STALE_MIN_CLIENT_VERSION = '99.0.0';
 export const PRINCIPAL = { principalId: PRINCIPAL_ID, displayName: '[PERSON]' } as const;
