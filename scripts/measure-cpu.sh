@@ -23,7 +23,7 @@ fail() {
   exit 1
 }
 
-xcodebuild -version 2>/dev/null | grep -q '^Xcode 27' ||
+[[ "$(xcodebuild -version 2>/dev/null | head -n 1)" == "Xcode 27"* ]] ||
   fail "Xcode 27 is needed (ADR 0010). Install it and run 'sudo xcode-select -s /Applications/Xcode.app/Contents/Developer'."
 for tool in curl lsof perl; do
   command -v "$tool" >/dev/null 2>&1 || fail "$tool is missing, and this script needs it."
