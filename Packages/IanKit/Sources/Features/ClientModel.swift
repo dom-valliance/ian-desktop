@@ -13,8 +13,18 @@ public final class ClientModel {
   let today = TodayModel()
 
   let layout: PaneLayout
+  let settings: SettingsModel
 
-  public init(defaults: UserDefaults = .standard) {
+  /// - Parameters:
+  ///   - launchAtLogin: The app's login item. Without one, Settings says the build cannot
+  ///     register.
+  ///   - copy: Puts the diagnostics report on the pasteboard.
+  public init(
+    defaults: UserDefaults = .standard,
+    launchAtLogin: (any LaunchAtLoginControlling)? = nil,
+    copy: @escaping (String) -> Void = Pasteboard.copy
+  ) {
     layout = PaneLayout(settings: ClientLayoutSettings(defaults: defaults))
+    settings = SettingsModel(launchAtLogin: launchAtLogin ?? NoLaunchAtLogin(), copy: copy)
   }
 }

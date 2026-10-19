@@ -1,0 +1,43 @@
+import Foundation
+import Observation
+import Store
+
+/// What the client section of Settings does beyond saving a value: launch at login, the
+/// environment switch that asks first, sign out and the diagnostics copy (spec 6.4).
+@MainActor
+@Observable
+final class SettingsModel {
+  let launchAtLogin: LaunchAtLoginModel
+  /// The profile the principal chose and has not yet confirmed.
+  private(set) var pendingProfile: ProfileChoice?
+  /// True after the report was copied, until the next change the view makes.
+  private(set) var didCopyReport = false
+
+  @ObservationIgnored private let copy: (String) -> Void
+
+  init(launchAtLogin: any LaunchAtLoginControlling, copy: @escaping (String) -> Void) {
+    self.launchAtLogin = LaunchAtLoginModel(service: launchAtLogin)
+    self.copy = copy
+  }
+
+  func requestProfile(_ id: String, in store: IanStore) {
+    guard id != store.profileID else { return }
+    pendingProfile = store.availableProfiles.first { $0.id == id }
+  }
+
+  func cancelProfile() {
+    pendingProfile = nil
+  }
+
+  /// Signs out, clears the store and syncs against the chosen profile.
+  func confirmProfile(in store: IanStore) async {
+    guard let choice = pendingProfile else { return }
+    pendingProfile = nil
+    await store.switchProfile(to: choice.id)
+  }
+
+  func copyReport(from store: IanStore, now: Date = Date()) {
+    copy(DiagnosticsReport.text(for: store, generatedAt: now))
+    didCopyReport = true
+  }
+}
