@@ -1,7 +1,7 @@
 # 0004. Rendering stays in SwiftUI
 
 Date: 2026-10-17
-Status: Accepted
+Status: Accepted, amended by 0017
 
 ## Context
 
