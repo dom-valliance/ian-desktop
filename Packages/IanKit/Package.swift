@@ -42,7 +42,7 @@ let package = Package(
     .target(name: "Store", dependencies: ["Contract", "Client"]),
     .target(name: "Attention", dependencies: ["Store"]),
     .target(name: "Surface", dependencies: ["Store", "Attention"]),
-    .target(name: "Features", dependencies: ["Store", "Surface", "Attention"]),
+    .target(name: "Features", dependencies: ["Contract", "Store", "Surface", "Attention"]),
     .testTarget(
       name: "ContractTests",
       dependencies: [
@@ -81,7 +81,10 @@ let package = Package(
       exclude: ["__Snapshots__"],
       resources: [.copy("Fixtures")]
     ),
-    .testTarget(name: "FeaturesTests", dependencies: ["Features"]),
+    .testTarget(
+      name: "FeaturesTests",
+      dependencies: ["Features", "Client", "Contract", "Store", "TestSupport"]
+    ),
   ],
   swiftLanguageModes: [.v6]
 )

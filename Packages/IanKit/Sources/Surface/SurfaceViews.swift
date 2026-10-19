@@ -66,12 +66,19 @@ struct HoverLabelView: View {
   }
 }
 
-/// The expanded client until D5 fills it: the panel's surface and nothing else, so no item text
-/// can show through it.
-struct ExpandedPlaceholderView: View {
+/// The expanded client's surface: the rounded, translucent panel every view sits on. Until the
+/// app gives the panel content it is empty, so no item text can show through it.
+struct ExpandedPanelSurface<Content: View>: View {
+  private let content: Content
+
+  init(@ViewBuilder content: () -> Content) {
+    self.content = content()
+  }
+
   var body: some View {
-    RoundedRectangle(cornerRadius: 16)
-      .fill(Color(.sRGB, red: 28 / 255, green: 27 / 255, blue: 27 / 255, opacity: 0.96))
+    content
+      .background(Color(.sRGB, red: 28 / 255, green: 27 / 255, blue: 27 / 255, opacity: 0.96))
+      .clipShape(RoundedRectangle(cornerRadius: 16))
       .overlay(RoundedRectangle(cornerRadius: 16).stroke(Color.white.opacity(0.12), lineWidth: 1))
   }
 }

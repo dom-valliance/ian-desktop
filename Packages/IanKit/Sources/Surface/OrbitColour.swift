@@ -32,6 +32,20 @@ enum OrbitPalette {
 
   static func colour(for kind: OrbitModel.Kind) -> OrbitColour {
     switch kind {
+    case .commitmentBy: KindPalette.colour(for: .commitmentBy)
+    case .commitmentTo: KindPalette.colour(for: .commitmentTo)
+    case .proposal: KindPalette.colour(for: .proposal)
+    case .alert: KindPalette.colour(for: .alert)
+    case .task: KindPalette.colour(for: .task)
+    }
+  }
+}
+
+/// The colour of each kind of item, from the design README's Colour table. The Orbit, the field
+/// and the lists all read it, so a kind has one colour everywhere.
+public enum KindPalette {
+  public static func colour(for kind: PillarKind) -> OrbitColour {
+    switch kind {
     case .commitmentBy: OrbitColour(243, 169, 130)
     case .commitmentTo: OrbitColour(176, 193, 227)
     case .proposal: OrbitColour(240, 185, 226)

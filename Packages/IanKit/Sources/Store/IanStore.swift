@@ -41,6 +41,26 @@ public final class IanStore {
     public let sentVersion: Int
   }
 
+  /// An item the server removed, kept for a short time after it left the open set.
+  public struct Removal: Equatable, Sendable {
+    /// The item as the store held it when the event arrived.
+    public let item: StoreState.Item
+    /// The server's one-line account of what happened. Nil for a cleared alert.
+    public let outcome: String?
+    public let removedAt: Date
+    /// Where the item stood in `today.lists.now` when it left, so its row can stay in place
+    /// while it finishes leaving. Nil when Today did not list it there.
+    public let nowListIndex: Int?
+
+    public init(item: StoreState.Item, outcome: String?, removedAt: Date, nowListIndex: Int? = nil)
+    {
+      self.item = item
+      self.outcome = outcome
+      self.removedAt = removedAt
+      self.nowListIndex = nowListIndex
+    }
+  }
+
   /// Something the principal should see on an item.
   public enum Notice: Equatable, Sendable {
     /// An action failed, with the reason.
@@ -55,6 +75,11 @@ public final class IanStore {
   /// Item id to its unsettled action.
   public private(set) var pending: [String: Pending] = [:]
   public private(set) var notices: [String: Notice] = [:]
+  /// Items the server removed a moment ago, by id, so a settled row and its pillar can finish
+  /// leaving the screen with the server's outcome line. The server sends `item.removed` and then
+  /// the `today.updated` that drops the item, so a Today update does not clear a record. A record
+  /// clears when the item comes back, after `removalLifetime`, or when the store resets.
+  public private(set) var removals: [String: Removal] = [:]
   /// When the server last confirmed the data: a snapshot, an event or a heartbeat.
   public private(set) var lastUpdatedAt: Date?
   /// A sign-in is open, in the browser or on its way, so a second one is not started.
@@ -67,6 +92,8 @@ public final class IanStore {
 
   private static let log = Logger(subsystem: "ai.valliance.ian.desktop", category: "store")
   private static let rememberedCorrelations = 32
+  /// How long a removal is kept when no later `today` update has dropped it first.
+  public static let removalLifetime: Duration = .seconds(10)
 
   private let service: any DesktopService
   public let appVersion: SemanticVersion
@@ -80,6 +107,8 @@ public final class IanStore {
   private var signInAttempted = false
   /// Correlation ids from events that arrived while an action's answer was still in flight.
   private var earlyCorrelations: [String] = []
+  /// The task that clears each removal when its lifetime ends.
+  private var removalExpiries: [String: Task<Void, Never>] = [:]
 
   public init(
     service: any DesktopService,
@@ -180,6 +209,14 @@ public final class IanStore {
     if let removed = effects.removedItemID {
       pending[removed] = nil
       notices[removed] = nil
+      if let item = effects.removedItem {
+        recordRemoval(item, outcome: effects.removalOutcome)
+      }
+    }
+    switch event {
+    case .item_upserted(let upserted): forgetRemoval(of: upserted.item.id)
+    case .alert_raised(let raised): forgetRemoval(of: raised.item.id)
+    default: break
     }
     if let correlationID = effects.correlationID { settle(correlationID: correlationID) }
     if let minimum = effects.deprecatedBelow,
@@ -197,6 +234,24 @@ public final class IanStore {
       earlyCorrelations.append(correlationID)
       earlyCorrelations = Array(earlyCorrelations.suffix(Self.rememberedCorrelations))
     }
+  }
+
+  private func recordRemoval(_ item: StoreState.Item, outcome: String?) {
+    removals[item.id] = Removal(
+      item: item, outcome: outcome, removedAt: now(),
+      nowListIndex: state.today?.lists.now.firstIndex(of: item.id))
+    removalExpiries[item.id]?.cancel()
+    let id = item.id
+    removalExpiries[id] = Task { [weak self, clock = self.clock] in
+      try? await clock.sleep(for: Self.removalLifetime)
+      guard !Task.isCancelled else { return }
+      self?.forgetRemoval(of: id)
+    }
+  }
+
+  private func forgetRemoval(of itemID: String) {
+    removals[itemID] = nil
+    removalExpiries.removeValue(forKey: itemID)?.cancel()
   }
 
   private func dropPendingMarksForMissingItems() {
@@ -331,6 +386,9 @@ public final class IanStore {
     pending = [:]
     notices = [:]
     earlyCorrelations = []
+    for task in removalExpiries.values { task.cancel() }
+    removalExpiries = [:]
+    removals = [:]
     lastUpdatedAt = nil
     connection = .connecting
   }

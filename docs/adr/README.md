@@ -19,5 +19,6 @@ Numbers here are this repository's own. Lance's ADRs are cited as "Lance ADR NNN
 | 0012 | [Test support library and declared imports](0012-test-support-and-declared-imports.md) | Accepted |
 | 0013 | [System frameworks for the Orbit and suppression](0013-orbit-imports.md) | Accepted |
 | 0014 | [System windows are swept](0014-system-windows-are-swept.md) | Accepted |
+| 0015 | [Features may import the generated contract types](0015-features-import-contract.md) | Accepted |
 
 Later numbers go to deviations as they arise.

@@ -15,7 +15,9 @@ Each entry records:
 | D2 | Done, 18 October 2026 |
 | D3 | Done, 18 October 2026 |
 | D4 | Done, 19 October 2026 |
-| D5 | Not started |
+| D5 | Done, 19 October 2026 |
+| D5.1 | Not started |
+| P1 | Not started |
 | D6 | Not started |
 | D7 | Not started |
 | D8 | Not started |
@@ -247,3 +249,71 @@ The mock and the contract did not change.
 - ADR 0013 records the imports Attention and Surface gained. ADR 0014 records that windows the system creates are swept to `.none`, because the factory cannot build them.
 - Reviewed by an Opus review against REVIEW.md: 3 Blocking (this entry, the system windows, the import ADR), 5 Should fix and 10 Suggestions, all fixed.
 - D9 measures the Orbit's idle cost on a Release build against spec 6.9.
+
+### D5. Expanded client and Today
+
+- Date: 19 October 2026
+- Branch: `feat/d5-today`, from `main` at `c448481`. Commits `674d9aa..e2be8ae`, plus this entry.
+- The Pillars field was built in parallel in the worktree `.worktrees/d5-field` (originals `8334800..368410e`) and cherry-picked as `82adb03..b61b8ba`; `git cherry` shows every one matched.
+- Machine: MacBook Pro, Apple M4 Pro, macOS 27.0.1, Xcode 27.1 (27A9275).
+
+#### Commands and exit codes
+
+| Command | Exit |
+|---|---|
+| `swift format lint --recursive --strict Packages App scripts` | 0 |
+| `swift build --package-path Packages/IanKit --force-resolved-versions` | 0 |
+| `swift test --package-path Packages/IanKit --force-resolved-versions`, five runs | 0 each: 328 tests (Surface 107 including 8 Orbit and 8 Pillars snapshot tests, Features 82, Store 57, Client 43, Auth 25, Attention 9, Contract 5). The agent also ran it 20 times with every core loaded, all 0 |
+| `scripts/check-generated.sh` | 0 |
+| `xcodebuild -project App/Ian.xcodeproj -scheme Ian -configuration Debug -destination 'platform=macOS' -onlyUsePackageVersionsFromResolvedFile -derivedDataPath build/DerivedData build` | 0 |
+
+#### Done when
+
+1. **Field snapshots.** The field is snapshotted for `quiet`, `normal`, `overloaded` and `incident`, with motion on at a fixed time and with motion off: eight references in `Packages/IanKit/Tests/SurfaceTests/__Snapshots__/PillarsSnapshotTests/`, at `precision: 0.998, perceptualPrecision: 0.98`. The lead compared them with the Pillars artboard: the grid with Now at the front, face shading, alert rims, empty tiles, the plate, row labels on their baseline behind the cells, and working particles.
+2. **Selection and sinking tests.** Selection is tested both ways, for Now items, week groups and later groups, and through the field's tap. A pillar sinks after `item.removed` and never after the action's click, including when `item.removed` and `today.updated` arrive with no refresh between (`settledRowAndOutcomeSurviveTheTodayUpdate`, `settledRowLeavesWithItsPillar`, and the scene builder tests).
+3. **Manual passes.** Dom ran a keyboard-only pass and a VoiceOver pass through Today on 19 October 2026, against the mock in `normal`, and reported everything working:
+   - The sidebar moves with the arrow keys, and the counts are shown.
+   - The list rows move with the arrow keys, and the selected pillar is outlined.
+   - The footer buttons work from the keyboard. The time prompt takes focus, Escape cancels only the prompt, and Return sends.
+   - Settling a commitment shows Pending, then the row dims and leaves as its pillar sinks, with the outcome line in the footer.
+   - Week group members and Later counts are reachable through the footer, and Escape closes the panel.
+   - VoiceOver reads the sidebar with counts, the field as one label, and each row's kind, title, horizon and state, and it reaches and presses every action.
+
+#### Choices recorded
+
+- **ADR 0015.** `Features` may import the generated contract types, never the generated client.
+- **Last view.** The last view is remembered for the life of the process only, because spec 6.4 does not list it among the settings that reach disk.
+- **Layout.** The lists sit below the field (spec 6.3); the design README's differences table records it, with the week tag's count and the Later row's colour.
+- **Removal record.** It keeps the removed item, its `outcome`, its place in `lists.now` and the time it left. It clears on expiry (ten seconds), on an upsert of the same id, or on a reset, never on `today.updated`. A settled row dims and leaves with its pillar after 0.7 seconds, and a departing column stays until its pillar has sunk.
+- **Accessible path to every item.** A This week group's footer lists its member items, and a Later group's footer lists its counts as links, so no item is reachable only through the field (non-negotiable 8).
+- **Action component.** One action component draws `actions` in order and asks for `confirm`, a time or a note from `input`. The time must be in the future and the note not blank. Pending, error, the 409 notice and offline states are shown. D6 reuses it.
+- **Smaller decisions.**
+  - A cleared alert's outcome line reads "Closed", since `alert.cleared` carries none.
+  - The panel eases in (a fade over 0.3 seconds and a 14-point rise; fade only under Reduce Motion).
+  - Settings in the menu opens the Settings view.
+  - The kind colours live in one `KindPalette`.
+  - The list selection uses the system accent colour, which Dom saw and left as it is.
+- **The temporary status lines.** D3's temporary status lines are gone from the menu bar extra; the header names the environment and the data's age.
+
+#### CPU, and P1
+
+| Measurement (Release, this M4 Pro, mock running) | CPU |
+|---|---|
+| Field alone, in a test harness at 60 frames a second | about 14% |
+| Panel open on Today in `normal` | 23.4% |
+| Panel closed, Orbit only, in `normal` (core breathing) | 9.0% |
+| Panel closed, Orbit only, in `incident` (alert pulsing) | 9.5% |
+| Panel closed, Orbit only, in `quiet` (nothing moving) | 0.4% |
+
+The last three were measured by the lead on the app's own process with `ps -o time`, over 30 seconds after a 10-second warm-up. Most of the cost is SwiftUI's per-frame layout and commit, not the drawing. D4's "under 1%" figure for the Orbit was wrong. Dom chose to fix this before D6 and D7, in the new package P1, against two thirds of each budget on this M4 Pro, since no M1 is available.
+
+#### Spec section 11 criteria evidenced
+
+- **Orbit and Pillars match the design:** the Pillars half, by the snapshot tests and the comparison above.
+- **The client holds no logic:** the lists, groups, order and counts come from `today.lists` and `views`, and buttons only from `actions`.
+- **Accessibility holds:** for Today, by Dom's keyboard-only and VoiceOver passes.
+
+#### Reviews and what is left
+
+- **Review.** An Opus review against REVIEW.md found 4 Blocking (one was this entry), 8 Should fix and 9 Suggestions. All are fixed, except the optional accessibility actions on Now rows.
+- **Next.** D5.1, which Dom asked for on 19 October: turning the field by dragging, and resizable panes, both saved across relaunches. Then P1.

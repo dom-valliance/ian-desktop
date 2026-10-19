@@ -3,12 +3,12 @@
 D1 to D9 from spec section 10, expanded into what to build and how to prove it. Run them in Claude Code from the repository root. `/package D<n>` loads an entry, checks its dependencies against [the phase log](../adr/0000-phase-log.md) and starts the branch.
 
 ```
-D1 ─┬─ D2 ───────────────────────────┐
-    └─ D3 ── D4 ── D5 ─┬─ D6 ── D8 ──┼── D9
-                       └─ D7 ────────┘
+D1 ─┬─ D2 ────────────────────────────────────────┐
+    └─ D3 ── D4 ── D5 ── D5.1 ── P1 ─┬─ D6 ── D8 ──┼── D9
+                                     └─ D7 ────────┘
 ```
 
-D2 and D3 can run in parallel after D1, as can D6 and D7 after D5. For parallel sessions, create each git worktree by hand from the working branch, tell Dom the paths, and pin each session to its path (a Lance lesson: tool-made worktrees started from a stale `main`).
+D2 and D3 can run in parallel after D1, as can D6 and D7 after P1. D5.1 and P1 were added on 19 October 2026: D5.1 at Dom's request, P1 when D4 and D5 measured the cost of drawing in SwiftUI. For parallel sessions, create each git worktree by hand from the working branch, tell Dom the paths, and pin each session to its path (a Lance lesson: tool-made worktrees started from a stale `main`).
 
 Every package is done only when all of these pass by exit code, in addition to its own list:
 
@@ -135,9 +135,62 @@ Done when:
 - Tests of selection both ways, and of a pillar sinking after `item.removed` and not after the click.
 - The phase log records a keyboard-only pass and a VoiceOver pass through Today reaching every item from the list.
 
+## D5.1. Turn the field and resize the panes
+
+Branch `feat/d5-1-field-controls`. Depends on D5. Dom asked for it on 19 October 2026, after his keyboard and VoiceOver passes through Today, and chose to build it before P1.
+
+Read: the D5 entry in the phase log; docs/design/README.md (Pillars); ADR 0004; spec sections 6.2, 6.3 and 6.4.
+
+Build:
+
+- Dragging sideways on the field turns it about its vertical axis, by any amount and all the way round; the tilt never changes. The design's sway (10 degrees, `sin(0.22 t)`) carries on around the angle the principal leaves it at. Reduce Motion stops the sway, never the principal's own turn. A double-click returns the field to the design's 45 degrees. A click without dragging still selects a pillar, hit-tested at the current angle.
+- The expanded client's three panes are resizable by dragging the dividers between them: the sidebar on the left, the field at the top right, and the lists and footer at the bottom right. Each pane has a minimum size, and the field fills its pane, scaling the 540 by 420 box to fit and keeping its aspect.
+- The field's angle and the two divider positions are saved across relaunches. ADR 0016 adds them to the client settings that may reach disk (spec 6.4).
+
+Done when:
+
+- Tests cover:
+  - the drag mapping and its direction;
+  - the sway around the chosen angle;
+  - Reduce Motion holding the chosen angle;
+  - the double-click reset;
+  - a click below the drag threshold selecting a pillar;
+  - the hit test at a turned angle;
+  - the settings saved and restored;
+  - the panes' minimum sizes.
+- Snapshots of the field turned to 135 and 225 degrees in `normal`, with motion off.
+- The phase log records Dom's manual check:
+  - dragging turns the field;
+  - a click selects;
+  - a double-click resets;
+  - the panes resize with the field scaling;
+  - the angle and pane sizes survive a relaunch.
+
+## P1. Rendering within the budget
+
+Branch `perf/rendering-budget`. Depends on D5.1. Dom chose on 19 October 2026 to fix this before D6 and D7, since every later view sits on the rendering.
+
+Read: spec sections 6.1, 6.3 and 6.9; ADR 0004; the D4 and D5 entries in the phase log.
+
+Why: in Release on an Apple M4 Pro, with only the Orbit showing, Ian used 9.0% CPU in `normal` and 9.5% in `incident`, where the core breathes or an alert pulses, against spec 6.9's under 1%. It used 0.4% in `quiet`, where nothing moves. The Pillars field added about 14%, against under 15% on an M1. Most of the cost is SwiftUI's per-frame layout and commit, not the drawing: an empty `Canvas` in a 60 frames a second `TimelineView` cost as much as the field.
+
+Target: no M1 is available, so the target on the M4 Pro is two thirds of each budget. With only the Orbit showing, under 0.7% in `normal` and `incident`. With the panel open on Today, under 10% while the field animates at 60 frames a second.
+
+Build:
+
+- An ADR amending ADR 0004: the Orbit's continuous motion (the core's breath and the alert's pulse) runs as Core Animation layer animations, which the system animates outside Ian's process. The still parts are drawn only when the state changes. The geometry, colours and snapshots stay as D4 left them.
+- Instruments traces (Time Profiler and Animation Hitches) of the field in Release on Today in `normal`. Choose the field's route from the traces under ADR 0004 (Core Animation layers per pillar, Metal or SceneKit), with its own ADR, keeping the renderer's maths, the hit test and the snapshots.
+- `scripts/measure-cpu.sh`: builds Release, starts the mock, runs the app, and reports CPU with only the Orbit showing and with the panel open on Today, measured on the app's own process. Later packages and D9 re-run it.
+
+Done when:
+
+- `scripts/measure-cpu.sh` reports the targets above, and the phase log holds its output and the traces.
+- The Orbit and Pillars snapshots pass unchanged, or are re-recorded with the reason.
+- Reduce Motion, a hidden or occluded panel and suppression still stop all motion, with tests.
+
 ## D6. Proposals, Commitments, Tasks and Alerts
 
-Branch `feat/d6-views`. Depends on D5. About 2.5 days.
+Branch `feat/d6-views`. Depends on P1. About 2.5 days.
 
 Read: spec sections 5.3, 6.3 and 6.7; ADR 0001; the Context artboard for cards.
 
@@ -158,7 +211,7 @@ Done when:
 
 ## D7. Agents and Settings
 
-Branch `feat/d7-agents-settings`. Depends on D5. About 1.5 days.
+Branch `feat/d7-agents-settings`. Depends on P1. About 1.5 days.
 
 Read: spec sections 6.3 (Agents) and 6.4; ADR 0003.
 

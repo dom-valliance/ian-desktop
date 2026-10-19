@@ -1,20 +1,15 @@
-import Store
 import SwiftUI
 
-/// The content of the menu bar extra: D3's temporary status lines (D5 removes them), then the
-/// shared menu.
+/// The content of the menu bar extra: the shared menu. The environment, the data's age and the
+/// connection state are in the expanded client's header.
 public struct MenuBarMenu: View {
-  private let store: IanStore
   private let controller: SurfaceController
 
-  public init(store: IanStore, controller: SurfaceController) {
-    self.store = store
+  public init(controller: SurfaceController) {
     self.controller = controller
   }
 
   public var body: some View {
-    DebugStatus(store: store)
-    Divider()
     ForEach(Array(controller.menuEntries.enumerated()), id: \.offset) { _, entry in
       switch entry {
       case .separator:

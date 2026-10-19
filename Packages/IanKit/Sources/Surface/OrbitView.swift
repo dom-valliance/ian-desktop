@@ -84,7 +84,7 @@ public struct OrbitDrawingView: View {
 }
 
 extension OrbitColour {
-  var color: Color {
+  public var color: Color {
     Color(.sRGB, red: red / 255, green: green / 255, blue: blue / 255, opacity: alpha)
   }
 }
