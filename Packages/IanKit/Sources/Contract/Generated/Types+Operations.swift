@@ -2402,6 +2402,10 @@ public enum Operations {
     /// Only the fields sent change. Switching `mode` to `live` is refused with `422` unless
     /// `liveEligible` is true; the client also asks the principal to confirm first.
     ///
+    /// Lance emits `settings.updated` after every accepted PATCH that changes a value. A PATCH
+    /// that changes nothing answers `200` with the current settings and emits no event. The
+    /// client shows a changed value only when the event arrives.
+    ///
     ///
     /// - Remark: HTTP `PATCH /settings`.
     /// - Remark: Generated from `#/paths//settings/patch(updateSettings)`.

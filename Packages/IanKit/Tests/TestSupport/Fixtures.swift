@@ -94,25 +94,60 @@ public enum Fixtures {
     """
   }
 
-  public static func agentJSON(id: String = "agent_1", state: String = "idle") -> String {
+  public static func agentJSON(
+    id: String = "agent_1", state: String = "idle", name: String = "Inbox watcher",
+    pausable: Bool = true
+  ) -> String {
     """
-    {"id":"\(id)","name":"Inbox watcher","kind":"watcher","state":"\(state)",\
+    {"id":"\(id)","name":"\(name)","kind":"watcher","state":"\(state)",\
     "lastRunAt":"2026-10-16T07:55:00.000Z","nextRunAt":null,"costTodayGbp":0.4,\
-    "ceilingFraction":0.03,"pausable":true}
+    "ceilingFraction":0.03,"pausable":\(pausable)}
     """
+  }
+
+  public static func agent(
+    id: String = "agent_1", state: String = "idle", name: String = "Inbox watcher",
+    pausable: Bool = true
+  ) -> Schemas.Agent {
+    decode(agentJSON(id: id, state: state, name: name, pausable: pausable))
+  }
+
+  public static func agentsOverview(_ agents: [Schemas.Agent], cost: Double = 0.4)
+    -> Schemas.AgentsOverview
+  {
+    Schemas.AgentsOverview(agents: agents, costToday: decode(costJSON(cost: cost)))
+  }
+
+  public static func settings(
+    mode: String = "dry_run", liveEligible: Bool = false, liveOpensAt: String? = nil,
+    paused: Bool = false, pausedReason: String? = nil, globalPaused: Bool = false,
+    globalReason: String? = nil, quietStart: String = "19:00", quietEnd: String = "07:00"
+  ) -> Schemas.Settings {
+    decode(
+      settingsJSON(
+        mode: mode, liveEligible: liveEligible, liveOpensAt: liveOpensAt, paused: paused,
+        pausedReason: pausedReason, globalPaused: globalPaused, globalReason: globalReason,
+        quietStart: quietStart, quietEnd: quietEnd))
   }
 
   public static func costJSON(cost: Double = 0.4) -> String {
     "{\"costGbp\":\(cost),\"ceilingGbp\":15,\"fraction\":0.03}"
   }
 
-  public static func settingsJSON(pushBudget: Int = 3) -> String {
-    """
-    {"quietHours":{"start":"19:00","end":"07:00"},"pushBudgetPerHour":\(pushBudget),\
-    "mode":"dry_run","liveEligible":false,"liveOpensAt":null,"paused":false,"pausedReason":null,\
-    "timeZone":"Europe/London","costCeilingGbp":15,\
-    "global":{"paused":false,"pausedReason":null,"mode":"dry_run"}}
-    """
+  public static func settingsJSON(
+    pushBudget: Int = 3, mode: String = "dry_run", liveEligible: Bool = false,
+    liveOpensAt: String? = nil, paused: Bool = false, pausedReason: String? = nil,
+    globalPaused: Bool = false, globalReason: String? = nil, quietStart: String = "19:00",
+    quietEnd: String = "07:00"
+  ) -> String {
+    func text(_ value: String?) -> String { value.map { "\"\($0)\"" } ?? "null" }
+    return """
+      {"quietHours":{"start":"\(quietStart)","end":"\(quietEnd)"},"pushBudgetPerHour":\(pushBudget),\
+      "mode":"\(mode)","liveEligible":\(liveEligible),"liveOpensAt":\(text(liveOpensAt)),\
+      "paused":\(paused),"pausedReason":\(text(pausedReason)),\
+      "timeZone":"Europe/London","costCeilingGbp":15,\
+      "global":{"paused":\(globalPaused),"pausedReason":\(text(globalReason)),"mode":"dry_run"}}
+      """
   }
 
   public static func meJSON(minClientVersion: String = "0.1.0") -> String {
@@ -193,6 +228,10 @@ public enum Fixtures {
 
   public static func settingsUpdatedJSON(pushBudget: Int) -> String {
     "{\"type\":\"settings.updated\",\"settings\":\(settingsJSON(pushBudget: pushBudget))}"
+  }
+
+  public static func settingsUpdatedJSON(settings: String) -> String {
+    "{\"type\":\"settings.updated\",\"settings\":\(settings)}"
   }
 
   public static func clientDeprecatedJSON(minClientVersion: String) -> String {

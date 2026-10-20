@@ -293,10 +293,107 @@
     "mode": "dry_run",
     "timeZone": "Europe/London",
     "minClientVersion": "0.1.0",
-    "contractVersion": "1.1.0",
+    "contractVersion": "1.1.1",
     "capabilities": {
       "handoff": true
     },
     "serverTime": "2026-10-16T09:30:00.000Z"
+  },
+  "agents": {
+    "agents": [
+      {
+        "id": "agent_mail_watcher",
+        "name": "Mail watcher",
+        "kind": "watcher",
+        "state": "idle",
+        "lastRunAt": "2026-10-19T09:27:00.000Z",
+        "nextRunAt": "2026-10-19T09:36:00.000Z",
+        "costTodayGbp": 0.08,
+        "ceilingFraction": 0.006,
+        "pausable": true,
+        "breaker": "closed"
+      },
+      {
+        "id": "agent_calendar_watcher",
+        "name": "Calendar watcher",
+        "kind": "watcher",
+        "state": "idle",
+        "lastRunAt": "2026-10-19T09:27:00.000Z",
+        "nextRunAt": "2026-10-19T09:36:00.000Z",
+        "costTodayGbp": 0.04,
+        "ceilingFraction": 0.002,
+        "pausable": true,
+        "breaker": "closed"
+      },
+      {
+        "id": "agent_transcript_watcher",
+        "name": "Transcript watcher",
+        "kind": "watcher",
+        "state": "idle",
+        "lastRunAt": "2026-10-19T09:27:00.000Z",
+        "nextRunAt": "2026-10-19T09:36:00.000Z",
+        "costTodayGbp": 0.13,
+        "ceilingFraction": 0.009,
+        "pausable": true,
+        "breaker": "closed"
+      },
+      {
+        "id": "agent_drafting",
+        "name": "Drafting agent",
+        "kind": "agent",
+        "state": "idle",
+        "lastRunAt": "2026-10-19T09:27:00.000Z",
+        "nextRunAt": "2026-10-19T09:36:00.000Z",
+        "costTodayGbp": 0.27,
+        "ceilingFraction": 0.018,
+        "pausable": true
+      },
+      {
+        "id": "agent_triage",
+        "name": "Triage agent",
+        "kind": "agent",
+        "state": "idle",
+        "lastRunAt": "2026-10-19T09:27:00.000Z",
+        "nextRunAt": "2026-10-19T09:36:00.000Z",
+        "costTodayGbp": 0.18,
+        "ceilingFraction": 0.012,
+        "pausable": true
+      },
+      {
+        "id": "job_nightly_median",
+        "name": "Nightly median job",
+        "kind": "job",
+        "state": "idle",
+        "lastRunAt": "2026-10-19T09:27:00.000Z",
+        "nextRunAt": "2026-10-20T02:30:00.000Z",
+        "costTodayGbp": 0.01,
+        "ceilingFraction": 0.001,
+        "pausable": false
+      }
+    ],
+    "costToday": {
+      "costGbp": 0.71,
+      "ceilingGbp": 15,
+      "fraction": 0.047
+    }
+  },
+  "settings": {
+    "quietHours": {
+      "start": "19:00",
+      "end": "07:00"
+    },
+    "pushBudgetPerHour": 3,
+    "mode": "dry_run",
+    "liveEligible": true,
+    "liveOpensAt": null,
+    "paused": false,
+    "pausedReason": null,
+    "timeZone": "Europe/London",
+    "costCeilingGbp": 15,
+    "global": {
+      "paused": false,
+      "pausedReason": null,
+      "mode": "dry_run"
+    }
   }
 }

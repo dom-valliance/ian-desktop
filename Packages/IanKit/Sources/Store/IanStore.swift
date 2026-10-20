@@ -77,7 +77,7 @@ public final class IanStore {
 
   public private(set) var phase: Phase = .stopped
   public private(set) var connection: Connection = .connecting
-  public private(set) var state = StoreState()
+  public internal(set) var state = StoreState()
   /// Item id to its unsettled action.
   public private(set) var pending: [String: Pending] = [:]
   public internal(set) var notices: [String: Notice] = [:]
@@ -90,8 +90,31 @@ public final class IanStore {
   public private(set) var lastUpdatedAt: Date?
   /// A sign-in is open, in the browser or on its way, so a second one is not started.
   public private(set) var isSigningIn = false
+  /// Rises each time the held settings change, so a view can watch the settings alone rather than
+  /// the whole state.
+  public private(set) var settingsRevision = 0
 
-  public let profile: EnvironmentProfile
+  /// Changes only through `switchProfile(to:)`.
+  public internal(set) var profile: EnvironmentProfile
+
+  /// An agent's pause or resume sent and not yet settled by its `agent.updated` event.
+  public internal(set) var agentPending: Set<String> = []
+  /// Why the last pause or resume of an agent failed, such as a `403`, by agent id.
+  public internal(set) var agentNotices: [String: String] = [:]
+  /// A settings change sent and not yet shown by `settings.updated`.
+  public internal(set) var settingsPending = false
+  /// Why the last settings change was refused or failed, such as a `422`.
+  public internal(set) var settingsNotice: String?
+  /// When the last snapshot was applied, for the diagnostics report.
+  public private(set) var lastSnapshotAt: Date?
+  /// How late the last heartbeat arrived: its arrival on this Mac's clock minus its `serverTime`
+  /// corrected by `clockOffset`. It measures the delay between the server sending the heartbeat
+  /// and this app applying it, and can be slightly negative when the offset estimate is off.
+  /// Nil before the first heartbeat.
+  public internal(set) var eventLag: TimeInterval?
+  /// How far the server's clock is ahead of this Mac's, from `GET /me`: `serverTime` against the
+  /// local time at the midpoint of the request. Nil until `me` arrives.
+  public private(set) var clockOffset: TimeInterval?
 
   /// Actions work only while the data is current (spec section 4: no queue, no stale actions).
   public var actionsEnabled: Bool { phase == .running && connection == .live }
@@ -101,16 +124,24 @@ public final class IanStore {
   /// How long a removal is kept when no later `today` update has dropped it first.
   public static let removalLifetime: Duration = .seconds(10)
 
-  let service: any DesktopService
+  var service: any DesktopService
   public let appVersion: SemanticVersion
   private let clock: any SyncClock
   private let timing: SyncEngine.Timing
   private let jitter: @Sendable () -> Double
-  private let now: @Sendable () -> Date
+  let now: @Sendable () -> Date
   private var syncTask: Task<Void, Never>?
   /// Stamps each sync task, so updates a cancelled one had already buffered are not applied.
-  private var generation = 0
-  private var signInAttempted = false
+  var generation = 0
+  var signInAttempted = false
+  /// The service's sign-in while one is open, so a sign-out or profile switch can cancel it.
+  var signInTask: Task<Void, any Error>?
+  var profileSwitcher: ProfileSwitcher?
+  /// The agents `agent.updated` named while a refetch of `GET /agents` is in flight, whose newer
+  /// copy the refetch must not overwrite. Nil when no refetch is running.
+  var agentsTouchedDuringRefetch: Set<String>?
+  /// Stamps each agents refetch. A snapshot or a reset raises it, so an older response is dropped.
+  var agentsRefetchToken = 0
   /// Correlation ids from events that arrived while an action's answer was still in flight.
   private var earlyCorrelations: [String] = []
   /// The task that clears each removal when its lifetime ends.
@@ -123,7 +154,8 @@ public final class IanStore {
     clock: any SyncClock = SystemSyncClock(),
     timing: SyncEngine.Timing = SyncEngine.Timing(),
     jitter: @escaping @Sendable () -> Double = { Double.random(in: 0...1) },
-    now: @escaping @Sendable () -> Date = { Date() }
+    now: @escaping @Sendable () -> Date = { Date() },
+    profileSwitcher: ProfileSwitcher? = nil
   ) {
     self.service = service
     self.profile = profile
@@ -132,6 +164,7 @@ public final class IanStore {
     self.timing = timing
     self.jitter = jitter
     self.now = now
+    self.profileSwitcher = profileSwitcher
   }
 
   /// How old the data is. Nil before the first snapshot.
@@ -147,7 +180,8 @@ public final class IanStore {
     phase = .running
     connection = .connecting
     let engine = SyncEngine(
-      service: service, appVersion: appVersion, clock: clock, timing: timing, jitter: jitter)
+      service: service, appVersion: appVersion, clock: clock, timing: timing, jitter: jitter,
+      wallClock: now)
     generation += 1
     let mine = generation
     syncTask = Task { [weak self] in
@@ -169,16 +203,25 @@ public final class IanStore {
     isSigningIn = true
     defer { isSigningIn = false }
     stop()
+    let mine = generation
+    let service = service
+    let task = Task { try await service.signIn() }
+    signInTask = task
+    defer { if generation == mine { signInTask = nil } }
     do {
-      try await service.signIn()
+      try await task.value
+      // A sign-out or a profile switch while the browser was open has moved on; its result is stale.
+      guard generation == mine else { return }
       start()
     } catch {
+      guard generation == mine else { return }
       phase = .signInRequired(message: error.localizedDescription)
     }
   }
 
   /// Clears the credentials and every piece of data.
   public func signOut() async {
+    cancelSignIn()
     stop()
     await service.signOut()
     reset()
@@ -188,14 +231,31 @@ public final class IanStore {
 
   // MARK: Updates
 
+  /// Ends an open sign-in: its task is cancelled, which closes the loopback listener, and the
+  /// generation bump in `stop()` makes `signIn()` drop whatever it returns.
+  func cancelSignIn() {
+    signInTask?.cancel()
+    signInTask = nil
+  }
+
   private func apply(_ update: SyncUpdate) {
+    let settingsBefore = state.settings
+    defer { if state.settings != settingsBefore { settingsRevision += 1 } }
     switch update {
     case .me(let me):
       state.me = me
     case .snapshot(let snapshot):
       state.apply(snapshot: snapshot)
       dropPendingMarksForMissingItems()
+      agentPending = []
+      settingsPending = false
+      // The snapshot's agents and order stand over any refetch still in flight.
+      agentsRefetchToken += 1
+      agentsTouchedDuringRefetch = nil
       lastUpdatedAt = now()
+      lastSnapshotAt = lastUpdatedAt
+    case .clockOffset(let offset):
+      clockOffset = offset
     case .connected:
       connection = .live
       lastUpdatedAt = now()
@@ -209,9 +269,11 @@ public final class IanStore {
   }
 
   private func apply(event: Components.Schemas.StreamEvent, id: String?) {
+    let unseenAgent = unseenAgentID(in: event)
     let effects = state.apply(event: event, id: id)
     guard effects.applied else { return }
     lastUpdatedAt = now()
+    noteSettingsAndAgents(event, unseenAgent: unseenAgent)
     if let removed = effects.removedItemID {
       pending[removed] = nil
       notices[removed] = nil
@@ -313,9 +375,14 @@ public final class IanStore {
     let itemID = item.id
     notices[itemID] = nil
     pending[itemID] = Pending(actionID: actionID, correlationID: nil, sentVersion: item.version)
+    let mine = generation
     do {
-      attach(correlationID: try await call(), to: itemID)
+      let correlationID = try await call()
+      // A sign-out or a profile switch while the call was out has cleared this state already.
+      guard generation == mine else { return }
+      attach(correlationID: correlationID, to: itemID)
     } catch {
+      guard generation == mine else { return }
       handleActionFailure(error, itemID: itemID)
     }
   }
@@ -355,7 +422,7 @@ public final class IanStore {
 
   // MARK: Failures
 
-  private func handle(_ error: DesktopError) {
+  func handle(_ error: DesktopError) {
     switch error {
     case .unauthorised:
       requireSignIn()
@@ -398,8 +465,18 @@ public final class IanStore {
     generation += 1
   }
 
-  private func reset() {
+  func reset() {
+    if state.settings != nil { settingsRevision += 1 }
     state = StoreState()
+    agentPending = []
+    agentNotices = [:]
+    settingsPending = false
+    settingsNotice = nil
+    lastSnapshotAt = nil
+    eventLag = nil
+    clockOffset = nil
+    agentsTouchedDuringRefetch = nil
+    agentsRefetchToken += 1
     pending = [:]
     notices = [:]
     earlyCorrelations = []
@@ -425,6 +502,7 @@ extension IanStore {
     info: [String: Any],
     bundleIdentifier: String,
     shortVersion: String?,
+    defaults: UserDefaults = .standard,
     openURL: @escaping @Sendable (URL) async -> Void
   ) -> IanStore {
     let profile: EnvironmentProfile
@@ -436,9 +514,44 @@ extension IanStore {
     }
     let version =
       shortVersion.flatMap(SemanticVersion.init) ?? SemanticVersion(major: 0, minor: 0, patch: 0)
+    let service = makeService(
+      for: profile, bundleIdentifier: bundleIdentifier, version: version, openURL: openURL)
+    let switcher = makeProfileSwitcher(
+      info: info, bundleIdentifier: bundleIdentifier, version: version, defaults: defaults,
+      openURL: openURL)
+    return IanStore(
+      service: service, profile: profile, appVersion: version, profileSwitcher: switcher)
+  }
+
+  /// The profiles Settings can switch to. Choosing one is saved under `IanEnvironment`, which the
+  /// next launch reads. Building a choice makes its service and starts nothing.
+  static func makeProfileSwitcher(
+    info: [String: Any], bundleIdentifier: String, version: SemanticVersion,
+    defaults: UserDefaults, openURL: @escaping @Sendable (URL) async -> Void
+  ) -> ProfileSwitcher {
+    ProfileSwitcher(
+      choices: EnvironmentProfile.Name.allCases.map {
+        ProfileChoice(id: $0.rawValue, displayName: $0.displayName)
+      },
+      build: { id in
+        guard let next = try? EnvironmentProfile.resolve(requested: id, info: info) else {
+          return nil
+        }
+        return (
+          next,
+          makeService(
+            for: next, bundleIdentifier: bundleIdentifier, version: version, openURL: openURL)
+        )
+      },
+      remember: { defaults.set($0, forKey: EnvironmentProfile.defaultsKey) })
+  }
+
+  private static func makeService(
+    for profile: EnvironmentProfile, bundleIdentifier: String, version: SemanticVersion,
+    openURL: @escaping @Sendable (URL) async -> Void
+  ) -> any DesktopService {
     let tokens = profile.makeTokenProvider(bundleIdentifier: bundleIdentifier, openURL: openURL)
-    let service = DesktopAPI(profile: profile, tokens: tokens, clientVersion: version.description)
-    return IanStore(service: service, profile: profile, appVersion: version)
+    return DesktopAPI(profile: profile, tokens: tokens, clientVersion: version.description)
   }
 
   /// The store for the running app, read from its bundle and `UserDefaults`.
@@ -452,6 +565,6 @@ extension IanStore {
       info: bundle.infoDictionary ?? [:],
       bundleIdentifier: bundle.bundleIdentifier ?? "ai.valliance.ian.desktop",
       shortVersion: bundle.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String,
-      openURL: openURL)
+      defaults: defaults, openURL: openURL)
   }
 }

@@ -46,25 +46,25 @@ extension DesktopError: LocalizedError {
     case .unauthorised:
       return "Your sign-in is no longer accepted. Sign in again from the Ian menu."
     case .upgradeRequired(let minimum):
-      return "This version of Ian is too old for Lance"
+      return "This version of Ian is too old for its server"
         + (minimum.map { " (version \($0) or later is needed)" } ?? "")
         + ". Update Ian to continue."
     case .conflict:
-      return "This item changed before your action reached Lance. Review it and try again."
+      return "This item changed before your action arrived. Review it and try again."
     case .gone:
       return "Ian missed too many updates and is reloading."
     case .offline:
-      return "Ian cannot reach Lance. Actions work again when the connection returns."
+      return "Ian cannot reach its server. Actions work again when the connection returns."
     case .rejected(let status, let detail):
-      return detail ?? "Lance refused the request (status \(status))."
+      return detail ?? "The server refused the request (status \(status))."
     case .unexpectedStatus(let status):
-      return "Lance answered with an unexpected status (\(status)). Check that Ian and Lance "
-        + "run the same contract version."
+      return "The server answered with an unexpected status (\(status)). Check that Ian and the "
+        + "server run the same contract version."
     case .failed(let reason):
       return reason
     case .unreadableResponse:
-      return "Lance answered with something Ian could not read. Check that Ian and Lance "
-        + "run the same contract version."
+      return "The server answered with something Ian could not read. Check that Ian and the "
+        + "server run the same contract version."
     }
   }
 }

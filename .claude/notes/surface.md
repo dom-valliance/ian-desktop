@@ -15,3 +15,17 @@ Append-only. Lessons about the window model, SwiftUI hosting in AppKit panels, p
 **Correction**: The P1 review found a resize leaves the old bitmap stretched, because a size change does not mark that layer for display and the box-unit drawing looks unchanged; with the link paused it stays stretched.
 **Rule**: A view that paints only on request repaints itself in `setFrameSize(_:)` and `viewDidChangeBackingProperties()`, and asks for an 8-bit backing store (`.RGBA8Uint`) when it paints every frame. Test both.
 **Applies to**: Surface (any `NSView` painted by hand)
+
+### [2026-10-20] A confirmation dialog's dismissal runs before its action's Task
+
+**Context**: D7's Settings asked to confirm "Go live" and the environment switch with `confirmationDialog(isPresented:)`, whose binding setter cleared the pending flag, while the confirm button started a Task that guarded on that flag.
+**Correction**: Dom's hand check found Go live did nothing. Pressing the button dismisses the dialog first, the setter clears the flag, and the Task then returns early. The model and integration tests called the confirm step directly, so they never saw the dismissal.
+**Rule**: Pass the confirmed value through `confirmationDialog(_:isPresented:presenting:)` into the action, and never guard a confirm step on state the dismissal clears. Test the real order: request, dismissal, then confirm.
+**Applies to**: Features and Surface (every dialog, alert or sheet with a confirm action)
+
+### [2026-10-20] The CI runner has Reduce Motion on and a US region
+
+**Context**: D7's Settings snapshots passed on Dom's Mac and failed on the `xcode-27` runner, at 92% of pixels.
+**Correction**: Dom's pull request failed CI. The motion row's text follows the system's Reduce Motion, which is on in the runner, and wraps to a second line; the native time pickers follow the region, US English there, and read 7:00 PM. Forcing both locally reproduced CI's numbers exactly.
+**Rule**: A snapshot must not depend on the machine's accessibility settings, region or time zone. Pin `en_GB` on any native control that formats a date or number, give any view that reads a system accessibility setting a seam the snapshot holds fixed, and before recording, render once with a US locale and with Reduce Motion forced on to prove the image does not change.
+**Applies to**: Features and Surface snapshot tests

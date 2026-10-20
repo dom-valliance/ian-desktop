@@ -14,7 +14,7 @@ public actor EntraTokenProvider: TokenProvider {
   private let openURL: @Sendable (URL) async -> Void
   private let now: @Sendable () -> Date
   private var refreshing: Task<String, any Error>?
-  /// Raised by `signOut`, so a refresh already in flight does not save tokens after it.
+  /// Raised by `signOut`, so a refresh or a sign-in already in flight does not save tokens after it.
   private var epoch = 0
 
   /// - Parameters:
@@ -50,6 +50,7 @@ public actor EntraTokenProvider: TokenProvider {
 
   public func signIn() async throws {
     try configuration.validate()
+    let startedIn = epoch
     let pkce = PKCE.generate()
     let state = randomToken(byteCount: 16)
     let configuration = configuration
@@ -67,6 +68,8 @@ public actor EntraTokenProvider: TokenProvider {
       ("redirect_uri", result.redirectURI.absoluteString),
       ("code_verifier", pkce.verifier),
     ])
+    // A sign-out while the browser or the exchange was open means the principal moved on.
+    guard startedIn == epoch else { throw AuthError.signInRequired }
     try store.save(tokens)
   }
 

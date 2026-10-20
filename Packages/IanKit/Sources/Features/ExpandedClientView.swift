@@ -54,10 +54,9 @@ public struct ExpandedClientView: View {
     case .commitments: CommitmentsView(store: store)
     case .tasks: TasksView(store: store)
     case .alerts: AlertsView(store: store)
-    case .agents, .settings:
-      Text(model.section.title)
-        .font(.system(size: 18, weight: .medium))
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
+    case .agents: AgentsView(store: store)
+    case .settings:
+      SettingsView(store: store, controller: controller, model: model.settings)
     }
   }
 }

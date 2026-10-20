@@ -26,8 +26,11 @@ jobs:
       - name: Select Xcode 27.1
         run: sudo xcode-select -s /Applications/Xcode_27.1.app/Contents/Developer
 
-      - name: Print toolchain versions
+      - name: Print toolchain and system versions
         run: |
+          sw_vers
+          defaults read -g AppleLocale || true
+          defaults read com.apple.universalaccess reduceMotion || true
           xcodebuild -version
           swift --version
           swift format --version
@@ -40,6 +43,17 @@ jobs:
 
       - name: Test IanKit
         run: swift test --package-path Packages/IanKit --force-resolved-versions
+        env:
+          SNAPSHOT_ARTIFACTS: ${{ runner.temp }}/snapshot-artifacts
+
+      - name: Keep failed snapshots
+        if: failure()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: failed-snapshots
+          path: ${{ runner.temp }}/snapshot-artifacts
+          if-no-files-found: ignore
+          retention-days: 7
 
       - name: Check generated code is current
         run: scripts/check-generated.sh

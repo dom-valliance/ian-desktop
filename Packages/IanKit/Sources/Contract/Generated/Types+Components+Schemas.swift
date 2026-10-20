@@ -1841,6 +1841,8 @@ extension Components {
         }
         /// - Remark: Generated from `#/components/schemas/AgentsOverview`.
         public struct AgentsOverview: Codable, Hashable, Sendable {
+            /// The agents in display order. The client draws the list as sent and sorts nothing.
+            ///
             /// - Remark: Generated from `#/components/schemas/AgentsOverview/agents`.
             public var agents: [Components.Schemas.Agent]
             /// - Remark: Generated from `#/components/schemas/AgentsOverview/costToday`.
@@ -1848,7 +1850,7 @@ extension Components {
             /// Creates a new `AgentsOverview`.
             ///
             /// - Parameters:
-            ///   - agents:
+            ///   - agents: The agents in display order. The client draws the list as sent and sorts nothing.
             ///   - costToday:
             public init(
                 agents: [Components.Schemas.Agent],

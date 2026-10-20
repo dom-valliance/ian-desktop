@@ -1,7 +1,7 @@
 import Foundation
 
 /// The mock's scenarios as `scripts/export-scenario-fixtures.sh` exported them: one JSON file per
-/// scenario holding `today`, `views`, `items` and `me`, taken at a fixed mock time. Each test
+/// scenario holding `today`, `views`, `items`, `me`, `agents` and `settings`, taken at a fixed mock time. Each test
 /// target decodes the parts it needs.
 public enum ScenarioFixtures {
   public static let names = ["quiet", "normal", "overloaded", "incident"]

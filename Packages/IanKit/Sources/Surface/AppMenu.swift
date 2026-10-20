@@ -11,7 +11,7 @@ public enum AppMenu {
     case separator
   }
 
-  /// "Settings" opens the expanded client until D7 builds Settings.
+  /// "Settings" opens the expanded client on its Settings view.
   public static func entries(isPaused: Bool) -> [Entry] {
     [
       .command(.open, title: "Open", isChecked: nil, shortcut: nil),

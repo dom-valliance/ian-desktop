@@ -16,8 +16,8 @@ public final class SurfaceController {
   public private(set) var corner: Corner
   /// False once the Orbit's panel is fully covered or off screen. Its animations are removed then.
   public private(set) var isOrbitOnScreen = true
-  /// The spec 6.4 motion setting. The system's Reduce Motion forces reduced regardless.
-  public var reducedMotionSetting: Bool
+  /// The client settings of spec 6.4 that the surface reads: motion and the suppression toggles.
+  public let settings: ClientSettings
   /// Runs when the Settings command opens the panel, so the client can show its Settings view.
   /// Surface does not know the views; whoever hosts the content sets this.
   public var onOpenSettings: (@MainActor () -> Void)?
@@ -49,7 +49,6 @@ public final class SurfaceController {
     store: IanStore,
     signals: SuppressionSignals,
     defaults: UserDefaults = .standard,
-    reducedMotionSetting: Bool = false,
     screenArea: @escaping @MainActor () -> CGRect = {
       (NSScreen.screens.first ?? NSScreen.main)?.visibleFrame
         ?? CGRect(x: 0, y: 0, width: 1440, height: 900)
@@ -60,7 +59,7 @@ public final class SurfaceController {
     self.signals = signals
     self.cornerSetting = CornerSetting(defaults: defaults)
     self.corner = CornerSetting(defaults: defaults).corner
-    self.reducedMotionSetting = reducedMotionSetting
+    self.settings = ClientSettings(defaults: defaults)
     self.screenArea = screenArea
     self.quit = quit
 
@@ -91,11 +90,15 @@ public final class SurfaceController {
   /// AGENTS.md rule 7). Reduce Motion is applied by the view that has the system setting.
   public var isOrbitAnimating: Bool { isOrbitOnScreen && !suppression.isActive }
 
+  /// The spec 6.4 motion setting. The system's Reduce Motion forces reduced regardless, which
+  /// the views that read the environment apply.
+  public var reducedMotionSetting: Bool { settings.reducedMotion }
+
   public var suppression: Suppression {
     let context = store.state.today?.context
     return signals.suppression(
       externalMeeting: context?.inExternalMeeting ?? false,
-      quietHours: context?.quietHoursActive ?? false)
+      quietHours: context?.quietHoursActive ?? false, toggles: settings.suppressionToggles)
   }
 
   public var presentation: OrbitPresentation {
@@ -226,6 +229,15 @@ public final class SurfaceController {
   }
 
   // MARK: Placement and dragging
+
+  /// Moves the Orbit to `corner`, keeps the expanded client under it, and saves the corner.
+  public func setCorner(_ corner: Corner) {
+    guard corner != self.corner else { return }
+    self.corner = corner
+    cornerSetting.corner = corner
+    placeOrbit()
+    if expandedPanel.isVisible { repositionExpanded() }
+  }
 
   private func placeOrbit() {
     orbitPanel.setFrame(OrbitPlacement.orbitFrame(corner: corner, in: screenArea()), display: true)

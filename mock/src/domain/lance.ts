@@ -466,6 +466,7 @@ export class MockLance {
           : `Going live opens at ${when}. Stay in dry run until then.`,
       );
     }
+    const before = JSON.stringify(this.settings);
     if (patch.quietHours !== undefined) this.settings.quietHours = patch.quietHours;
     if (patch.pushBudgetPerHour !== undefined)
       this.settings.pushBudgetPerHour = patch.pushBudgetPerHour;
@@ -476,8 +477,11 @@ export class MockLance {
     } else if (patch.pausedReason !== undefined && this.settings.paused) {
       this.settings.pausedReason = patch.pausedReason;
     }
-    this.emit({ type: 'settings.updated', settings: structuredClone(this.settings) });
-    this.publishAggregates();
+    // A PATCH that changes nothing answers with the current settings and emits no event.
+    if (JSON.stringify(this.settings) !== before) {
+      this.emit({ type: 'settings.updated', settings: structuredClone(this.settings) });
+      this.publishAggregates();
+    }
     return structuredClone(this.settings);
   }
 

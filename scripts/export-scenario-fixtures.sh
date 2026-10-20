@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # Writes the scenario fixtures: the `today`, `views` and `items` of the mock's `quiet`, `normal`,
-# `overloaded` and `incident` snapshots, and `me`, taken at a fixed mock time, to
+# `overloaded` and `incident` snapshots, with `me`, `agents` and `settings`, taken at a fixed mock
+# time, to
 # Packages/IanKit/Tests/TestSupport/Fixtures/<scenario>.json. The Orbit, Pillars and view tests
 # all read that one copy. Starts the mock on a free port and stops it on exit. Running it twice
 # gives byte-identical files.
@@ -81,7 +82,8 @@ for scenario in "${scenarios[@]}"; do
     const fs = require("fs");
     const snapshot = JSON.parse(fs.readFileSync(process.argv[1], "utf8"));
     const me = JSON.parse(fs.readFileSync(process.argv[2], "utf8"));
-    const fixture = { today: snapshot.today, views: snapshot.views, items: snapshot.items, me };
+    const fixture = { today: snapshot.today, views: snapshot.views, items: snapshot.items, me,
+      agents: snapshot.agents, settings: snapshot.settings };
     process.stdout.write(JSON.stringify(fixture, null, 2) + "\n");
   ' "$snapshot_file" "$me_file" >"$out_dir/$scenario.json" || fail "could not write the '$scenario' fixture."
   echo "Wrote $out_dir/$scenario.json"

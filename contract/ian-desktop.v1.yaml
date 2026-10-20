@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: Ian desktop api
-  version: 1.1.0
+  version: 1.1.1
   summary: The contract between the Ian desktop client and Lance's /desktop/v1 façade.
   description: |
     Version 1 of the contract between the Ian desktop client and Lance (ADR 0002). This
@@ -401,6 +401,10 @@ paths:
       description: |
         Only the fields sent change. Switching `mode` to `live` is refused with `422` unless
         `liveEligible` is true; the client also asks the principal to confirm first.
+
+        Lance emits `settings.updated` after every accepted PATCH that changes a value. A PATCH
+        that changes nothing answers `200` with the current settings and emits no event. The
+        client shows a changed value only when the event arrives.
       parameters:
         - $ref: '#/components/parameters/ClientVersion'
       requestBody:
@@ -1429,6 +1433,7 @@ components:
       properties:
         agents:
           type: array
+          description: The agents in display order. The client draws the list as sent and sorts nothing.
           items:
             $ref: '#/components/schemas/Agent'
         costToday:

@@ -1478,10 +1478,107 @@
     "mode": "dry_run",
     "timeZone": "Europe/London",
     "minClientVersion": "0.1.0",
-    "contractVersion": "1.1.0",
+    "contractVersion": "1.1.1",
     "capabilities": {
       "handoff": true
     },
     "serverTime": "2026-10-16T09:30:00.000Z"
+  },
+  "agents": {
+    "agents": [
+      {
+        "id": "agent_mail_watcher",
+        "name": "Mail watcher",
+        "kind": "watcher",
+        "state": "breaker_open",
+        "lastRunAt": "2026-10-16T09:27:00.000Z",
+        "nextRunAt": null,
+        "costTodayGbp": 0.42,
+        "ceilingFraction": 0.028,
+        "pausable": false,
+        "breaker": "open"
+      },
+      {
+        "id": "agent_calendar_watcher",
+        "name": "Calendar watcher",
+        "kind": "watcher",
+        "state": "paused",
+        "lastRunAt": "2026-10-16T09:27:00.000Z",
+        "nextRunAt": null,
+        "costTodayGbp": 0.18,
+        "ceilingFraction": 0.012,
+        "pausable": false,
+        "breaker": "closed"
+      },
+      {
+        "id": "agent_transcript_watcher",
+        "name": "Transcript watcher",
+        "kind": "watcher",
+        "state": "paused",
+        "lastRunAt": "2026-10-16T09:27:00.000Z",
+        "nextRunAt": null,
+        "costTodayGbp": 0.64,
+        "ceilingFraction": 0.043,
+        "pausable": false,
+        "breaker": "closed"
+      },
+      {
+        "id": "agent_drafting",
+        "name": "Drafting agent",
+        "kind": "agent",
+        "state": "paused",
+        "lastRunAt": "2026-10-16T09:27:00.000Z",
+        "nextRunAt": null,
+        "costTodayGbp": 1.35,
+        "ceilingFraction": 0.09,
+        "pausable": false
+      },
+      {
+        "id": "agent_triage",
+        "name": "Triage agent",
+        "kind": "agent",
+        "state": "paused",
+        "lastRunAt": "2026-10-16T09:27:00.000Z",
+        "nextRunAt": null,
+        "costTodayGbp": 0.9,
+        "ceilingFraction": 0.06,
+        "pausable": false
+      },
+      {
+        "id": "job_nightly_median",
+        "name": "Nightly median job",
+        "kind": "job",
+        "state": "idle",
+        "lastRunAt": "2026-10-16T09:27:00.000Z",
+        "nextRunAt": "2026-10-17T02:30:00.000Z",
+        "costTodayGbp": 0.05,
+        "ceilingFraction": 0.003,
+        "pausable": false
+      }
+    ],
+    "costToday": {
+      "costGbp": 3.54,
+      "ceilingGbp": 15,
+      "fraction": 0.236
+    }
+  },
+  "settings": {
+    "quietHours": {
+      "start": "19:00",
+      "end": "07:00"
+    },
+    "pushBudgetPerHour": 3,
+    "mode": "dry_run",
+    "liveEligible": false,
+    "liveOpensAt": "2026-10-23T09:30:00.000Z",
+    "paused": false,
+    "pausedReason": null,
+    "timeZone": "Europe/London",
+    "costCeilingGbp": 15,
+    "global": {
+      "paused": true,
+      "pausedReason": "An administrator turned the kill switch on.",
+      "mode": "dry_run"
+    }
   }
 }
