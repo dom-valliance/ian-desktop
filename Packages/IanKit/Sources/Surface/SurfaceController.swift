@@ -105,6 +105,12 @@ public final class SurfaceController {
   /// the views that read the environment apply.
   public var reducedMotionSetting: Bool { settings.reducedMotion }
 
+  private var reducesMotion: Bool {
+    MotionPreference.reduces(
+      setting: reducedMotionSetting,
+      system: NSWorkspace.shared.accessibilityDisplayShouldReduceMotion)
+  }
+
   public var suppression: Suppression {
     let context = store.state.today?.context
     return signals.suppression(
@@ -215,8 +221,7 @@ public final class SurfaceController {
     repositionExpanded()
     let entrance = ExpandedEntrance(
       endFrame: expandedPanel.frame,
-      reducedMotion: reducedMotionSetting
-        || NSWorkspace.shared.accessibilityDisplayShouldReduceMotion)
+      reducedMotion: reducesMotion)
     if isOpening {
       expandedPanel.alphaValue = 0
       expandedPanel.setFrame(entrance.startFrame, display: false)
@@ -288,7 +293,8 @@ public final class SurfaceController {
     corner = OrbitPlacement.nearestCorner(to: orbitPanel.frame, in: area)
     cornerSetting.corner = corner
     orbitPanel.setFrame(
-      OrbitPlacement.orbitFrame(corner: corner, in: area), display: true, animate: true)
+      OrbitPlacement.orbitFrame(corner: corner, in: area), display: true,
+      animate: MotionPreference.glidesToCorner(reducedMotion: reducesMotion))
     if expandedPanel.isVisible { repositionExpanded() }
     updatePointer()
     syncHoverPanel()

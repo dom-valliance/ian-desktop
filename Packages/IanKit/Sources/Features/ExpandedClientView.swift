@@ -48,7 +48,8 @@ public struct ExpandedClientView: View {
       TodayView(
         store: store, model: model.today, openedAt: controller?.expandedOpenedAt,
         isAnimating: controller?.isExpandedAnimating ?? false,
-        reducedMotion: (controller?.reducedMotionSetting ?? false) || systemReducesMotion,
+        reducedMotion: MotionPreference.reduces(
+          setting: controller?.reducedMotionSetting ?? false, system: systemReducesMotion),
         layout: model.layout, onNavigate: { model.section = $0 })
     case .proposals: ProposalsView(store: store)
     case .commitments: CommitmentsView(store: store)
