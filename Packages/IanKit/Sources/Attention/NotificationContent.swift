@@ -55,7 +55,8 @@ public struct NotificationCategory: Equatable, Sendable {
   }
 
   /// One category per notification, named for the item's id (not item text), because two items
-  /// can share an action id and show different labels. While suppressed there is only Open, under
+  /// can share an action id and show different labels, and for its version, because a newer
+  /// version can offer different buttons under the same id. While suppressed there is only Open, under
   /// one shared id, so no action label (item text) reaches the screen.
   public init(item: StoreState.Item, showsItemText: Bool) {
     guard showsItemText else {
@@ -64,7 +65,7 @@ public struct NotificationCategory: Equatable, Sendable {
       return
     }
     let quick = Set(Self.quickActionIDs(of: item))
-    id = "ian.item." + item.id
+    id = "ian.item.\(item.id).\(item.version)"
     buttons =
       item.actions.filter { quick.contains($0.id) }.map {
         NotificationButton(actionID: $0.id, label: $0.label)
@@ -87,11 +88,15 @@ public struct NotificationContent: Equatable, Sendable {
   /// Stop plays the default sound; the other rungs are silent.
   public let playsSound: Bool
 
-  public init(item: StoreState.Item, rung: NotificationRung, showsItemText: Bool) {
+  /// - Parameter playsSound: Defaults to Stop only. A suppressed re-delivery of a Stop passes
+  ///   false, so the replacement is silent.
+  public init(
+    item: StoreState.Item, rung: NotificationRung, showsItemText: Bool, playsSound: Bool? = nil
+  ) {
     id = item.id
     title = showsItemText ? item.title : Self.suppressedTitle
     body = showsItemText ? item.meta : Self.suppressedBody
     category = NotificationCategory(item: item, showsItemText: showsItemText)
-    playsSound = rung == .stop
+    self.playsSound = playsSound ?? (rung == .stop)
   }
 }

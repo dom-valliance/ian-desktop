@@ -64,7 +64,7 @@ struct NotificationContentTests {
       category.buttons.map { NotificationButton.actionID(forIdentifier: $0.identifier) } == [
         "approve", "later", nil,
       ])
-    #expect(category.id == "ian.item.task_9")
+    #expect(category.id == "ian.item.task_9.1")
   }
 
   @Test("only Open is offered while suppressed")
@@ -80,7 +80,7 @@ struct NotificationContentTests {
     let source = item(actions: [Fixtures.ActionSpec("reject", confirm: "Sure?")])
     let category = NotificationCategory(item: source, showsItemText: true)
     #expect(category.buttons.map(\.title) == ["Open"])
-    #expect(category.id == "ian.item.task_9")
+    #expect(category.id == "ian.item.task_9.1")
   }
 
   @Test("two items with the same action id get different categories")

@@ -2,6 +2,7 @@ import Attention
 import Client
 import Contract
 import Foundation
+import Observation
 import TestSupport
 import Testing
 
@@ -40,6 +41,7 @@ private let paused = Suppression(
 
 /// What the surface would say, set by the test.
 @MainActor
+@Observable
 private final class Controls {
   var suppression = Suppression.none
   var isPanelOpen = false
@@ -97,9 +99,12 @@ private final class Harness {
     store.stop()
   }
 
+  /// Lets the coordinator's observation run and its deliveries finish. Nothing calls it directly.
   func sync() async {
-    coordinator.reconcile()
-    await coordinator.settled()
+    for _ in 0..<3 {
+      for _ in 0..<5 { await Task.yield() }
+      await coordinator.settled()
+    }
   }
 
   func upsert(_ item: String, settling: Bool = true) async {
@@ -312,7 +317,7 @@ struct AttentionCoordinatorTests {
       await harness.remove("task_1")
 
       #expect(harness.delivery.withdrawn == [["task_1"]])
-      #expect(harness.delivery.lastCategories?.map(\.id) == ["ian.item.task_2"])
+      #expect(harness.delivery.lastCategories?.map(\.id) == ["ian.item.task_2.1"])
     }
   }
 
@@ -544,6 +549,69 @@ struct AttentionCoordinatorTests {
       await harness.sync()
 
       #expect(harness.delivery.added.map(\.id) == ["task_8"])
+    }
+  }
+
+  @Test(
+    "Pause me withdraws a text banner and replaces a stop with suppressed content, by observation")
+  func pauseMe() async {
+    await withScratchDefaultsAsync { defaults in
+      let harness = await Harness(items: [], defaults: defaults)
+      defer { harness.finish() }
+      await harness.upsert(urgent("task_1"))
+      await harness.upsert(urgent("task_2", attention: "stop"))
+      #expect(harness.delivery.added.count == 2)
+
+      harness.controls.suppression = paused
+      await harness.sync()
+
+      #expect(harness.delivery.withdrawn == [["task_1"]])
+      let replacement = harness.delivery.added.last
+      #expect(harness.delivery.added.count == 3)
+      #expect(replacement?.id == "task_2")
+      #expect(replacement?.title == "Ian")
+      #expect(replacement?.body == NotificationContent.suppressedBody)
+      #expect(replacement?.category.id == "ian.item.open")
+      #expect(replacement?.playsSound == false)
+      #expect(harness.delivery.lastCategories?.map(\.id) == ["ian.item.open"])
+    }
+  }
+
+  @Test("a button on an item with an action pending opens its view instead")
+  func pendingButton() async {
+    await withScratchDefaultsAsync { defaults in
+      let harness = await Harness(items: [], defaults: defaults)
+      defer { harness.finish() }
+      await harness.upsert(
+        urgent(actions: [Fixtures.ActionSpec("approve"), Fixtures.ActionSpec("later")]))
+      await harness.coordinator.handle(
+        NotificationResponse(itemID: "task_1", choice: .action("approve"))
+      ).value
+      #expect(harness.store.pending["task_1"] != nil)
+
+      await harness.coordinator.handle(
+        NotificationResponse(itemID: "task_1", choice: .action("later"))
+      ).value
+
+      #expect(harness.service.actionCalls.map(\.actionID) == ["approve"])
+      #expect(harness.controls.shown == [.tasks])
+    }
+  }
+
+  @Test("an item that escalates again with different buttons gets a new category")
+  func categoryPerVersion() async {
+    await withScratchDefaultsAsync { defaults in
+      let harness = await Harness(items: [], defaults: defaults)
+      defer { harness.finish() }
+      await harness.upsert(
+        urgent(attention: "urgent", actions: [Fixtures.ActionSpec("approve")], version: 1))
+      await harness.upsert(urgent(attention: "needs_you", version: 2))
+      await harness.upsert(
+        urgent(attention: "urgent", actions: [Fixtures.ActionSpec("later")], version: 3))
+
+      let ids = harness.delivery.added.map(\.category.id)
+      #expect(ids == ["ian.item.task_1.1", "ian.item.task_1.3"])
+      #expect(harness.delivery.lastCategories?.map(\.id) == ["ian.item.task_1.3"])
     }
   }
 }
