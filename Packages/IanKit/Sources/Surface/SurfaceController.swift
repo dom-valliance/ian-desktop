@@ -21,6 +21,13 @@ public final class SurfaceController {
   /// Runs when the Settings command opens the panel, so the client can show its Settings view.
   /// Surface does not know the views; whoever hosts the content sets this.
   public var onOpenSettings: (@MainActor () -> Void)?
+  /// Runs after the panel opens for an item, so the client can show the view that holds it.
+  /// Surface does not know the views; whoever hosts the content sets this.
+  public var onShowItem: (@MainActor (ItemDestination) -> Void)?
+  /// The urgent item's one-line whisper, drawn in the hover label's place (spec 6.6).
+  public let whisper: Whisper
+  /// The Stop item's "open on the next pointer movement".
+  public let stopArming = StopArming()
   /// False once the expanded client is hidden or fully covered. Its animation stops then.
   public private(set) var isExpandedOnScreen = false
   /// When the expanded client last opened, in seconds since the reference date, for the
@@ -39,6 +46,7 @@ public final class SurfaceController {
     content: NSView())
   @ObservationIgnored private var isDragging = false
   @ObservationIgnored private var isHovering = false
+  @ObservationIgnored private var isObservingWhisper = false
   @ObservationIgnored private var monitors: [Any] = []
   @ObservationIgnored private var observers: [any NSObjectProtocol] = []
 
@@ -53,8 +61,10 @@ public final class SurfaceController {
       (NSScreen.screens.first ?? NSScreen.main)?.visibleFrame
         ?? CGRect(x: 0, y: 0, width: 1440, height: 900)
     },
-    quit: @escaping @MainActor () -> Void = { NSApplication.shared.terminate(nil) }
+    quit: @escaping @MainActor () -> Void = { NSApplication.shared.terminate(nil) },
+    whisper: Whisper = Whisper()
   ) {
+    self.whisper = whisper
     self.store = store
     self.signals = signals
     self.cornerSetting = CornerSetting(defaults: defaults)
@@ -101,6 +111,13 @@ public final class SurfaceController {
       quietHours: context?.quietHoursActive ?? false, toggles: settings.suppressionToggles)
   }
 
+  /// The whisper while there is one and nothing suppresses it, else the top item's title, which
+  /// the Orbit's model already withholds while suppressed.
+  var hoverLabel: String? {
+    if !suppression.isActive, let title = whisper.title { return title }
+    return presentation.hoverText
+  }
+
   public var presentation: OrbitPresentation {
     OrbitPresentation(state: store.state, suppression: suppression)
   }
@@ -123,6 +140,8 @@ public final class SurfaceController {
     signals.start()
     orbitPanel.orderFrontRegardless()
     installPointerMonitors()
+    isObservingWhisper = true
+    observeWhisper()
     observeSystem()
     secureSystemWindows()
   }
@@ -133,6 +152,9 @@ public final class SurfaceController {
     monitors = []
     for observer in observers { NotificationCenter.default.removeObserver(observer) }
     observers = []
+    isObservingWhisper = false
+    whisper.hide()
+    stopArming.disarm()
     signals.stop()
     for window in windows { window.orderOut(nil) }
     isHovering = false
@@ -171,6 +193,12 @@ public final class SurfaceController {
     } onChange: { [weak self] in
       Task { @MainActor in self?.showExpandedAfterFirstSnapshot() }
     }
+  }
+
+  /// Opens the expanded client on the view that holds an item.
+  public func showItem(_ destination: ItemDestination) {
+    showExpanded()
+    onShowItem?(destination)
   }
 
   public func toggleExpanded() {
@@ -271,7 +299,7 @@ public final class SurfaceController {
       matching: [.mouseMoved],
       handler: { [weak self] _ in
         // Global monitors run on the main thread.
-        MainActor.assumeIsolated { self?.updatePointer() }
+        MainActor.assumeIsolated { self?.pointerMoved() }
       })
     {
       monitors.append(global)
@@ -279,12 +307,21 @@ public final class SurfaceController {
     if let local = NSEvent.addLocalMonitorForEvents(
       matching: [.mouseMoved],
       handler: { [weak self] event in
-        MainActor.assumeIsolated { self?.updatePointer() }
+        MainActor.assumeIsolated { self?.pointerMoved() }
         return event
       })
     {
       monitors.append(local)
     }
+  }
+
+  private func pointerMoved() {
+    if let destination = stopArming.pointerMoved(
+      isPanelOpen: expandedPanel.isVisible, suppression: suppression)
+    {
+      showItem(destination)
+    }
+    updatePointer()
   }
 
   private func updatePointer() {
@@ -298,7 +335,8 @@ public final class SurfaceController {
   }
 
   private func syncHoverPanel() {
-    guard isHovering, presentation.hoverText != nil else {
+    let isWhispering = whisper.title != nil && !suppression.isActive
+    guard (isHovering || isWhispering) && !isDragging && hoverLabel != nil else {
       hoverPanel.orderOut(nil)
       return
     }
@@ -309,6 +347,19 @@ public final class SurfaceController {
       CGRect(x: x, y: orbit.midY - size.height / 2, width: size.width, height: size.height),
       display: true)
     hoverPanel.orderFrontRegardless()
+  }
+
+  /// Shows and hides the hover panel as the whisper starts and ends.
+  private func observeWhisper() {
+    guard isObservingWhisper else { return }
+    withObservationTracking {
+      _ = whisper.title
+    } onChange: { [weak self] in
+      Task { @MainActor in
+        self?.syncHoverPanel()
+        self?.observeWhisper()
+      }
+    }
   }
 
   /// The menu the Orbit opens on right-click and control-click, built from the shared model.

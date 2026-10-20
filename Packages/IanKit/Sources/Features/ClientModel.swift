@@ -1,3 +1,4 @@
+import Attention
 import Foundation
 import Observation
 import Surface
@@ -26,5 +27,17 @@ public final class ClientModel {
   ) {
     layout = PaneLayout(settings: ClientLayoutSettings(defaults: defaults))
     settings = SettingsModel(launchAtLogin: launchAtLogin ?? NoLaunchAtLogin(), copy: copy)
+  }
+
+  /// Shows the view that holds an item a notification named.
+  public func show(_ destination: ItemDestination) {
+    section =
+      switch destination {
+      case .today: .today
+      case .proposals: .proposals
+      case .commitments: .commitments
+      case .tasks: .tasks
+      case .alerts: .alerts
+      }
   }
 }
