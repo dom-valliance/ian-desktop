@@ -407,6 +407,12 @@ private final class Box<Value> {
   init(_ value: Value) { self.value = value }
 }
 
+/// Records a value a scripted call saw.
+actor Flag {
+  private(set) var value = false
+  func set(_ value: Bool) { self.value = value }
+}
+
 /// Holds a scripted call open until the test lets it go.
 actor Gate {
   private var isOpen = false
@@ -489,6 +495,95 @@ struct StaleCallTests {
     #expect(service.signIns == 0)
     #expect(store.agentNotices.isEmpty)
     #expect(store.phase == .signInRequired(message: nil))
+  }
+
+  @Test("drops an item action's failure after a sign-out, with no notice and no sign-in")
+  func actionFailureAfterSignOutIsDropped() async {
+    let (store, service, _) = await liveStore()
+    defer { store.stop() }
+    let gate = Gate()
+    service.planAction { _ in
+      await gate.wait()
+      throw DesktopError.unauthorised
+    }
+
+    let run = Task { await store.run(actionID: "done", on: "task_1") }
+    #expect(await waitUntil("the call is out") { service.actionCalls.count == 1 })
+    await store.signOut()
+    await gate.open()
+    await run.value
+
+    #expect(service.signIns == 0)
+    #expect(store.notices.isEmpty)
+    #expect(store.phase == .signInRequired(message: nil))
+  }
+
+  @Test("drops a hand-off's upgrade refusal after a profile switch")
+  func handoffFailureAfterSwitchIsDropped() async {
+    var me = Fixtures.me()
+    me.capabilities.handoff = true
+    let first = ScriptedService(me: me)
+    first.planStream()
+    let second = ScriptedService()
+    second.planStream()
+    let gate = Gate()
+    first.planHandoff { _ in
+      await gate.wait()
+      throw DesktopError.upgradeRequired(minClientVersion: "9.0.0")
+    }
+    let store = IanStore(
+      service: first, profile: .mock, appVersion: SemanticVersion("0.1.0")!, clock: ManualClock(),
+      jitter: { 1 }, now: { serverNow },
+      profileSwitcher: ProfileSwitcher(
+        choices: [ProfileChoice(id: "lance-dev", displayName: "Lance dev")],
+        build: { _ in
+          (.lanceDev(entra: .init(tenantID: "t", clientID: "c", scope: "s")), second)
+        },
+        remember: { _ in }))
+    store.start()
+    defer { store.stop() }
+    #expect(await waitUntil("live") { store.connection == .live && store.offersHandoff })
+
+    let handOff = Task { await store.handOff(itemID: "task_1") }
+    #expect(await waitUntil("the call is out") { first.handoffCalls.count == 1 })
+    await store.switchProfile(to: "lance-dev")
+    await gate.open()
+    await handOff.value
+
+    #expect(store.phase == .running)
+    #expect(store.notices.isEmpty)
+  }
+
+  @Test("cancels an open sign-in when the principal switches profile or signs out")
+  func switchingCancelsTheSignIn() async {
+    let first = ScriptedService()
+    let second = ScriptedService()
+    second.planStream()
+    let cancelled = Flag()
+    first.planSignInHook {
+      try? await Task.sleep(for: .seconds(30))
+      await cancelled.set(Task.isCancelled)
+    }
+    let store = IanStore(
+      service: first, profile: .mock, appVersion: SemanticVersion("0.1.0")!, clock: ManualClock(),
+      jitter: { 1 }, now: { serverNow },
+      profileSwitcher: ProfileSwitcher(
+        choices: [ProfileChoice(id: "lance-dev", displayName: "Lance dev")],
+        build: { _ in
+          (.lanceDev(entra: .init(tenantID: "t", clientID: "c", scope: "s")), second)
+        },
+        remember: { _ in }))
+
+    let signIn = Task { await store.signIn() }
+    #expect(await waitUntil("the sign-in is open") { first.signIns == 1 && store.isSigningIn })
+    await store.switchProfile(to: "lance-dev")
+
+    #expect(await waitUntil("the sign-in ends") { !store.isSigningIn })
+    await signIn.value
+    #expect(await cancelled.value)
+    #expect(store.profileID == "lance-dev")
+    #expect(store.phase == .running)
+    store.stop()
   }
 
   @Test("drops a settings refusal after a sign-out")

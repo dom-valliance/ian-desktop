@@ -44,6 +44,7 @@ extension IanStore {
     guard let switcher = profileSwitcher, id != profileID, let next = switcher.build(id) else {
       return false
     }
+    cancelSignIn()
     stop()
     await service.signOut()
     reset()

@@ -90,6 +90,9 @@ public final class IanStore {
   public private(set) var lastUpdatedAt: Date?
   /// A sign-in is open, in the browser or on its way, so a second one is not started.
   public private(set) var isSigningIn = false
+  /// Rises each time the held settings change, so a view can watch the settings alone rather than
+  /// the whole state.
+  public private(set) var settingsRevision = 0
 
   /// Changes only through `switchProfile(to:)`.
   public internal(set) var profile: EnvironmentProfile
@@ -131,6 +134,8 @@ public final class IanStore {
   /// Stamps each sync task, so updates a cancelled one had already buffered are not applied.
   var generation = 0
   var signInAttempted = false
+  /// The service's sign-in while one is open, so a sign-out or profile switch can cancel it.
+  var signInTask: Task<Void, any Error>?
   var profileSwitcher: ProfileSwitcher?
   /// The agents `agent.updated` named while a refetch of `GET /agents` is in flight, whose newer
   /// copy the refetch must not overwrite. Nil when no refetch is running.
@@ -200,8 +205,11 @@ public final class IanStore {
     stop()
     let mine = generation
     let service = service
+    let task = Task { try await service.signIn() }
+    signInTask = task
+    defer { if generation == mine { signInTask = nil } }
     do {
-      try await service.signIn()
+      try await task.value
       // A sign-out or a profile switch while the browser was open has moved on; its result is stale.
       guard generation == mine else { return }
       start()
@@ -213,6 +221,7 @@ public final class IanStore {
 
   /// Clears the credentials and every piece of data.
   public func signOut() async {
+    cancelSignIn()
     stop()
     await service.signOut()
     reset()
@@ -222,7 +231,16 @@ public final class IanStore {
 
   // MARK: Updates
 
+  /// Ends an open sign-in: its task is cancelled, which closes the loopback listener, and the
+  /// generation bump in `stop()` makes `signIn()` drop whatever it returns.
+  func cancelSignIn() {
+    signInTask?.cancel()
+    signInTask = nil
+  }
+
   private func apply(_ update: SyncUpdate) {
+    let settingsBefore = state.settings
+    defer { if state.settings != settingsBefore { settingsRevision += 1 } }
     switch update {
     case .me(let me):
       state.me = me
@@ -357,9 +375,14 @@ public final class IanStore {
     let itemID = item.id
     notices[itemID] = nil
     pending[itemID] = Pending(actionID: actionID, correlationID: nil, sentVersion: item.version)
+    let mine = generation
     do {
-      attach(correlationID: try await call(), to: itemID)
+      let correlationID = try await call()
+      // A sign-out or a profile switch while the call was out has cleared this state already.
+      guard generation == mine else { return }
+      attach(correlationID: correlationID, to: itemID)
     } catch {
+      guard generation == mine else { return }
       handleActionFailure(error, itemID: itemID)
     }
   }
@@ -443,6 +466,7 @@ public final class IanStore {
   }
 
   func reset() {
+    if state.settings != nil { settingsRevision += 1 }
     state = StoreState()
     agentPending = []
     agentNotices = [:]
