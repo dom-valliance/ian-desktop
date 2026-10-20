@@ -16,7 +16,12 @@ private final class Probe {
     policy.decide(reading, at: now)
   }
 
-  func untilNextLook(at now: Duration) -> Duration { policy.untilNextLook(at: now) }
+  func untilNextLook(at now: Duration, idleSeconds: Int) -> Duration {
+    policy.untilNextLook(at: now, idleSeconds: idleSeconds)
+  }
+
+  func forgetLastSent() { policy.forgetLastSent() }
+  func amend(_ reading: HeartbeatReading) { policy.amendSent(reading) }
   func reset() { policy.reset() }
 }
 
@@ -89,13 +94,36 @@ struct HeartbeatPolicyTests {
     #expect(policy.decide(reading(), at: .seconds(1)))
   }
 
-  @Test("looks again after the check interval, or sooner when a periodic send falls due")
-  func untilNextLook() {
-    #expect(policy.untilNextLook(at: .zero) == .seconds(5))
+  @Test("looks every check interval until a heartbeat has been delivered")
+  func looksOftenUntilDelivered() {
+    #expect(policy.untilNextLook(at: .zero, idleSeconds: 0) == .seconds(5))
     _ = policy.decide(reading(), at: .zero)
-    #expect(policy.untilNextLook(at: .zero) == .seconds(5))
-    #expect(policy.untilNextLook(at: .seconds(57)) == .seconds(3))
-    #expect(policy.untilNextLook(at: .seconds(60)) == .zero)
+    policy.forgetLastSent()
+    #expect(policy.untilNextLook(at: .seconds(1), idleSeconds: 0) == .seconds(5))
+    #expect(policy.decide(reading(), at: .seconds(5)))
+  }
+
+  @Test("sleeps until the periodic send or until idle could reach a minute, whichever is sooner")
+  func sleepsUntilSomethingCouldChange() {
+    _ = policy.decide(reading(), at: .zero)
+    #expect(policy.untilNextLook(at: .zero, idleSeconds: 0) == .seconds(60))
+    #expect(policy.untilNextLook(at: .zero, idleSeconds: 45) == .seconds(15))
+    #expect(policy.untilNextLook(at: .seconds(50), idleSeconds: 0) == .seconds(10))
+    #expect(policy.untilNextLook(at: .seconds(60), idleSeconds: 0) == .zero)
+  }
+
+  @Test("looks every check interval while the principal has been idle for a minute")
+  func looksOftenWhileIdle() {
+    _ = policy.decide(reading(), at: .zero)
+    #expect(policy.untilNextLook(at: .seconds(10), idleSeconds: 60) == .seconds(5))
+    #expect(policy.untilNextLook(at: .seconds(57), idleSeconds: 300) == .seconds(3))
+  }
+
+  @Test("records the reading actually sent in place of the one decided on")
+  func amendsTheSentReading() {
+    _ = policy.decide(reading(), at: .zero)
+    policy.amend(reading(suppressed: true))
+    #expect(!policy.decide(reading(suppressed: true), at: .seconds(1)))
   }
 
   @Test("reports idle seconds as at least zero")

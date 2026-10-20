@@ -63,14 +63,34 @@ struct HeartbeatPolicy {
     return true
   }
 
-  /// How long until the next look: the check interval, or less when a periodic send falls due
-  /// first.
-  func untilNextLook(at now: Duration) -> Duration {
+  /// How long to wait before looking again, or nil to stop looking until something changes.
+  ///
+  /// Until a heartbeat is delivered the reporter looks every `checkInterval`, which retries a
+  /// failed send. Afterwards it sleeps until the periodic send is due, or until idle seconds
+  /// could reach `idleReturnSeconds`, whichever is sooner. Only while the principal has been
+  /// idle that long does it look every `checkInterval`, to catch the return.
+  func untilNextLook(at now: Duration, idleSeconds: Int) -> Duration {
     guard let lastSent else { return timing.checkInterval }
-    return min(timing.checkInterval, max(.zero, timing.interval - (now - lastSent.at)))
+    let untilDue = max(.zero, timing.interval - (now - lastSent.at))
+    if idleSeconds >= timing.idleReturnSeconds { return min(timing.checkInterval, untilDue) }
+    let untilIdle = Duration.seconds(max(1, timing.idleReturnSeconds - idleSeconds))
+    return min(untilIdle, untilDue)
   }
 
-  /// Forgets everything sent, so the next reading is sent at once. Used when the session ends.
+  /// Puts the reading actually sent in place of the one recorded when the send was decided,
+  /// because a send that waited behind another reads the inputs again when its turn comes.
+  mutating func amendSent(_ reading: HeartbeatReading) {
+    guard let lastSent else { return }
+    self.lastSent = (reading, lastSent.at)
+  }
+
+  /// Forgets the last heartbeat, so the next look sends at once. Used when a send failed and
+  /// when the session ends.
+  mutating func forgetLastSent() {
+    lastSent = nil
+  }
+
+  /// Forgets everything, for a new session.
   mutating func reset() {
     lastSent = nil
     lastIdleSeconds = nil

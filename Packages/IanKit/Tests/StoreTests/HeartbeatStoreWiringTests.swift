@@ -1,18 +1,23 @@
+import Attention
 import Client
 import Contract
 import Foundation
-import Store
 import TestSupport
 import Testing
 
-@testable import Attention
+@testable import Store
 
+/// An activity monitor that never changes: active, and at the keyboard.
 @MainActor
-private final class StillActivity: ActivityMonitoring {
+final class StillActivity: ActivityMonitoring {
   var isActive = true
   var idleSeconds = 0
   func start(onChange: @escaping @MainActor () -> Void) {}
   func stop() {}
+}
+
+func manualTime(_ clock: ManualClock) -> HeartbeatTime {
+  HeartbeatTime(now: { await clock.now() }, sleep: { try await clock.sleep(for: $0) })
 }
 
 @MainActor
@@ -39,7 +44,8 @@ struct HeartbeatStoreWiringTests {
     service.planStream()
     let store = makeStore(service)
     let reporter = HeartbeatReporter(
-      store: store, clock: ManualClock(), activity: StillActivity(), suppressed: { false })
+      store: store, time: manualTime(ManualClock()), activity: StillActivity(),
+      suppressed: { false })
     reporter.start()
     defer {
       reporter.stop()
@@ -63,7 +69,8 @@ struct HeartbeatStoreWiringTests {
     second.planStream()
     let store = makeStore(first, switchingTo: second)
     let reporter = HeartbeatReporter(
-      store: store, clock: ManualClock(), activity: StillActivity(), suppressed: { false })
+      store: store, time: manualTime(ManualClock()), activity: StillActivity(),
+      suppressed: { false })
     reporter.start()
     defer {
       reporter.stop()

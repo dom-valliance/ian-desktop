@@ -1,4 +1,3 @@
-import Client
 import Foundation
 import Observation
 import TestSupport
@@ -34,10 +33,36 @@ private final class Inputs {
   var session: Int? = 1
 }
 
+/// Holds a send open until the test lets it go.
+private actor Gate {
+  private var isOpen = false
+  private var waiters: [CheckedContinuation<Void, Never>] = []
+
+  func wait() async {
+    if isOpen { return }
+    await withCheckedContinuation { waiters.append($0) }
+  }
+
+  func open() {
+    isOpen = true
+    for waiter in waiters { waiter.resume() }
+    waiters = []
+  }
+}
+
 @MainActor
 private final class Sent {
   private(set) var all: [(UUID, HeartbeatReading)] = []
-  func record(_ device: UUID, _ reading: HeartbeatReading) { all.append((device, reading)) }
+  /// What the next sends answer.
+  var delivers = true
+  var gate: Gate?
+
+  func record(_ device: UUID, _ reading: HeartbeatReading) async -> Bool {
+    all.append((device, reading))
+    await gate?.wait()
+    return delivers
+  }
+
   var readings: [HeartbeatReading] { all.map(\.1) }
 }
 
@@ -51,28 +76,24 @@ private struct Rig {
 
   init(device: UUID = UUID()) {
     let clock = clock
-    let activity = activity
     let inputs = inputs
     let sent = sent
     reporter = HeartbeatReporter(
-      deviceID: device, clock: clock, activity: activity, suppressed: { inputs.suppressed },
-      session: { inputs.session }, send: { sent.record($0, $1) })
+      deviceID: device,
+      time: HeartbeatTime(
+        now: { await clock.now() }, sleep: { try await clock.sleep(for: $0) }),
+      activity: activity, suppressed: { inputs.suppressed }, session: { inputs.session },
+      send: { await sent.record($0, $1) })
   }
 
-  /// Lets the loop sleep, then moves time on by one check interval.
-  func tick(_ seconds: Int = 5) async {
-    await clock.waitForSleepers()
+  /// Lets the loop settle into its sleep and queued sends run, then moves time on.
+  func advance(_ seconds: Int) async {
+    await settle()
     await clock.advance(by: .seconds(seconds))
-  }
-
-  func tick(times: Int) async {
-    for _ in 0..<times { await tick() }
     await settle()
   }
 
-  /// Waits until the loop is asleep again, then gives queued sends a moment to run.
   func settle() async {
-    await clock.waitForSleepers()
     try? await Task.sleep(for: .milliseconds(30))
   }
 
@@ -102,13 +123,13 @@ struct HeartbeatReporterTests {
     defer { rig.reporter.stop() }
     #expect(await rig.sendsReach(1))
 
-    await rig.tick(times: 11)
+    await rig.advance(59)
     #expect(rig.sent.all.count == 1)
-    await rig.tick(times: 1)
+    await rig.advance(1)
     #expect(await rig.sendsReach(2))
-    await rig.tick(times: 11)
+    await rig.advance(59)
     #expect(rig.sent.all.count == 2)
-    await rig.tick(times: 1)
+    await rig.advance(1)
     #expect(await rig.sendsReach(3))
   }
 
@@ -145,15 +166,18 @@ struct HeartbeatReporterTests {
   @Test("sends at once when the principal returns after a minute idle")
   func returnFromIdle() async {
     let rig = Rig()
+    rig.activity.idleSeconds = 30
     rig.reporter.start()
     defer { rig.reporter.stop() }
     #expect(await rig.sendsReach(1))
 
-    rig.activity.idleSeconds = 90
-    await rig.tick(times: 1)
+    // The look at the moment idle could reach a minute finds the principal still away.
+    rig.activity.idleSeconds = 65
+    await rig.advance(30)
     #expect(rig.sent.all.count == 1)
+    // From then on it looks every five seconds, to catch the return.
     rig.activity.idleSeconds = 3
-    await rig.tick(times: 1)
+    await rig.advance(5)
 
     #expect(await rig.sendsReach(2))
     #expect(rig.sent.readings.last?.idleSeconds == 3)
@@ -165,26 +189,27 @@ struct HeartbeatReporterTests {
     rig.reporter.start()
     defer { rig.reporter.stop() }
     #expect(await rig.sendsReach(1))
-    await rig.tick(times: 4)
+    await rig.advance(20)
 
     rig.inputs.suppressed = true
     #expect(await rig.sendsReach(2))
-    await rig.tick(times: 11)
+    await rig.advance(59)
     #expect(rig.sent.all.count == 2)
-    await rig.tick(times: 1)
+    await rig.advance(1)
     #expect(await rig.sendsReach(3))
   }
 
-  @Test("sends nothing while there is no live session")
+  @Test("sends nothing, and stops looking, while there is no live session")
   func silentWithoutSession() async {
     let rig = Rig()
     rig.inputs.session = nil
     rig.reporter.start()
     defer { rig.reporter.stop() }
 
-    await rig.tick(times: 14)
+    await rig.advance(120)
 
     #expect(rig.sent.all.isEmpty)
+    #expect(await rig.clock.requestedSleeps.isEmpty)
   }
 
   @Test("sends the first heartbeat as soon as a session appears")
@@ -193,7 +218,7 @@ struct HeartbeatReporterTests {
     rig.inputs.session = nil
     rig.reporter.start()
     defer { rig.reporter.stop() }
-    await rig.tick(times: 3)
+    await rig.advance(30)
 
     rig.inputs.session = 1
 
@@ -217,7 +242,7 @@ struct HeartbeatReporterTests {
     #expect(rig.sent.all.map(\.0) == [device, device, device])
   }
 
-  @Test("does not repeat the first heartbeat when the same session comes back from offline")
+  @Test("keeps the schedule when the same session comes back from offline after a delivery")
   func offlineBlipKeepsTheSchedule() async {
     let rig = Rig()
     rig.reporter.start()
@@ -225,18 +250,56 @@ struct HeartbeatReporterTests {
     #expect(await rig.sendsReach(1))
 
     rig.inputs.session = nil
-    await rig.tick(times: 2)
+    await rig.advance(20)
     rig.inputs.session = 1
-    await rig.tick(times: 2)
+    await rig.advance(20)
 
     #expect(rig.sent.all.count == 1)
+  }
+
+  @Test("sends again at the next look after a failed send, and then keeps the schedule")
+  func failedSendIsRetried() async {
+    let rig = Rig()
+    rig.sent.delivers = false
+    rig.reporter.start()
+    defer { rig.reporter.stop() }
+    #expect(await rig.sendsReach(1))
+
+    rig.sent.delivers = true
+    await rig.advance(5)
+    #expect(await rig.sendsReach(2))
+    await rig.advance(30)
+
+    #expect(rig.sent.all.count == 2)
+  }
+
+  @Test("lets one send wait behind a slow one and sends the latest values in it")
+  func slowSendKeepsOneWaiting() async {
+    let rig = Rig()
+    let gate = Gate()
+    rig.sent.gate = gate
+    rig.reporter.start()
+    defer { rig.reporter.stop() }
+    #expect(await rig.sendsReach(1))
+
+    rig.activity.setActive(false)
+    rig.inputs.suppressed = true
+    await rig.settle()
+    #expect(rig.sent.all.count == 1)
+    await gate.open()
+
+    #expect(await rig.sendsReach(2))
+    await rig.settle()
+    #expect(rig.sent.all.count == 2)
+    #expect(
+      rig.sent.readings.last == HeartbeatReading(active: false, suppressed: true, idleSeconds: 0))
   }
 
   @Test("makes a device id of its own when none is given")
   func randomDeviceID() {
     func reporter() -> HeartbeatReporter {
       HeartbeatReporter(
-        activity: FakeActivity(), suppressed: { false }, session: { nil }, send: { _, _ in })
+        activity: FakeActivity(), suppressed: { false }, session: { nil }, send: { _, _ in true })
     }
     #expect(reporter().deviceID != reporter().deviceID)
   }

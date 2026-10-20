@@ -7,11 +7,11 @@ import Testing
 
 /// These run only against a live mock server (D2). Start it, then run
 /// `IAN_MOCK_URL=http://localhost:4317 swift test --filter Integration`.
-private let mockOrigin = ProcessInfo.processInfo.environment["IAN_MOCK_URL"]
+let mockOrigin = ProcessInfo.processInfo.environment["IAN_MOCK_URL"]
 
-private let integrationTimeout = Duration.seconds(30)
+let integrationTimeout = Duration.seconds(30)
 
-private struct MockServer {
+struct MockServer {
   let origin: URL
 
   init?(_ text: String?) {
@@ -48,7 +48,7 @@ private struct MockServer {
 
 /// Polls with real time, since these tests talk to a real server.
 @MainActor
-private func settles(
+func settles(
   _ description: String, _ condition: @MainActor @escaping @Sendable () -> Bool
 ) async -> Bool {
   let limit = ContinuousClock.now.advanced(by: integrationTimeout)
@@ -64,7 +64,7 @@ private func settles(
 @Suite("Mock integration", .serialized, .enabled(if: mockOrigin != nil))
 @MainActor
 struct StoreIntegrationTests {
-  private let mock = MockServer(mockOrigin)!
+  let mock = MockServer(mockOrigin)!
 
   @Test("shows the normal scenario arriving, live, with its items and Today")
   func normalScenarioArrives() async throws {
