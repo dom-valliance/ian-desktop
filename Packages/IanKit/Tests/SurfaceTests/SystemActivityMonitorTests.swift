@@ -4,28 +4,49 @@ import Testing
 @testable import Surface
 
 @MainActor
-private struct Rig {
-  let workspace = NotificationCenter()
-  let distributed = NotificationCenter()
-  let monitor: SystemActivityMonitor
-  let changes = Counter()
+private final class Counter { var count = 0 }
 
-  init(locked: Bool = false) {
-    monitor = SystemActivityMonitor(
-      workspaceCenter: workspace, distributedCenter: distributed, screenIsLocked: locked)
-    let changes = changes
-    monitor.start { changes.count += 1 }
-  }
+/// The login session as the window server would describe it, which a test changes.
+@MainActor
+private final class FakeSession {
+  var isLocked = false
+  var isOnConsole = true
+  var dictionary: [String: Any]?
 
-  /// Notifications are delivered on the main queue, so let it run.
-  func post(_ centre: NotificationCenter, _ name: String) async {
-    centre.post(name: Notification.Name(name), object: nil)
-    try? await Task.sleep(for: .milliseconds(20))
+  func read() -> [String: Any]? {
+    dictionary ?? ["CGSSessionScreenIsLocked": isLocked, "kCGSSessionOnConsoleKey": isOnConsole]
   }
 }
 
 @MainActor
-private final class Counter { var count = 0 }
+private struct Rig {
+  let workspace = NotificationCenter()
+  /// Local to this process, so posting a lock notification reaches nothing else.
+  let distributed = DistributedNotificationCenter.forType(.localNotificationCenterType)
+  let session = FakeSession()
+  let monitor: SystemActivityMonitor
+  let changes = Counter()
+
+  init() {
+    let session = session
+    monitor = SystemActivityMonitor(
+      workspaceCenter: workspace, distributedCenter: distributed,
+      sessionState: { session.read() })
+    let changes = changes
+    monitor.start { changes.count += 1 }
+  }
+
+  /// Notifications to the workspace centre are delivered on the main queue, so let it run.
+  func post(_ centre: NotificationCenter, _ name: String) async {
+    centre.post(name: Notification.Name(name), object: nil)
+    try? await Task.sleep(for: .milliseconds(20))
+  }
+
+  func lock(_ locked: Bool) async {
+    session.isLocked = locked
+    await post(distributed, locked ? "com.apple.screenIsLocked" : "com.apple.screenIsUnlocked")
+  }
+}
 
 @Suite("System activity monitor")
 @MainActor
@@ -35,18 +56,41 @@ struct SystemActivityMonitorTests {
     #expect(Rig().monitor.isActive)
   }
 
-  @Test("is not active when the session starts locked")
-  func startsLocked() {
-    #expect(!Rig(locked: true).monitor.isActive)
-  }
-
-  @Test("follows the screen lock and unlock, reporting each change")
-  func followsTheLock() async {
+  @Test("reads the lock from the session each time, with no notification needed")
+  func readsTheLockLive() {
     let rig = Rig()
 
-    await rig.post(rig.distributed, "com.apple.screenIsLocked")
+    rig.session.isLocked = true
     #expect(!rig.monitor.isActive)
-    await rig.post(rig.distributed, "com.apple.screenIsUnlocked")
+    rig.session.isLocked = false
+    #expect(rig.monitor.isActive)
+  }
+
+  @Test("is not active when the session is not on the console")
+  func fastUserSwitching() {
+    let rig = Rig()
+
+    rig.session.isOnConsole = false
+
+    #expect(!rig.monitor.isActive)
+  }
+
+  @Test("counts a session it cannot read as active")
+  func unreadableSessionIsActive() {
+    let rig = Rig()
+    rig.session.dictionary = [:]
+
+    #expect(rig.monitor.isActive)
+  }
+
+  @Test("reports a lock and an unlock as they are announced")
+  func reportsTheLock() async {
+    let rig = Rig()
+
+    await rig.lock(true)
+    #expect(!rig.monitor.isActive)
+    await rig.lock(false)
+
     #expect(rig.monitor.isActive)
     #expect(rig.changes.count == 2)
   }
@@ -75,9 +119,9 @@ struct SystemActivityMonitorTests {
   func needsEveryReasonCleared() async {
     let rig = Rig()
 
-    await rig.post(rig.distributed, "com.apple.screenIsLocked")
+    await rig.lock(true)
     await rig.post(rig.workspace, NSWorkspace.screensDidSleepNotification.rawValue)
-    await rig.post(rig.distributed, "com.apple.screenIsUnlocked")
+    await rig.lock(false)
     #expect(!rig.monitor.isActive)
     await rig.post(rig.workspace, NSWorkspace.screensDidWakeNotification.rawValue)
 
@@ -90,14 +134,8 @@ struct SystemActivityMonitorTests {
     let rig = Rig()
     rig.monitor.stop()
 
-    await rig.post(rig.distributed, "com.apple.screenIsLocked")
+    await rig.lock(true)
 
-    #expect(rig.monitor.isActive)
     #expect(rig.changes.count == 0)
-  }
-
-  @Test("reads whole idle seconds that are never negative")
-  func idleSecondsAreWhole() {
-    #expect(Rig().monitor.idleSeconds >= 0)
   }
 }

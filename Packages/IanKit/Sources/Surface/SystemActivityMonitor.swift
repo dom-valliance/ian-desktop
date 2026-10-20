@@ -1,35 +1,50 @@
 import AppKit
 import Attention
 
-/// Reads whether the principal can be at the Mac, from the screen lock, the displays and system
+/// Reads whether the principal can be at the Mac, from the login session, the displays and system
 /// sleep, and how long input has been still. Nothing is stored, and no input is read: the idle
 /// time is one number from the window server.
+///
+/// The lock is read from the session each time `isActive` is asked, because the system's lock
+/// notification is held back while an app is not active, and Ian almost never is. The
+/// notifications still make a change reach `onChange` at once when they do arrive.
 @MainActor
 public final class SystemActivityMonitor: ActivityMonitoring {
   private let workspaceCenter: NotificationCenter
-  private let distributedCenter: NotificationCenter
-  private var observers: [(center: NotificationCenter, token: any NSObjectProtocol)] = []
+  private let distributedCenter: DistributedNotificationCenter
+  private let sessionState: @MainActor () -> [String: Any]?
+  private var workspaceTokens: [any NSObjectProtocol] = []
+  private var distributedTarget: DistributedTarget?
   private var onChange: (@MainActor () -> Void)?
+  private var lastReportedActive: Bool?
 
-  private var isScreenLocked: Bool
   private var areDisplaysAsleep = false
   private var isSystemAsleep = false
 
   /// - Parameters:
   ///   - workspaceCenter: Where sleep and wake are posted. Tests pass their own centre.
   ///   - distributedCenter: Where the lock and unlock are posted, across processes.
-  ///   - screenIsLocked: The lock state at start, which no notification announces.
+  ///   - sessionState: The login session's dictionary. Tests pass their own.
   public init(
     workspaceCenter: NotificationCenter = NSWorkspace.shared.notificationCenter,
-    distributedCenter: NotificationCenter = DistributedNotificationCenter.default(),
-    screenIsLocked: Bool = SystemActivityMonitor.sessionIsLocked()
+    distributedCenter: DistributedNotificationCenter = .default(),
+    sessionState: @escaping @MainActor () -> [String: Any]? = {
+      CGSessionCopyCurrentDictionary() as? [String: Any]
+    }
   ) {
     self.workspaceCenter = workspaceCenter
     self.distributedCenter = distributedCenter
-    self.isScreenLocked = screenIsLocked
+    self.sessionState = sessionState
   }
 
-  public var isActive: Bool { !isScreenLocked && !areDisplaysAsleep && !isSystemAsleep }
+  /// The screen is unlocked, the session is on the console (not switched away from), the
+  /// displays are awake and the system is not going to sleep.
+  public var isActive: Bool {
+    let session = sessionState()
+    let isLocked = session?["CGSSessionScreenIsLocked"] as? Bool ?? false
+    let isOnConsole = session?[kCGSessionOnConsoleKey as String] as? Bool ?? true
+    return !isLocked && isOnConsole && !areDisplaysAsleep && !isSystemAsleep
+  }
 
   /// Any keyboard or pointer input, in the combined session state.
   public var idleSeconds: Int {
@@ -39,47 +54,64 @@ public final class SystemActivityMonitor: ActivityMonitoring {
   }
 
   public func start(onChange: @escaping @MainActor () -> Void) {
-    guard observers.isEmpty else { return }
+    guard distributedTarget == nil else { return }
     self.onChange = onChange
-    watch(distributedCenter, "com.apple.screenIsLocked") { $0.isScreenLocked = true }
-    watch(distributedCenter, "com.apple.screenIsUnlocked") { $0.isScreenLocked = false }
-    watch(workspaceCenter, NSWorkspace.screensDidSleepNotification.rawValue) {
-      $0.areDisplaysAsleep = true
+    lastReportedActive = isActive
+    let target = DistributedTarget { [weak self] in self?.report() }
+    // Delivered at once even while Ian is in the background, which is nearly always.
+    for name in ["com.apple.screenIsLocked", "com.apple.screenIsUnlocked"] {
+      distributedCenter.addObserver(
+        target, selector: #selector(DistributedTarget.received), name: Notification.Name(name),
+        object: nil, suspensionBehavior: .deliverImmediately)
     }
-    watch(workspaceCenter, NSWorkspace.screensDidWakeNotification.rawValue) {
-      $0.areDisplaysAsleep = false
-    }
-    watch(workspaceCenter, NSWorkspace.willSleepNotification.rawValue) { $0.isSystemAsleep = true }
-    watch(workspaceCenter, NSWorkspace.didWakeNotification.rawValue) { $0.isSystemAsleep = false }
+    distributedTarget = target
+    watch(NSWorkspace.screensDidSleepNotification) { $0.areDisplaysAsleep = true }
+    watch(NSWorkspace.screensDidWakeNotification) { $0.areDisplaysAsleep = false }
+    watch(NSWorkspace.willSleepNotification) { $0.isSystemAsleep = true }
+    watch(NSWorkspace.didWakeNotification) { $0.isSystemAsleep = false }
   }
 
   public func stop() {
-    for observer in observers { observer.center.removeObserver(observer.token) }
-    observers = []
+    if let target = distributedTarget { distributedCenter.removeObserver(target) }
+    distributedTarget = nil
+    for token in workspaceTokens { workspaceCenter.removeObserver(token) }
+    workspaceTokens = []
     onChange = nil
+    lastReportedActive = nil
   }
 
-  /// Applies `change`, then reports it when `isActive` moved.
   private func watch(
-    _ center: NotificationCenter, _ name: String,
-    _ change: @escaping @MainActor (SystemActivityMonitor) -> Void
+    _ name: Notification.Name, _ change: @escaping @MainActor (SystemActivityMonitor) -> Void
   ) {
-    let token = center.addObserver(
-      forName: Notification.Name(name), object: nil, queue: .main
-    ) { [weak self] _ in
-      MainActor.assumeIsolated {
-        guard let self else { return }
-        let before = self.isActive
-        change(self)
-        if self.isActive != before { self.onChange?() }
-      }
-    }
-    observers.append((center, token))
+    workspaceTokens.append(
+      workspaceCenter.addObserver(forName: name, object: nil, queue: .main) { [weak self] _ in
+        MainActor.assumeIsolated {
+          guard let self else { return }
+          change(self)
+          self.report()
+        }
+      })
   }
 
-  /// Whether the login session is locked now, from the session dictionary.
-  public nonisolated static func sessionIsLocked() -> Bool {
-    let session = CGSessionCopyCurrentDictionary() as? [String: Any]
-    return session?["CGSSessionScreenIsLocked"] as? Bool ?? false
+  /// Tells the owner when `isActive` has moved since it was last reported.
+  private func report() {
+    let active = isActive
+    guard active != lastReportedActive else { return }
+    lastReportedActive = active
+    onChange?()
+  }
+}
+
+/// Receives the distributed notifications, which the selector-based API needs an object for.
+@MainActor
+private final class DistributedTarget: NSObject {
+  private let handler: @MainActor () -> Void
+
+  init(handler: @escaping @MainActor () -> Void) {
+    self.handler = handler
+  }
+
+  @objc func received(_ notification: Notification) {
+    handler()
   }
 }
