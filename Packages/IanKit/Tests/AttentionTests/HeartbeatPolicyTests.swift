@@ -16,11 +16,14 @@ private final class Probe {
     policy.decide(reading, at: now)
   }
 
-  func untilNextLook(at now: Duration, idleSeconds: Int) -> Duration {
-    policy.untilNextLook(at: now, idleSeconds: idleSeconds)
+  func untilNextLook(at now: Duration, _ reading: HeartbeatReading) -> Duration {
+    policy.untilNextLook(at: now, reading: reading)
   }
 
-  func forgetLastSent() { policy.forgetLastSent() }
+  func sendFailed(at now: Duration, retryIn: Duration) {
+    policy.sendFailed(at: now, retryIn: retryIn)
+  }
+
   func amend(_ reading: HeartbeatReading) { policy.amendSent(reading) }
   func reset() { policy.reset() }
 }
@@ -94,29 +97,49 @@ struct HeartbeatPolicyTests {
     #expect(policy.decide(reading(), at: .seconds(1)))
   }
 
-  @Test("looks every check interval until a heartbeat has been delivered")
-  func looksOftenUntilDelivered() {
-    #expect(policy.untilNextLook(at: .zero, idleSeconds: 0) == .seconds(5))
+  @Test("looks every check interval before anything has been sent")
+  func looksOftenBeforeTheFirstSend() {
+    #expect(policy.untilNextLook(at: .zero, reading()) == .seconds(5))
+  }
+
+  @Test("moves the periodic send to the retry time after a failed send")
+  func retriesAfterAFailure() {
     _ = policy.decide(reading(), at: .zero)
-    policy.forgetLastSent()
-    #expect(policy.untilNextLook(at: .seconds(1), idleSeconds: 0) == .seconds(5))
-    #expect(policy.decide(reading(), at: .seconds(5)))
+    policy.sendFailed(at: .seconds(1), retryIn: .seconds(10))
+    #expect(policy.untilNextLook(at: .seconds(1), reading()) == .seconds(10))
+    #expect(!policy.decide(reading(), at: .seconds(10)))
+    #expect(policy.decide(reading(), at: .seconds(11)))
+  }
+
+  @Test("still sends a change at once while a retry is waiting")
+  func changeBeatsTheRetry() {
+    _ = policy.decide(reading(), at: .zero)
+    policy.sendFailed(at: .seconds(1), retryIn: .seconds(40))
+    #expect(policy.decide(reading(suppressed: true), at: .seconds(2)))
   }
 
   @Test("sleeps until the periodic send or until idle could reach a minute, whichever is sooner")
   func sleepsUntilSomethingCouldChange() {
     _ = policy.decide(reading(), at: .zero)
-    #expect(policy.untilNextLook(at: .zero, idleSeconds: 0) == .seconds(60))
-    #expect(policy.untilNextLook(at: .zero, idleSeconds: 45) == .seconds(15))
-    #expect(policy.untilNextLook(at: .seconds(50), idleSeconds: 0) == .seconds(10))
-    #expect(policy.untilNextLook(at: .seconds(60), idleSeconds: 0) == .zero)
+    #expect(policy.untilNextLook(at: .zero, reading(idle: 0)) == .seconds(60))
+    #expect(policy.untilNextLook(at: .zero, reading(idle: 45)) == .seconds(15))
+    #expect(policy.untilNextLook(at: .seconds(50), reading(idle: 0)) == .seconds(10))
+    #expect(policy.untilNextLook(at: .seconds(60), reading(idle: 0)) == .zero)
   }
 
-  @Test("looks every check interval while the principal has been idle for a minute")
+  @Test("looks every check interval while the principal is at the Mac and has been idle a minute")
   func looksOftenWhileIdle() {
     _ = policy.decide(reading(), at: .zero)
-    #expect(policy.untilNextLook(at: .seconds(10), idleSeconds: 60) == .seconds(5))
-    #expect(policy.untilNextLook(at: .seconds(57), idleSeconds: 300) == .seconds(3))
+    #expect(policy.untilNextLook(at: .seconds(10), reading(idle: 60)) == .seconds(5))
+    #expect(policy.untilNextLook(at: .seconds(57), reading(idle: 300)) == .seconds(3))
+  }
+
+  @Test("waits for the periodic send while the Mac is locked or asleep")
+  func waitsWhileInactive() {
+    _ = policy.decide(reading(), at: .zero)
+    #expect(
+      policy.untilNextLook(at: .seconds(10), reading(active: false, idle: 300)) == .seconds(50))
+    #expect(policy.untilNextLook(at: .seconds(10), reading(active: false, idle: 5)) == .seconds(50))
   }
 
   @Test("records the reading actually sent in place of the one decided on")

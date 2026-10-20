@@ -30,7 +30,8 @@ public struct HeartbeatTime: Sendable {
 /// It reads the Mac through `ActivityMonitoring` and suppression through a closure, and hands
 /// each reading to `send`, which says whether Lance recorded it. While `session` is nil (signed
 /// out, not yet synced or offline) nothing is sent and nothing is queued, and the reporter stops
-/// looking until the session returns. A failed send is forgotten, so the next look sends again.
+/// looking until the session returns. A failed send is retried after 5, 10, 20 and 40 seconds and
+/// then every interval, and a success starts the count again; a change still sends at once.
 /// When the session changes, as after a sign-out or a profile switch, the first heartbeat of the
 /// new one goes at once, with the same device id.
 ///
@@ -54,6 +55,9 @@ public final class HeartbeatReporter {
   private var looking: Task<Void, Never>?
   private var sender: Task<Void, Never>?
   private var sendWaits = false
+  private var failures = 0
+  /// Rises with each start and stop, so work left over from an earlier run does nothing.
+  private var run = 0
 
   public init(
     deviceID: UUID = UUID(),
@@ -96,13 +100,16 @@ public final class HeartbeatReporter {
   public func start() {
     guard !isRunning else { return }
     isRunning = true
+    run += 1
     activity.start { [weak self] in self?.look() }
-    observeInputs()
+    observeInputs(run: run)
     look()
   }
 
   public func stop() {
     isRunning = false
+    run += 1
+    failures = 0
     looking?.cancel()
     looking = nil
     sender?.cancel()
@@ -136,7 +143,7 @@ public final class HeartbeatReporter {
     }
     let reading = currentReading()
     if policy.decide(reading, at: now) { requestSend() }
-    return policy.untilNextLook(at: now, idleSeconds: reading.idleSeconds)
+    return policy.untilNextLook(at: now, reading: reading)
   }
 
   private func currentReading() -> HeartbeatReading {
@@ -149,37 +156,48 @@ public final class HeartbeatReporter {
       sendWaits = true
       return
     }
-    sender = Task { [weak self] in await self?.drain() }
+    let run = run
+    sender = Task { [weak self] in await self?.drain(run: run) }
   }
 
   /// Sends, then sends once more with fresh readings if something changed meanwhile. A failure
-  /// ends the run and makes the policy send again at the next look.
-  private func drain() async {
-    defer { sender = nil }
-    repeat {
+  /// with nothing waiting moves the next send out by the backoff; with a change waiting, the
+  /// change goes at once.
+  private func drain(run: Int) async {
+    defer { if run == self.run { sender = nil } }
+    while true {
       sendWaits = false
       let reading = currentReading()
       policy.amendSent(reading)
-      guard await send(deviceID, reading) else {
-        policy.forgetLastSent()
-        sendWaits = false
-        look(after: timing.checkInterval)
-        return
+      let delivered = await send(deviceID, reading)
+      guard run == self.run, !Task.isCancelled else { return }
+      if delivered {
+        failures = 0
+      } else if !sendWaits {
+        await backOff()
       }
-    } while sendWaits && !Task.isCancelled
+      guard sendWaits else { return }
+    }
+  }
+
+  private func backOff() async {
+    failures += 1
+    let step = timing.checkInterval * (1 << min(failures - 1, 10))
+    policy.sendFailed(at: await time.now(), retryIn: min(step, timing.interval))
+    look()
   }
 
   /// Watches what the heartbeat depends on, so a change is reported at once. The store's session
   /// and suppression are observable; the activity monitor reports its own changes.
-  private func observeInputs() {
+  private func observeInputs(run: Int) {
     withObservationTracking {
       _ = suppressed()
       _ = session()
     } onChange: { [weak self] in
       Task { @MainActor in
-        guard let self, self.isRunning else { return }
+        guard let self, self.run == run else { return }
         self.look()
-        self.observeInputs()
+        self.observeInputs(run: run)
       }
     }
   }

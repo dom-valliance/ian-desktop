@@ -257,20 +257,115 @@ struct HeartbeatReporterTests {
     #expect(rig.sent.all.count == 1)
   }
 
-  @Test("sends again at the next look after a failed send, and then keeps the schedule")
-  func failedSendIsRetried() async {
+  @Test("backs off 5, 10, 20 and 40 seconds, then every interval, and starts again after a success")
+  func backsOffAfterFailures() async {
     let rig = Rig()
     rig.sent.delivers = false
     rig.reporter.start()
     defer { rig.reporter.stop() }
     #expect(await rig.sendsReach(1))
 
-    rig.sent.delivers = true
-    await rig.advance(5)
-    #expect(await rig.sendsReach(2))
-    await rig.advance(30)
+    var count = 1
+    for gap in [5, 10, 20, 40, 60, 60] {
+      await rig.advance(gap - 1)
+      #expect(rig.sent.all.count == count)
+      await rig.advance(1)
+      count += 1
+      #expect(await rig.sendsReach(count))
+    }
 
-    #expect(rig.sent.all.count == 2)
+    rig.sent.delivers = true
+    await rig.advance(59)
+    await rig.advance(1)
+    count += 1
+    #expect(await rig.sendsReach(count))
+    await rig.advance(59)
+    #expect(rig.sent.all.count == count)
+
+    rig.sent.delivers = false
+    await rig.advance(1)
+    count += 1
+    #expect(await rig.sendsReach(count))
+    await rig.advance(4)
+    #expect(rig.sent.all.count == count)
+    await rig.advance(1)
+    #expect(await rig.sendsReach(count + 1))
+  }
+
+  @Test("sends a change at once while a retry is waiting")
+  func changeBeatsTheBackoff() async {
+    let rig = Rig()
+    rig.sent.delivers = false
+    rig.reporter.start()
+    defer { rig.reporter.stop() }
+    #expect(await rig.sendsReach(1))
+
+    rig.activity.setActive(false)
+
+    #expect(await rig.sendsReach(2))
+  }
+
+  @Test("sends the first heartbeat of a new session at once when the old session's send fails")
+  func newSessionDoesNotWaitForTheOldFailure() async {
+    let rig = Rig()
+    let gate = Gate()
+    rig.sent.gate = gate
+    rig.sent.delivers = false
+    rig.reporter.start()
+    defer { rig.reporter.stop() }
+    #expect(await rig.sendsReach(1))
+
+    rig.inputs.session = 2
+    await rig.settle()
+    await gate.open()
+
+    #expect(await rig.sendsReach(2))
+  }
+
+  @Test("waits for the periodic send while the Mac is locked, instead of looking every 5 seconds")
+  func quietWhileLocked() async {
+    let rig = Rig()
+    rig.activity.isActive = false
+    rig.activity.idleSeconds = 600
+    rig.reporter.start()
+    defer { rig.reporter.stop() }
+    #expect(await rig.sendsReach(1))
+    await rig.settle()
+
+    #expect(await rig.clock.requestedSleeps.last == .seconds(60))
+  }
+
+  @Test("looks every 5 seconds while the principal is at the Mac and has been idle a minute")
+  func watchesForTheReturn() async {
+    let rig = Rig()
+    rig.activity.idleSeconds = 600
+    rig.reporter.start()
+    defer { rig.reporter.stop() }
+    #expect(await rig.sendsReach(1))
+    await rig.settle()
+
+    #expect(await rig.clock.requestedSleeps.last == .seconds(5))
+  }
+
+  @Test("runs one chain after a stop and a start, and does nothing while stopped")
+  func restartRunsOnce() async {
+    let rig = Rig()
+    rig.reporter.start()
+    #expect(await rig.sendsReach(1))
+    rig.reporter.stop()
+    rig.inputs.suppressed = true
+    await rig.settle()
+    #expect(rig.sent.all.count == 1)
+
+    rig.reporter.start()
+    defer { rig.reporter.stop() }
+    #expect(await rig.sendsReach(2))
+    await rig.settle()
+    rig.inputs.suppressed = false
+    #expect(await rig.sendsReach(3))
+    await rig.settle()
+
+    #expect(rig.sent.all.count == 3)
   }
 
   @Test("lets one send wait behind a slow one and sends the latest values in it")

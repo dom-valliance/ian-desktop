@@ -65,15 +65,20 @@ struct HeartbeatPolicy {
 
   /// How long to wait before looking again, or nil to stop looking until something changes.
   ///
-  /// Until a heartbeat is delivered the reporter looks every `checkInterval`, which retries a
-  /// failed send. Afterwards it sleeps until the periodic send is due, or until idle seconds
-  /// could reach `idleReturnSeconds`, whichever is sooner. Only while the principal has been
-  /// idle that long does it look every `checkInterval`, to catch the return.
-  func untilNextLook(at now: Duration, idleSeconds: Int) -> Duration {
+  /// It sleeps until the periodic send is due, or until idle seconds could reach
+  /// `idleReturnSeconds`, whichever is sooner. Only while the principal is at the Mac and has been
+  /// idle that long does it look every `checkInterval`, to catch the return. While the Mac is
+  /// locked or asleep it waits for the periodic send, since an unlock or a wake announces itself.
+  /// A failed send moves the periodic send to its retry time (`sendFailed`), so retries and their
+  /// backoff come through here too.
+  func untilNextLook(at now: Duration, reading: HeartbeatReading) -> Duration {
     guard let lastSent else { return timing.checkInterval }
     let untilDue = max(.zero, timing.interval - (now - lastSent.at))
-    if idleSeconds >= timing.idleReturnSeconds { return min(timing.checkInterval, untilDue) }
-    let untilIdle = Duration.seconds(max(1, timing.idleReturnSeconds - idleSeconds))
+    guard reading.active else { return untilDue }
+    if reading.idleSeconds >= timing.idleReturnSeconds {
+      return min(timing.checkInterval, untilDue)
+    }
+    let untilIdle = Duration.seconds(max(1, timing.idleReturnSeconds - reading.idleSeconds))
     return min(untilIdle, untilDue)
   }
 
@@ -84,10 +89,11 @@ struct HeartbeatPolicy {
     self.lastSent = (reading, lastSent.at)
   }
 
-  /// Forgets the last heartbeat, so the next look sends at once. Used when a send failed and
-  /// when the session ends.
-  mutating func forgetLastSent() {
-    lastSent = nil
+  /// Moves the next periodic send to `retryIn` from now, because the last one was not
+  /// delivered. A change still sends at once.
+  mutating func sendFailed(at now: Duration, retryIn: Duration) {
+    guard let lastSent else { return }
+    self.lastSent = (lastSent.reading, now + retryIn - timing.interval)
   }
 
   /// Forgets everything, for a new session.
