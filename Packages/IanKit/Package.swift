@@ -40,7 +40,7 @@ let package = Package(
       ]
     ),
     .target(name: "Store", dependencies: ["Contract", "Client"]),
-    .target(name: "Attention", dependencies: ["Store"]),
+    .target(name: "Attention", dependencies: ["Store", "Client"]),
     .target(name: "Surface", dependencies: ["Store", "Attention"]),
     .target(name: "Features", dependencies: ["Contract", "Store", "Surface", "Attention"]),
     .testTarget(
@@ -70,11 +70,11 @@ let package = Package(
     ),
     .testTarget(
       name: "StoreTests",
-      dependencies: ["Client", "Contract", "Store", "TestSupport"]
+      dependencies: ["Attention", "Client", "Contract", "Store", "TestSupport"]
     ),
     .testTarget(
       name: "AttentionTests",
-      dependencies: ["Attention", "Contract", "Store", "TestSupport"]
+      dependencies: ["Attention", "Client", "Contract", "Store", "TestSupport"]
     ),
     .testTarget(
       name: "SurfaceTests",
