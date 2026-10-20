@@ -6,7 +6,7 @@ import OpenAPIURLSession
 
 /// `DesktopService` over the generated client and an ephemeral `URLSession`.
 public struct DesktopAPI: DesktopService {
-  private let client: Contract.Client
+  let client: Contract.Client
   private let tokens: any TokenProvider
 
   /// - Parameters:
@@ -120,7 +120,7 @@ public struct DesktopAPI: DesktopService {
     await tokens.signOut()
   }
 
-  private func call<Result: Sendable>(
+  func call<Result: Sendable>(
     _ operation: () async throws -> Result
   ) async throws -> Result {
     do {
@@ -131,7 +131,7 @@ public struct DesktopAPI: DesktopService {
     }
   }
 
-  private func upgrade(_ response: Components.Responses.UpgradeRequired) -> DesktopError {
+  func upgrade(_ response: Components.Responses.UpgradeRequired) -> DesktopError {
     let minimum = try? response.body.applicationProblemJson.value2.minClientVersion
     return .upgradeRequired(minClientVersion: minimum)
   }

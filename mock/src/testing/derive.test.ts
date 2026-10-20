@@ -229,6 +229,17 @@ describe('the views', () => {
     expect(views.alerts.map((group) => group.id)).toEqual(['P0', 'P2']);
   });
 
+  it('pins the P0 alert group and no other', () => {
+    const views = buildViews(
+      render([
+        { ...alert('P2'), id: 'alrt_2' },
+        { ...alert('P0'), id: 'alrt_0' },
+      ]),
+      6,
+    );
+    expect(views.alerts.map((group) => group.pinned)).toEqual([true, undefined]);
+  });
+
   it('sections tasks by horizon and then unit', () => {
     const views = buildViews(render([task(3), { ...task(null), id: 'task_notion_2' }]), 6);
     expect(views.tasks.map((section) => section.horizon)).toEqual(['now', 'later']);

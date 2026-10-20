@@ -51,13 +51,19 @@ public final class IanStore {
     /// Where the item stood in `today.lists.now` when it left, so its row can stay in place
     /// while it finishes leaving. Nil when Today did not list it there.
     public let nowListIndex: Int?
+    /// The views as they stood when the item left, so a view can keep its card at the group and
+    /// place it held until this record expires, though the server's next `views.updated` drops it.
+    public let viewsWhenRemoved: Components.Schemas.Views?
 
-    public init(item: StoreState.Item, outcome: String?, removedAt: Date, nowListIndex: Int? = nil)
-    {
+    public init(
+      item: StoreState.Item, outcome: String?, removedAt: Date, nowListIndex: Int? = nil,
+      viewsWhenRemoved: Components.Schemas.Views? = nil
+    ) {
       self.item = item
       self.outcome = outcome
       self.removedAt = removedAt
       self.nowListIndex = nowListIndex
+      self.viewsWhenRemoved = viewsWhenRemoved
     }
   }
 
@@ -74,7 +80,7 @@ public final class IanStore {
   public private(set) var state = StoreState()
   /// Item id to its unsettled action.
   public private(set) var pending: [String: Pending] = [:]
-  public private(set) var notices: [String: Notice] = [:]
+  public internal(set) var notices: [String: Notice] = [:]
   /// Items the server removed a moment ago, by id, so a settled row and its pillar can finish
   /// leaving the screen with the server's outcome line. The server sends `item.removed` and then
   /// the `today.updated` that drops the item, so a Today update does not clear a record. A record
@@ -95,7 +101,7 @@ public final class IanStore {
   /// How long a removal is kept when no later `today` update has dropped it first.
   public static let removalLifetime: Duration = .seconds(10)
 
-  private let service: any DesktopService
+  let service: any DesktopService
   public let appVersion: SemanticVersion
   private let clock: any SyncClock
   private let timing: SyncEngine.Timing
@@ -239,7 +245,8 @@ public final class IanStore {
   private func recordRemoval(_ item: StoreState.Item, outcome: String?) {
     removals[item.id] = Removal(
       item: item, outcome: outcome, removedAt: now(),
-      nowListIndex: state.today?.lists.now.firstIndex(of: item.id))
+      nowListIndex: state.today?.lists.now.firstIndex(of: item.id),
+      viewsWhenRemoved: state.views)
     removalExpiries[item.id]?.cancel()
     let id = item.id
     removalExpiries[id] = Task { [weak self, clock = self.clock] in
@@ -291,13 +298,23 @@ public final class IanStore {
       break
     }
 
+    await markPendingAndSend(actionID: actionID, item: item) {
+      try await service.runAction(
+        itemID: itemID, actionID: actionID, version: item.version, until: input.until,
+        note: input.note)
+    }
+  }
+
+  /// Marks the item pending, makes the call and keeps the correlation id it returns, so the event
+  /// carrying that id clears the mark. A failure clears the mark and leaves a notice.
+  func markPendingAndSend(
+    actionID: String, item: StoreState.Item, _ call: () async throws -> String
+  ) async {
+    let itemID = item.id
     notices[itemID] = nil
     pending[itemID] = Pending(actionID: actionID, correlationID: nil, sentVersion: item.version)
     do {
-      let correlationID = try await service.runAction(
-        itemID: itemID, actionID: actionID, version: item.version, until: input.until,
-        note: input.note)
-      attach(correlationID: correlationID, to: itemID)
+      attach(correlationID: try await call(), to: itemID)
     } catch {
       handleActionFailure(error, itemID: itemID)
     }

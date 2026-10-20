@@ -114,3 +114,4 @@ The spec's table in 6.6 is authoritative. The Ladder artboard adds two columns t
 | Field panel 860 points wide | Expanded client 1,040 by 720 points, with Today's field inside it |
 | Scale shows a variant grouped by unit of work | Not in version 0 |
 | The fifth column is always Other | Columns are drawn left to right in the order the server sends `field.units`; Other is last when the server sends it (ADR 0009, item 20) |
+| Context cards mark an urgent item by its rim | An urgent or stop card also carries an URGENT or STOP badge beside its kicker, and VoiceOver reads the rung, both from the server's `attention`, so colour is never the only signal (spec 6.8, D6) |

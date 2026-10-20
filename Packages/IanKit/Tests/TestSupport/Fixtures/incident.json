@@ -2,18 +2,18 @@
   "today": {
     "orbit": {
       "itemIds": [
+        "alrt_01MOCK000000000090",
         "prop_01MOCK000000000001",
         "prop_01MOCK000000000002",
         "prop_01MOCK000000000003",
-        "cmt_01MOCK000000000001",
-        "cmt_01MOCK000000000102"
+        "cmt_01MOCK000000000001"
       ],
-      "overflow": 4,
-      "nowCount": 9,
-      "urgentCount": 1,
-      "load": 18,
+      "overflow": 5,
+      "nowCount": 10,
+      "urgentCount": 2,
+      "load": 19,
       "median": 14,
-      "working": true
+      "working": false
     },
     "field": {
       "units": [
@@ -50,7 +50,7 @@
           ],
           "pressure": 1,
           "kind": "proposal",
-          "working": true
+          "working": false
         },
         {
           "unitId": "unit_client_a",
@@ -139,6 +139,16 @@
         },
         {
           "unitId": "other",
+          "horizon": "now",
+          "itemIds": [
+            "alrt_01MOCK000000000090"
+          ],
+          "pressure": 1,
+          "kind": "alert",
+          "working": false
+        },
+        {
+          "unitId": "other",
           "horizon": "later",
           "itemIds": [
             "alrt_01MOCK000000000001"
@@ -151,6 +161,7 @@
     },
     "lists": {
       "now": [
+        "alrt_01MOCK000000000090",
         "prop_01MOCK000000000001",
         "prop_01MOCK000000000002",
         "prop_01MOCK000000000003",
@@ -216,7 +227,177 @@
       "quietHoursActive": false
     }
   },
+  "views": {
+    "counts": {
+      "today": 19,
+      "proposals": 5,
+      "commitments": 9,
+      "tasks": 5,
+      "alerts": 2,
+      "agents": 6
+    },
+    "proposals": [
+      {
+        "id": "draft_email",
+        "label": "Draft email",
+        "itemIds": [
+          "prop_01MOCK000000000001",
+          "prop_01MOCK000000000002"
+        ]
+      },
+      {
+        "id": "send_calendar_invite",
+        "label": "Calendar invite",
+        "itemIds": [
+          "prop_01MOCK000000000003"
+        ]
+      },
+      {
+        "id": "update_task",
+        "label": "Update task",
+        "itemIds": [
+          "prop_01MOCK000000000004"
+        ]
+      },
+      {
+        "id": "create_task",
+        "label": "Create task",
+        "itemIds": [
+          "prop_01MOCK000000000005"
+        ]
+      }
+    ],
+    "commitments": {
+      "owedByMe": [
+        "cmt_01MOCK000000000001",
+        "cmt_01MOCK000000000002",
+        "cmt_01MOCK000000000003",
+        "cmt_01MOCK000000000004"
+      ],
+      "owedToMe": [
+        "cmt_01MOCK000000000102",
+        "cmt_01MOCK000000000103",
+        "cmt_01MOCK000000000101"
+      ],
+      "toConfirm": [
+        "cmt_01MOCK000000000201",
+        "cmt_01MOCK000000000202"
+      ]
+    },
+    "tasks": [
+      {
+        "horizon": "now",
+        "label": "Now",
+        "groups": [
+          {
+            "id": "unit_client_a",
+            "label": "[CLIENT A]",
+            "itemIds": [
+              "task_notion_01MOCK000000000001"
+            ]
+          }
+        ]
+      },
+      {
+        "horizon": "week",
+        "label": "This week",
+        "groups": [
+          {
+            "id": "unit_internal",
+            "label": "Internal operations",
+            "itemIds": [
+              "task_notion_01MOCK000000000002",
+              "task_notion_01MOCK000000000004"
+            ]
+          },
+          {
+            "id": "unit_client_a",
+            "label": "[CLIENT A]",
+            "itemIds": [
+              "task_jamie_01MOCK000000000005"
+            ]
+          }
+        ]
+      },
+      {
+        "horizon": "later",
+        "label": "Later",
+        "groups": [
+          {
+            "id": "unit_client_b",
+            "label": "[CLIENT B]",
+            "itemIds": [
+              "task_jamie_01MOCK000000000003"
+            ]
+          }
+        ]
+      }
+    ],
+    "alerts": [
+      {
+        "id": "P0",
+        "label": "P0 critical",
+        "itemIds": [
+          "alrt_01MOCK000000000090"
+        ],
+        "pinned": true
+      },
+      {
+        "id": "P2",
+        "label": "P2 medium",
+        "itemIds": [
+          "alrt_01MOCK000000000001"
+        ]
+      }
+    ]
+  },
   "items": [
+    {
+      "id": "alrt_01MOCK000000000090",
+      "kind": "alert",
+      "title": "The kill switch is on",
+      "meta": "P0, raised at 10:15",
+      "unit": {
+        "id": "other",
+        "name": "Other"
+      },
+      "horizon": "now",
+      "pressure": 1,
+      "attention": "stop",
+      "dueAt": null,
+      "working": false,
+      "version": 1,
+      "actions": [
+        {
+          "id": "acknowledge",
+          "label": "Acknowledge",
+          "style": "primary",
+          "confirm": null,
+          "input": "none"
+        },
+        {
+          "id": "snooze",
+          "label": "Snooze",
+          "style": "quiet",
+          "confirm": null,
+          "input": "until"
+        }
+      ],
+      "detail": {
+        "kind": "alert",
+        "alertKind": "kill_switch",
+        "alertKindLabel": "Kill switch",
+        "raisedAt": "2026-10-16T09:15:00.000Z",
+        "dedupeKey": "system:kill-switch",
+        "relatedItemIds": [],
+        "explanation": "An administrator paused every agent. Nothing will run until it is cleared."
+      },
+      "links": {
+        "lance": "https://lance.example.invalid/alerts/alrt_01MOCK000000000090",
+        "source": null
+      },
+      "severity": "P0"
+    },
     {
       "id": "prop_01MOCK000000000001",
       "kind": "proposal",
@@ -628,8 +809,8 @@
       "pressure": 0.7,
       "attention": "ambient",
       "dueAt": "2026-10-16T16:30:00.000Z",
-      "working": true,
-      "version": 2,
+      "working": false,
+      "version": 3,
       "actions": [
         {
           "id": "done",
@@ -1289,5 +1470,18 @@
         "source": "https://jamie.example.invalid/task_jamie_01MOCK000000000003"
       }
     }
-  ]
+  ],
+  "me": {
+    "principalId": "prin_01JAXQ0000PRINCIPAL0000001",
+    "displayName": "[PERSON]",
+    "status": "active",
+    "mode": "dry_run",
+    "timeZone": "Europe/London",
+    "minClientVersion": "0.1.0",
+    "contractVersion": "1.1.0",
+    "capabilities": {
+      "handoff": true
+    },
+    "serverTime": "2026-10-16T09:30:00.000Z"
+  }
 }

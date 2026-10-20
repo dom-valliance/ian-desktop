@@ -1511,25 +1511,35 @@ extension Components {
             public var label: Swift.String
             /// - Remark: Generated from `#/components/schemas/ViewGroup/itemIds`.
             public var itemIds: [Components.Schemas.ItemIdentifier]
+            /// The client keeps this group in view above the groups that scroll. Only the Alerts
+            /// view uses it. Absent means false.
+            ///
+            ///
+            /// - Remark: Generated from `#/components/schemas/ViewGroup/pinned`.
+            public var pinned: Swift.Bool?
             /// Creates a new `ViewGroup`.
             ///
             /// - Parameters:
             ///   - id:
             ///   - label:
             ///   - itemIds:
+            ///   - pinned: The client keeps this group in view above the groups that scroll. Only the Alerts
             public init(
                 id: Swift.String,
                 label: Swift.String,
-                itemIds: [Components.Schemas.ItemIdentifier]
+                itemIds: [Components.Schemas.ItemIdentifier],
+                pinned: Swift.Bool? = nil
             ) {
                 self.id = id
                 self.label = label
                 self.itemIds = itemIds
+                self.pinned = pinned
             }
             public enum CodingKeys: String, CodingKey {
                 case id
                 case label
                 case itemIds
+                case pinned
             }
         }
         /// One horizon of the Tasks view, grouped by unit.
@@ -1662,7 +1672,9 @@ extension Components {
             ///
             /// - Remark: Generated from `#/components/schemas/Views/tasks`.
             public var tasks: [Components.Schemas.TaskSection]
-            /// By severity, P0 first and pinned.
+            /// By severity, P0 first. A group with `pinned` true stays in view above the groups that
+            /// scroll; the server sets it on the P0 group.
+            ///
             ///
             /// - Remark: Generated from `#/components/schemas/Views/alerts`.
             public var alerts: [Components.Schemas.ViewGroup]
@@ -1673,7 +1685,7 @@ extension Components {
             ///   - proposals: By action class, soonest expiry first within each group.
             ///   - commitments:
             ///   - tasks: By horizon, then unit.
-            ///   - alerts: By severity, P0 first and pinned.
+            ///   - alerts: By severity, P0 first. A group with `pinned` true stays in view above the groups that
             public init(
                 counts: Components.Schemas.ViewCounts,
                 proposals: [Components.Schemas.ViewGroup],

@@ -7,23 +7,15 @@ import TestSupport
 
 @testable import Surface
 
-/// The `today` and `items` of a mock scenario, exported by `scripts/export-orbit-fixtures.sh`.
+/// The `today` and `items` of a mock scenario, exported by `scripts/export-scenario-fixtures.sh`.
 struct OrbitScenario: Decodable {
   let today: Components.Schemas.Today
   let items: [Components.Schemas.Item]
 
-  static let names = ["quiet", "normal", "overloaded", "incident"]
+  static let names = ScenarioFixtures.names
 
   static func load(_ name: String) -> OrbitScenario {
-    guard
-      let url = Bundle.module.url(
-        forResource: name, withExtension: "json", subdirectory: "Fixtures"),
-      let json = try? String(contentsOf: url, encoding: .utf8)
-    else {
-      preconditionFailure(
-        "The fixture \(name).json is missing. Run scripts/export-orbit-fixtures.sh.")
-    }
-    return Fixtures.decode(json)
+    Fixtures.decode(ScenarioFixtures.json(name))
   }
 
   var state: StoreState {

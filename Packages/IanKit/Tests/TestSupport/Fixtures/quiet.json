@@ -90,6 +90,48 @@
       "quietHoursActive": false
     }
   },
+  "views": {
+    "counts": {
+      "today": 3,
+      "proposals": 1,
+      "commitments": 1,
+      "tasks": 1,
+      "alerts": 0,
+      "agents": 6
+    },
+    "proposals": [
+      {
+        "id": "update_task",
+        "label": "Update task",
+        "itemIds": [
+          "prop_01MOCK000000000004"
+        ]
+      }
+    ],
+    "commitments": {
+      "owedByMe": [
+        "cmt_01MOCK000000000001"
+      ],
+      "owedToMe": [],
+      "toConfirm": []
+    },
+    "tasks": [
+      {
+        "horizon": "later",
+        "label": "Later",
+        "groups": [
+          {
+            "id": "unit_client_b",
+            "label": "[CLIENT B]",
+            "itemIds": [
+              "task_jamie_01MOCK000000000003"
+            ]
+          }
+        ]
+      }
+    ],
+    "alerts": []
+  },
   "items": [
     {
       "id": "cmt_01MOCK000000000001",
@@ -243,5 +285,18 @@
         "source": "https://jamie.example.invalid/task_jamie_01MOCK000000000003"
       }
     }
-  ]
+  ],
+  "me": {
+    "principalId": "prin_01JAXQ0000PRINCIPAL0000001",
+    "displayName": "[PERSON]",
+    "status": "active",
+    "mode": "dry_run",
+    "timeZone": "Europe/London",
+    "minClientVersion": "0.1.0",
+    "contractVersion": "1.1.0",
+    "capabilities": {
+      "handoff": true
+    },
+    "serverTime": "2026-10-16T09:30:00.000Z"
+  }
 }

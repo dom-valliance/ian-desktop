@@ -448,7 +448,8 @@ export const zToday = z.object({
 export const zViewGroup = z.object({
     id: z.string().min(1),
     label: z.string(),
-    itemIds: z.array(zItemIdentifier)
+    itemIds: z.array(zItemIdentifier),
+    pinned: z.boolean().optional()
 });
 
 /**

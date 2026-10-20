@@ -1,19 +1,20 @@
 #!/usr/bin/env bash
-# Writes the Orbit snapshot tests' fixtures: the `today` and `items` of the mock's `quiet`,
-# `normal`, `overloaded` and `incident` snapshots, taken at a fixed mock time, to
-# Packages/IanKit/Tests/SurfaceTests/Fixtures/<scenario>.json. Starts the mock on a free port and
-# stops it on exit. Running it twice gives byte-identical files.
+# Writes the scenario fixtures: the `today`, `views` and `items` of the mock's `quiet`, `normal`,
+# `overloaded` and `incident` snapshots, and `me`, taken at a fixed mock time, to
+# Packages/IanKit/Tests/TestSupport/Fixtures/<scenario>.json. The Orbit, Pillars and view tests
+# all read that one copy. Starts the mock on a free port and stops it on exit. Running it twice
+# gives byte-identical files.
 set -euo pipefail
 
 repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 mock_dir="$repo_root/mock"
-out_dir="$repo_root/Packages/IanKit/Tests/SurfaceTests/Fixtures"
+out_dir="$repo_root/Packages/IanKit/Tests/TestSupport/Fixtures"
 host="127.0.0.1"
 fixed_time="2026-10-16T09:30:00.000Z"
 scenarios=(quiet normal overloaded incident)
 
 fail() {
-  echo "export-orbit-fixtures.sh: $*" >&2
+  echo "export-scenario-fixtures.sh: $*" >&2
   exit 1
 }
 
@@ -70,14 +71,19 @@ for scenario in "${scenarios[@]}"; do
     -d "{\"scenario\":\"$scenario\"}" >/dev/null || fail "the mock refused the scenario '$scenario'."
   curl -fsS -X POST "$base/__mock/clock" -H 'content-type: application/json' \
     -d "{\"set\":\"$fixed_time\"}" >/dev/null || fail "the mock refused the clock setting."
-  curl -fsS "$base/desktop/v1/snapshot" -H 'Authorization: Bearer dev-fixtures' |
-    node -e '
-      const chunks = [];
-      process.stdin.on("data", (chunk) => chunks.push(chunk));
-      process.stdin.on("end", () => {
-        const snapshot = JSON.parse(Buffer.concat(chunks).toString("utf8"));
-        process.stdout.write(JSON.stringify({ today: snapshot.today, items: snapshot.items }, null, 2) + "\n");
-      });
-    ' >"$out_dir/$scenario.json" || fail "could not read the '$scenario' snapshot."
+  snapshot_file="$(mktemp -t ian-fixtures-snapshot.XXXXXX)"
+  me_file="$(mktemp -t ian-fixtures-me.XXXXXX)"
+  curl -fsS "$base/desktop/v1/snapshot" -H 'Authorization: Bearer dev-fixtures' >"$snapshot_file" ||
+    fail "could not read the '$scenario' snapshot."
+  curl -fsS "$base/desktop/v1/me" -H 'Authorization: Bearer dev-fixtures' >"$me_file" ||
+    fail "could not read the '$scenario' principal."
+  node -e '
+    const fs = require("fs");
+    const snapshot = JSON.parse(fs.readFileSync(process.argv[1], "utf8"));
+    const me = JSON.parse(fs.readFileSync(process.argv[2], "utf8"));
+    const fixture = { today: snapshot.today, views: snapshot.views, items: snapshot.items, me };
+    process.stdout.write(JSON.stringify(fixture, null, 2) + "\n");
+  ' "$snapshot_file" "$me_file" >"$out_dir/$scenario.json" || fail "could not write the '$scenario' fixture."
   echo "Wrote $out_dir/$scenario.json"
+  rm -f "$snapshot_file" "$me_file"
 done

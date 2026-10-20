@@ -18,7 +18,7 @@ Each entry records:
 | D5 | Done, 19 October 2026 |
 | D5.1 | Done, 19 October 2026 |
 | P1 | Done, 19 October 2026 |
-| D6 | Not started |
+| D6 | Done, 20 October 2026 |
 | D7 | Not started |
 | D8 | Not started |
 | D9 | Not started |
@@ -447,3 +447,64 @@ The last three were measured by the lead on the app's own process with `ps -o ti
 - **Review.** An Opus review against REVIEW.md found 2 Blocking (the field stretched after a resize; stale docs), 6 Should fix and 10 Suggestions. All are fixed.
 - **An agent's crash.** During the work, a measurement harness crashed three times from a recursion bug and put dialogs on Dom's screen. The bug was fixed and tested before the code was used, and the lesson is in `.claude/notes/global.md`.
 - **For D9.** D9 re-runs `scripts/measure-cpu.sh`. If the field ever needs to cost less, the remaining cost is pixel filling, not SwiftUI.
+
+### D6. Proposals, Commitments, Tasks and Alerts
+
+- Date: 20 October 2026, built from 19 October
+- Branch: `feat/d6-views`, from `main` at `2a00e87`. Commits `355c337..d7f57be`, plus this entry.
+- Machine: MacBook Pro, Apple M4 Pro (Mac16,7), macOS 27.0.1, Xcode 27.1 (27A9275).
+- D7 was built in parallel in `.worktrees/d7` and is rebased onto this branch.
+
+#### Commands and exit codes
+
+| Command | Exit |
+|---|---|
+| `swift format lint --recursive --strict Packages App scripts` | 0 |
+| `swift build --package-path Packages/IanKit --force-resolved-versions` | 0 |
+| `swift test --package-path Packages/IanKit --force-resolved-versions`, three runs | 0 each: 478 tests, the integration tests skipped |
+| `scripts/check-generated.sh` | 0 |
+| `xcodebuild -project App/Ian.xcodeproj -scheme Ian -configuration Debug -destination 'platform=macOS' -onlyUsePackageVersionsFromResolvedFile -derivedDataPath build/DerivedData build` | 0 |
+| `pnpm --dir contract install --frozen-lockfile && pnpm --dir contract lint` | 0 |
+| `pnpm --dir mock lint && pnpm --dir mock typecheck && pnpm --dir mock test` | 0 |
+| `scripts/dev.sh --mock-only`, then `IAN_MOCK_URL=http://localhost:4317 swift test --package-path Packages/IanKit --force-resolved-versions --filter Integration` | 0 |
+
+#### Done when
+
+1. **Each view renders every mock scenario.**
+   - `ViewListTests` builds the Proposals, Commitments, Tasks and Alerts models from `quiet`, `normal`, `overloaded` and `incident`, and finds exactly the groups and items `views` names, in order, with nothing invented or repeated.
+   - `ViewSnapshotTests` holds 14 references in `Packages/IanKit/Tests/FeaturesTests/__Snapshots__/ViewSnapshotTests/`: Proposals, the three Commitments tabs and Tasks in `normal`, Alerts in `incident` (the P0 group pinned) and `normal`, and the empty states. They are drawn in an `NSHostingView` at 640 by 720 points in the fixture's time zone, at `precision: 0.998, perceptualPrecision: 0.98`. The lead looked at them against the Context artboard.
+2. **Every action the mock offers round-trips, and the item moves on the event.** `ViewActionIntegrationTests` loads `normal`, runs each action on one item, requires the item pending after the click with its version unchanged, then requires the pending mark cleared and the item removed or at a higher version. It relies on the mock's 250 ms action delay (`MOCK_ACTION_DELAY_MS`) to see the pending state, and says so.
+
+   | View | Item | Actions |
+   |---|---|---|
+   | Proposals | `prop_01MOCK000000000001` | approve, reject |
+   | Commitments, owed by me | `cmt_01MOCK000000000001` | settle, snooze (until), dismiss |
+   | Commitments, owed to me | `cmt_01MOCK000000000102` | settle, chase (note), snooze (until) |
+   | Commitments, to confirm | `cmt_01MOCK000000000201` | confirm, dismiss |
+   | Tasks | `task_notion_01MOCK000000000001` | done |
+   | Alerts | `alrt_01MOCK000000000001` | acknowledge, snooze (until) |
+
+   A hand-off on a task passed the same way.
+3. **Invented action ids give exactly those buttons, in order.** The `card-invented-actions` snapshot draws an item whose actions are `qq_9`, `aa_1` and `mm_5`, and shows the buttons Qq_9, Aa_1 and Mm_5 in that order. D5's `ItemActionsTests` prove the action component itself.
+4. **Hand to Ian.** `HandoffTests` covers the capability gate, the instruction trimmed or absent, pending until the event with its correlation id, one hand-off at a time, the 2,000-unit limit, and the offline and failure notices.
+5. **Hand check.** Dom checked on screen against the mock on 20 October 2026, from the D7 worktree (which holds D6), and reported everything working:
+   - the four views in `normal`, `incident` and `quiet`, with the URGENT badge, the pinned P0 group while the alerts below it scroll, and a settled card dimming with its outcome before it leaves;
+   - Hand to Ian sending, pending until the event, and vanishing with the capability off;
+   - every card button and the Commitments tabs by keyboard, the cards by VoiceOver, and the panel at its narrowest width.
+
+#### Choices recorded
+
+- **Contract 1.1.0.** `ViewGroup` gains an optional `pinned` flag, which the server sets on the P0 alert group, so the client does not pin by item severity (ADR 0001). The mock sends it and reports 1.1.0. `docs/companion/lance-track.md` says Lance must send it. Dom tags `contract-v1.1.0`.
+- **Cards in a scroll view.** The views draw cards in a `ScrollView` holding a `VStack`, not a `List`, because buttons inside a macOS list row are not in the Tab order. Card buttons are reached the way Today's footer buttons are, with the system keyboard-navigation setting.
+- **Urgency.** The red rim and an URGENT or STOP badge follow the server's `attention`, for every kind, and VoiceOver reads the rung. The design README's differences table records the badge.
+- **Leaving cards.** The mock drops a removed item from `views` in the same burst as `item.removed`. A removed card keeps its last group and place, dimmed, with the server's outcome line and no buttons, for the life of the store's removal record (ten seconds), as Today keeps a leaving row. If `views` still names the item, the server's place wins.
+- **Dates and limits.** Card dates are in `me.timeZone`. The hand-off instruction is counted in UTF-16 code units, as Lance's TypeScript and the mock's Zod count it.
+- **Fixtures.** One copy of the scenario fixtures (`today`, `views`, `items` and `me` per scenario) lives in `Packages/IanKit/Tests/TestSupport/Fixtures`, exported by `scripts/export-scenario-fixtures.sh` (renamed from `export-orbit-fixtures.sh`). The Orbit and Pillars snapshots pass unchanged. AGENTS.md's gotcha names the new script.
+- **Access.** `DesktopAPI`'s `client`, `call` and `upgrade`, and `IanStore`'s `service` and `notices` setter, are module-internal so the hand-off can live in its own extension files.
+- **No ADR.** Nothing departs from the spec. D7's ADR takes the next number.
+
+#### Reviews and what is left
+
+- **Review.** An Opus review against REVIEW.md found 2 Blocking (card actions out of the Tab order; this entry), 8 Should fix and 5 Suggestions. All are fixed.
+- **Verification.** A second Opus pass confirmed the fixes and found 2 Blocking (urgency shown by colour alone; this entry), 3 Should fix and some Suggestions. All are fixed; the stale-outcome guard on actions and the hand-off went to D7, where the profile switch makes it reachable.
+- **Alert notifications.** Dom asked during the hand check for a notification when an alert arrives, perhaps only for the highest priority. That is D8; D7's defaults already notify P0 always and P1 with a banner.

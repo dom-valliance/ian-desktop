@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: Ian desktop api
-  version: 1.0.1
+  version: 1.1.0
   summary: The contract between the Ian desktop client and Lance's /desktop/v1 façade.
   description: |
     Version 1 of the contract between the Ian desktop client and Lance (ADR 0002). This
@@ -1268,6 +1268,11 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/ItemIdentifier'
+        pinned:
+          type: boolean
+          description: |
+            The client keeps this group in view above the groups that scroll. Only the Alerts
+            view uses it. Absent means false.
     TaskSection:
       type: object
       description: One horizon of the Tasks view, grouped by unit.
@@ -1345,7 +1350,9 @@ components:
             $ref: '#/components/schemas/TaskSection'
         alerts:
           type: array
-          description: By severity, P0 first and pinned.
+          description: |
+            By severity, P0 first. A group with `pinned` true stays in view above the groups that
+            scroll; the server sets it on the P0 group.
           items:
             $ref: '#/components/schemas/ViewGroup'
     AgentKind:

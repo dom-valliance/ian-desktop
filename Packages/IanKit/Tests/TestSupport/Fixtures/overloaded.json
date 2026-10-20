@@ -298,6 +298,195 @@
       "quietHoursActive": false
     }
   },
+  "views": {
+    "counts": {
+      "today": 42,
+      "proposals": 9,
+      "commitments": 18,
+      "tasks": 14,
+      "alerts": 4,
+      "agents": 6
+    },
+    "proposals": [
+      {
+        "id": "draft_email",
+        "label": "Draft email",
+        "itemIds": [
+          "prop_01MOCK000000000001",
+          "prop_01MOCK000000000002",
+          "prop_01MOCK000000000006",
+          "prop_01MOCK000000000009"
+        ]
+      },
+      {
+        "id": "send_calendar_invite",
+        "label": "Calendar invite",
+        "itemIds": [
+          "prop_01MOCK000000000003",
+          "prop_01MOCK000000000007"
+        ]
+      },
+      {
+        "id": "update_task",
+        "label": "Update task",
+        "itemIds": [
+          "prop_01MOCK000000000004",
+          "prop_01MOCK000000000008"
+        ]
+      },
+      {
+        "id": "create_task",
+        "label": "Create task",
+        "itemIds": [
+          "prop_01MOCK000000000005"
+        ]
+      }
+    ],
+    "commitments": {
+      "owedByMe": [
+        "cmt_01MOCK000000000007",
+        "cmt_01MOCK000000000001",
+        "cmt_01MOCK000000000002",
+        "cmt_01MOCK000000000003",
+        "cmt_01MOCK000000000004",
+        "cmt_01MOCK000000000005",
+        "cmt_01MOCK000000000006",
+        "cmt_01MOCK000000000008"
+      ],
+      "owedToMe": [
+        "cmt_01MOCK000000000106",
+        "cmt_01MOCK000000000102",
+        "cmt_01MOCK000000000103",
+        "cmt_01MOCK000000000101",
+        "cmt_01MOCK000000000104",
+        "cmt_01MOCK000000000105",
+        "cmt_01MOCK000000000107"
+      ],
+      "toConfirm": [
+        "cmt_01MOCK000000000201",
+        "cmt_01MOCK000000000203",
+        "cmt_01MOCK000000000202"
+      ]
+    },
+    "tasks": [
+      {
+        "horizon": "now",
+        "label": "Now",
+        "groups": [
+          {
+            "id": "unit_client_a",
+            "label": "[CLIENT A]",
+            "itemIds": [
+              "task_notion_01MOCK000000000001"
+            ]
+          }
+        ]
+      },
+      {
+        "horizon": "week",
+        "label": "This week",
+        "groups": [
+          {
+            "id": "unit_internal",
+            "label": "Internal operations",
+            "itemIds": [
+              "task_notion_01MOCK000000000002",
+              "task_notion_01MOCK000000000004",
+              "task_notion_01MOCK000000000006"
+            ]
+          },
+          {
+            "id": "unit_client_b",
+            "label": "[CLIENT B]",
+            "itemIds": [
+              "task_notion_01MOCK000000000011"
+            ]
+          },
+          {
+            "id": "unit_client_c",
+            "label": "[CLIENT C]",
+            "itemIds": [
+              "task_notion_01MOCK000000000014"
+            ]
+          },
+          {
+            "id": "unit_client_a",
+            "label": "[CLIENT A]",
+            "itemIds": [
+              "task_jamie_01MOCK000000000005"
+            ]
+          },
+          {
+            "id": "unit_hiring",
+            "label": "Hiring",
+            "itemIds": [
+              "task_notion_01MOCK000000000008"
+            ]
+          }
+        ]
+      },
+      {
+        "horizon": "later",
+        "label": "Later",
+        "groups": [
+          {
+            "id": "unit_client_b",
+            "label": "[CLIENT B]",
+            "itemIds": [
+              "task_jamie_01MOCK000000000003"
+            ]
+          },
+          {
+            "id": "unit_hiring",
+            "label": "Hiring",
+            "itemIds": [
+              "task_notion_01MOCK000000000007"
+            ]
+          },
+          {
+            "id": "unit_client_d",
+            "label": "[CLIENT D]",
+            "itemIds": [
+              "task_jamie_01MOCK000000000010"
+            ]
+          },
+          {
+            "id": "unit_client_c",
+            "label": "[CLIENT C]",
+            "itemIds": [
+              "task_jamie_01MOCK000000000012"
+            ]
+          },
+          {
+            "id": "other",
+            "label": "Other",
+            "itemIds": [
+              "task_notion_01MOCK000000000009",
+              "task_notion_01MOCK000000000013"
+            ]
+          }
+        ]
+      }
+    ],
+    "alerts": [
+      {
+        "id": "P2",
+        "label": "P2 medium",
+        "itemIds": [
+          "alrt_01MOCK000000000001",
+          "alrt_01MOCK000000000003"
+        ]
+      },
+      {
+        "id": "P3",
+        "label": "P3 low",
+        "itemIds": [
+          "alrt_01MOCK000000000002",
+          "alrt_01MOCK000000000004"
+        ]
+      }
+    ]
+  },
   "items": [
     {
       "id": "cmt_01MOCK000000000007",
@@ -2643,5 +2832,18 @@
         "source": "https://jamie.example.invalid/task_jamie_01MOCK000000000012"
       }
     }
-  ]
+  ],
+  "me": {
+    "principalId": "prin_01JAXQ0000PRINCIPAL0000001",
+    "displayName": "[PERSON]",
+    "status": "active",
+    "mode": "dry_run",
+    "timeZone": "Europe/London",
+    "minClientVersion": "0.1.0",
+    "contractVersion": "1.1.0",
+    "capabilities": {
+      "handoff": true
+    },
+    "serverTime": "2026-10-16T09:30:00.000Z"
+  }
 }

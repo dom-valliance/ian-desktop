@@ -116,13 +116,14 @@ struct TodayListModel: Equatable {
     return ids
   }
 
-  /// "Proposal, Title, now, being worked on, pending": the kind, title and horizon, whether an
-  /// agent is acting on the item, and its pending or error state.
-  static func itemLabel(_ item: Components.Schemas.Item, horizon: String, status: String?)
-    -> String
-  {
+  /// "Proposal, Title, now, urgent, being worked on, pending": the kind, title and horizon, the
+  /// attention rung when it is urgent or stop, whether an agent is acting on the item, and its
+  /// pending or error state.
+  static func itemLabel(
+    _ item: Components.Schemas.Item, horizon: String, status: String?, attention: String? = nil
+  ) -> String {
     label(
-      [ItemKindStyle.name(item.kind), item.title, horizon]
+      [ItemKindStyle.name(item.kind), item.title, horizon] + [attention].compactMap { $0 }
         + (item.working ? ["being worked on"] : []), status: status)
   }
 

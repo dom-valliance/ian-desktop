@@ -50,7 +50,11 @@ public struct ExpandedClientView: View {
         isAnimating: controller?.isExpandedAnimating ?? false,
         reducedMotion: (controller?.reducedMotionSetting ?? false) || systemReducesMotion,
         layout: model.layout, onNavigate: { model.section = $0 })
-    case .proposals, .commitments, .tasks, .alerts, .agents, .settings:
+    case .proposals: ProposalsView(store: store)
+    case .commitments: CommitmentsView(store: store)
+    case .tasks: TasksView(store: store)
+    case .alerts: AlertsView(store: store)
+    case .agents, .settings:
       Text(model.section.title)
         .font(.system(size: 18, weight: .medium))
         .frame(maxWidth: .infinity, maxHeight: .infinity)
