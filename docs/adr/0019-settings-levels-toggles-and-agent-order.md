@@ -1,4 +1,4 @@
-# 0020. Notification levels, suppression toggles and the order of a new agent
+# 0019. Notification levels, suppression toggles and the order of a new agent
 
 Date: 2026-10-19
 Status: Accepted
