@@ -20,7 +20,7 @@ Each entry records:
 | P1 | Done, 19 October 2026 |
 | D6 | Done, 20 October 2026 |
 | D7 | Done, 20 October 2026 |
-| D8 | Not started |
+| D8 | Done, 20 October 2026 |
 | D9 | Not started |
 
 ## Entries
@@ -584,3 +584,68 @@ The last three were measured by the lead on the app's own process with `ps -o ti
 - **CI.** The first pull request run failed three Settings snapshots that passed locally. The `xcode-27` runner has Reduce Motion on and a US English region: the motion row's text wrapped to a second line, and the quiet hours pickers read 7:00 PM. Forcing both locally gave CI's numbers exactly. `d4ff493` pins the pickers to `en_GB`, like every other time in Ian, and gives the motion row an environment value the snapshots hold at false. The six Agents and Settings snapshots and the view snapshots pass unchanged with a US locale and Reduce Motion forced on. `8ef6807` makes CI print the runner's macOS, region and Reduce Motion, and upload failed snapshot images for seven days.
 - **Lessons.** The dialog fault and the runner's settings are recorded in `.claude/notes/surface.md`.
 - **For D8.** D8 reads the levels and toggles through `ClientSettings` and ADR 0019. Dom asked for a notification when an alert arrives, which D8's ladder delivers: P0 always, and P1 with a banner by default.
+
+### D8. Notifications, the attention ladder and the heartbeat
+
+- Date: 20 October 2026
+- Branch: `feat/d8-attention`, from `main` at `9c5a3e0`. Commits `bac2fd5..6feb090` (19 commits), plus this entry.
+- Built in two tracks in parallel: the ladder and notifications in `.worktrees/d8`, the heartbeat in `.worktrees/d8-heartbeat`. The heartbeat commits were rebased onto the ladder's and their fixes cherry-picked, so the branch holds no merge commits.
+- Machine: MacBook Pro, Apple M4 Pro (Mac16,7), macOS 27.0.1, Xcode 27.1 (27A9275).
+
+#### Commands and exit codes
+
+| Command | Exit |
+|---|---|
+| `swift format lint --recursive --strict Packages App scripts` | 0 |
+| `swift build --package-path Packages/IanKit --force-resolved-versions` | 0 |
+| `swift test --package-path Packages/IanKit --force-resolved-versions`, three runs | 0 each: 705 tests, the integration tests skipped |
+| `scripts/check-generated.sh` | 0 |
+| `xcodebuild -project App/Ian.xcodeproj -scheme Ian -configuration Debug -destination 'platform=macOS' -onlyUsePackageVersionsFromResolvedFile -derivedDataPath build/DerivedData build` | 0 |
+| `pnpm --dir contract install --frozen-lockfile && pnpm --dir contract lint` | 0 |
+| `pnpm --dir mock lint && pnpm --dir mock typecheck && pnpm --dir mock test` | 0 |
+| `scripts/dev.sh --mock-only`, then `IAN_MOCK_URL=http://localhost:4317 swift test --package-path Packages/IanKit --force-resolved-versions --filter Integration` | 0: 16 tests |
+
+#### Done when
+
+1. **Every rung of the spec 6.6 table.** `AttentionLadderTests` covers each rung, at each notification level, suppressed and not: the Orbit cue, the notification and whether item text shows. `EscalationPlannerTests` covers what counts as a moment to notify.
+2. **No item text while suppressed, and a P0 still delivered.** `AttentionCoordinatorTests` (`stopDeliveredWhileSuppressed`) delivers a Stop while suppressed with the title "Ian", a fixed body and only Open, and checks that no title, meta line, quote or name reaches the notification, its category or its `userInfo`. A text-bearing notification is withdrawn, and a delivered Stop re-delivered without its text, when suppression starts.
+3. **`GET /__mock/sessions` shows heartbeats at the right interval and on change.** The integration test runs the reporter against the mock with a two-second interval: the second heartbeat arrives, no third arrives before the interval, the third then arrives, and a change of `suppressed` arrives within a second as the fourth. The mock's clock stands still, so the interval is asserted from the client's side; `HeartbeatReporterTests` proves the 60-second schedule and the sends on change on a manual clock.
+4. **Hand check.** Dom checked on screen against the mock on 20 October 2026 and reported everything working:
+   - a P1 alert whispered its title beside the Orbit for about eight seconds and showed a banner offering Acknowledge and Open; Acknowledge marked it pending until the server removed it;
+   - a proposal near expiry whispered and showed Approve and Open, without Reject, which asks for confirmation; the banner opened the panel on Proposals;
+   - a P2 showed nothing at the default level and a banner once Needs you was set to Banner;
+   - a P0 showed a banner with a sound and opened the panel on Alerts at the next mouse movement, once, and did nothing more with the panel already open;
+   - with "Pause me" on, text-bearing banners left Notification Centre, the P0s stayed with "Something needs you now.", a P1 showed nothing, and a P0 notified with only Open and did not open the panel;
+   - a relaunch in `incident` gave one banner, for the P0, and cleared the earlier ones;
+   - `GET /__mock/sessions` showed a heartbeat at launch and about one a minute with one device id, `active` false while locked, `suppressed` true while paused, and a heartbeat on return from idle.
+
+#### Choices recorded
+
+- **ADR 0020, the ladder and notifications.**
+  - One pure function maps the server's `attention`, the ADR 0019 levels and the suppression to a behaviour.
+  - Only escalations notify: a new item, or a rise in rung. The first snapshot after a launch or reset is a baseline in which only Stop notifies.
+  - While suppressed, only Stop notifies, with the title "Ian", a fixed line and only Open. A delivered Stop is replaced by that content, and every other banner that shows item text is withdrawn. Nothing whispers, Stop does not open the panel, and nothing is replayed afterwards.
+  - Buttons are the item's actions that need no confirmation, time or note, in the order sent, then Open, under a category named for the item and its version. A button runs only on the version it showed, with nothing pending and actions enabled; otherwise the item's view opens.
+  - Everything Ian delivered is withdrawn at start, a notification goes when its item leaves, and Stop arrives last in a batch.
+  - `Attention` may import `UserNotifications`. Only the app creates the real notification centre.
+- **ADR 0021, the heartbeat.**
+  - A heartbeat goes every 60 seconds, and at once when `active` or `suppressed` changes or the principal returns after a minute idle.
+  - The device id is held in memory for the life of the process.
+  - `active` reads the login session live (unlocked, on the console, displays awake, not going to sleep), and the lock notifications are delivered immediately with a second look a second later.
+  - `idleSeconds` comes from the input event source.
+  - Heartbeats go only while running and live, and are never queued. A failure backs off from 5 to 60 seconds, and a change still goes at once.
+  - The reporter wakes about once a minute while the principal works, every 5 seconds only while idle at an unlocked Mac, and not at all while signed out.
+  - `Attention` imports nothing new; `StoreTests` gains a test-only dependency on `Attention`.
+- **Lance.** `docs/companion/lance-track.md` gains two DL5 notes: one delivery decision per item needs a contract field the client does not have, and a session silent for about two intervals counts as gone.
+
+#### Reviews and what is left
+
+- **Reviews.**
+  - The Opus review of the ladder and notifications found 3 Blocking, 5 Should fix and 5 Suggestions. The Blocking findings: a banner button could act on a newer version and skip a confirmation; banners delivered before suppression kept their text; two concurrency escape hatches had no reasons.
+  - The review of the heartbeat found no Blocking, 3 Should fix and 4 Suggestions, among them a lock missed while Ian is not active and a failed heartbeat counted as sent.
+  - A verification pass found 2 Should fix (an endlessly retried failing heartbeat; a P0 withdrawn when suppression starts) and 7 Suggestions.
+  - All are fixed.
+- **For D9 and later.**
+  - Time-sensitive delivery for Stop needs an entitlement and stays in the fast follow (spec 12).
+  - Focus is not a suppression trigger in version 0 (Q13).
+  - Arbitration itself is Lance's (DL5), checked in spec 11 once DL5 is merged.
