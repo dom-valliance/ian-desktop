@@ -203,10 +203,10 @@ public final class AttentionCoordinator {
   // MARK: Responses
 
   /// Runs what the principal chose on a notification. An action goes through the store only when
-  /// the item is still the version the banner showed, nothing is pending on it and the action is still one a banner may
-  /// run; otherwise the view opens, so the principal sees what changed. The store marks the item
-  /// pending and leaves the server to move it (AGENTS.md rule 2). Open, and the notification
-  /// itself, bring up the view that holds the item, or Today if it has gone.
+  /// the item is still the version the banner showed, nothing is pending on it and the action is
+  /// still one a banner may run; otherwise the view opens, so the principal sees what changed.
+  /// The store marks the item pending and leaves the server to move it (AGENTS.md rule 2). Open,
+  /// and the notification itself, bring up the view that holds the item, or Today if it has gone.
   @discardableResult
   func handle(_ response: NotificationResponse) -> Task<Void, Never> {
     if case .action(let actionID) = response.choice, canRun(actionID, on: response.itemID) {

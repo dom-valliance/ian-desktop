@@ -56,8 +56,8 @@ public struct NotificationCategory: Equatable, Sendable {
 
   /// One category per notification, named for the item's id (not item text), because two items
   /// can share an action id and show different labels, and for its version, because a newer
-  /// version can offer different buttons under the same id. While suppressed there is only Open, under
-  /// one shared id, so no action label (item text) reaches the screen.
+  /// version can offer different buttons under the same id. While suppressed there is only Open,
+  /// under one shared id, so no action label (item text) reaches the screen.
   public init(item: StoreState.Item, showsItemText: Bool) {
     guard showsItemText else {
       id = "ian.item.open"
