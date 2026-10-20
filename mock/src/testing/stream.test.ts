@@ -63,6 +63,21 @@ describe('the event stream', () => {
     expectContract('GET', '/events', reply, 410);
   });
 
+  it('ages events out by their own time after the clock is set back', async () => {
+    const h = await started();
+    const start = (await h.call('GET', '/__mock/state', { auth: false })).body as { now: string };
+    await emitNote(h, 1);
+    await h.call('POST', '/__mock/clock', { auth: false, body: { advanceSeconds: 25 * 3600 } });
+    await h.call('POST', '/__mock/clock', { auth: false, body: { set: start.now } });
+    const cursor = await cursorOf(h);
+    await emitNote(h, 2);
+    await h.call('POST', '/__mock/clock', { auth: false, body: { advanceSeconds: 25 * 3600 } });
+    const reply = await h.call('GET', '/desktop/v1/events', {
+      headers: { 'last-event-id': String(cursor) },
+    });
+    expectContract('GET', '/events', reply, 410);
+  });
+
   it('keeps an id that is the newest to have aged out, and replays what follows in order', async () => {
     const h = await started();
     const cursor = await cursorOf(h);
