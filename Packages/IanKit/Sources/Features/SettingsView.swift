@@ -10,19 +10,17 @@ struct SettingsView: View {
   // Weak, as in ExpandedClientView: the controller owns the panel that owns this view.
   private weak var controller: SurfaceController?
   let model: SettingsModel
-  @State private var principal: PrincipalSettingsModel
 
   init(store: IanStore, controller: SurfaceController?, model: SettingsModel) {
     self.store = store
     self.controller = controller
     self.model = model
-    _principal = State(initialValue: PrincipalSettingsModel(store: store))
   }
 
   var body: some View {
     ScrollView {
       VStack(alignment: .leading, spacing: 28) {
-        PrincipalSettingsSection(store: store, model: principal)
+        PrincipalSettingsSection(store: store, model: model.principal(for: store))
         if let controller {
           ClientSettingsSection(store: store, controller: controller, model: model)
         }
@@ -377,7 +375,6 @@ private struct ClientSettingsSection: View {
       }
       .labelsHidden()
       .frame(width: 160)
-      .disabled(store.isSigningIn)
     }
     .confirmationDialog(
       "Switch to \(model.pendingProfile?.displayName ?? "another environment")?",
@@ -396,7 +393,6 @@ private struct ClientSettingsSection: View {
     SettingRow(title: "Account") {
       Button("Sign out") { Task { await store.signOut() } }
         .buttonStyle(ActionButtonStyle(style: .secondary))
-        .disabled(store.isSigningIn)
     }
   }
 

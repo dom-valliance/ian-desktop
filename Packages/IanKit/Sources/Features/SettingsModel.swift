@@ -14,10 +14,19 @@ final class SettingsModel {
   private(set) var didCopyReport = false
 
   @ObservationIgnored private let copy: (String) -> Void
+  /// Built once, so the settings view being rebuilt on every event does not rebuild it.
+  @ObservationIgnored private var principalModel: PrincipalSettingsModel?
 
   init(launchAtLogin: any LaunchAtLoginControlling, copy: @escaping (String) -> Void) {
     self.launchAtLogin = LaunchAtLoginModel(service: launchAtLogin)
     self.copy = copy
+  }
+
+  func principal(for store: IanStore) -> PrincipalSettingsModel {
+    if let principalModel { return principalModel }
+    let model = PrincipalSettingsModel(store: store)
+    principalModel = model
+    return model
   }
 
   func requestProfile(_ id: String, in store: IanStore) {

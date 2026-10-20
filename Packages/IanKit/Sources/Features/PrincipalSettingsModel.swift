@@ -9,6 +9,7 @@ import Store
 @MainActor
 @Observable
 final class PrincipalSettingsModel {
+  /// The server counts UTF-16 code units, so the client does too and never sends what it refuses.
   static let maximumReasonLength = 500
 
   var quietStart = "19:00"
@@ -32,7 +33,7 @@ final class PrincipalSettingsModel {
   /// that changed follow, and a draft being edited for another field is kept.
   private func observeServer() {
     withObservationTracking {
-      _ = store.state.settings
+      _ = store.settingsRevision
     } onChange: { [weak self] in
       // `onChange` runs before the value changes, so read it on the next turn.
       Task { @MainActor in
@@ -93,7 +94,11 @@ final class PrincipalSettingsModel {
 
   /// Moves only the drafts whose server value changed since the last one.
   func settingsDidChange() {
-    guard let settings else { return }
+    guard let settings else {
+      // The settings went away with a sign-out or a profile switch; drafts must not outlive them.
+      followed = nil
+      return
+    }
     guard let old = followed else {
       syncFromServer()
       return
@@ -118,8 +123,9 @@ final class PrincipalSettingsModel {
   }
 
   func setOwnPause(_ paused: Bool) async {
-    let reason = String(
-      pauseReason.trimmingCharacters(in: .whitespacesAndNewlines).prefix(Self.maximumReasonLength))
+    let reason = Self.truncated(
+      pauseReason.trimmingCharacters(in: .whitespacesAndNewlines),
+      utf16Limit: Self.maximumReasonLength)
     await send(
       .init(paused: paused, pausedReason: paused && !reason.isEmpty ? reason : nil))
   }
@@ -144,11 +150,32 @@ final class PrincipalSettingsModel {
     await send(.init(mode: .dryRun))
   }
 
-  /// A refused or failed change leaves the controls showing a value the server did not take, so
-  /// they go back to the server's.
+  /// A refused or failed change leaves its controls showing a value the server did not take, so
+  /// those go back to the server's. Drafts for other settings are kept.
   private func send(_ patch: Components.Schemas.SettingsPatch) async {
     await store.updateSettings(patch)
-    if store.settingsNotice != nil { syncFromServer() }
+    guard store.settingsNotice != nil, let settings else { return }
+    if patch.quietHours != nil {
+      quietStart = settings.quietHours.start
+      quietEnd = settings.quietHours.end
+    }
+    if patch.pushBudgetPerHour != nil { pushBudget = settings.pushBudgetPerHour }
+    if patch.paused != nil || patch.pausedReason != nil {
+      pauseReason = settings.pausedReason ?? ""
+    }
+    followed = settings
+  }
+
+  /// The longest prefix of `text` within `limit` UTF-16 code units, cut on a character boundary.
+  static func truncated(_ text: String, utf16Limit limit: Int) -> String {
+    var result = ""
+    var count = 0
+    for character in text {
+      count += character.utf16.count
+      if count > limit { break }
+      result.append(character)
+    }
+    return result
   }
 }
 

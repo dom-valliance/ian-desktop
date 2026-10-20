@@ -236,7 +236,7 @@ struct PrincipalSettingsTests {
     #expect(model.quietHoursChanged)
   }
 
-  @Test("puts a refused value back to the server's in the controls")
+  @Test("puts a refused value back to the server's and keeps drafts for other settings")
   func refusalResetsTheDrafts() async {
     let (store, service, _) = await liveStore()
     defer { store.stop() }
@@ -249,7 +249,52 @@ struct PrincipalSettingsTests {
 
     #expect(model.notice == "Out of range.")
     #expect(model.pushBudget == 3)
-    #expect(model.quietStart == "19:00")
+    #expect(model.quietStart == "22:00")
+  }
+
+  @Test("clears its drafts' memory when the settings go away, so none carries into a new profile")
+  func draftsDoNotSurviveASignOut() async {
+    let (store, _, _) = await liveStore()
+    defer { store.stop() }
+    let model = PrincipalSettingsModel(store: store)
+    model.pushBudget = 40
+
+    await store.signOut()
+    #expect(
+      await eventually("the settings go") { await MainActor.run { store.state.settings == nil } })
+    model.settingsDidChange()
+    #expect(model.pushBudget == 40)
+
+    store.start()
+    #expect(
+      await eventually("the new settings") { await MainActor.run { store.state.settings != nil } })
+    model.settingsDidChange()
+
+    #expect(model.pushBudget == 3)
+  }
+
+  @Test("cuts a pause reason at 500 UTF-16 code units without splitting a character")
+  func reasonLimitCountsCodeUnits() {
+    let text = String(repeating: "a", count: 499) + "😀" + "tail"
+
+    let cut = PrincipalSettingsModel.truncated(text, utf16Limit: 500)
+
+    #expect(cut == String(repeating: "a", count: 499))
+    #expect(cut.utf16.count <= 500)
+    #expect(PrincipalSettingsModel.truncated("😀😀", utf16Limit: 4) == "😀😀")
+  }
+
+  @Test("sends a pause reason within the limit when it holds wide characters")
+  func sentReasonFits() async {
+    let (store, service, _) = await liveStore()
+    defer { store.stop() }
+    let model = PrincipalSettingsModel(store: store)
+    model.pauseReason = String(repeating: "😀", count: 300)
+
+    await model.setOwnPause(true)
+
+    let sent = service.settingsPatches.first?.pausedReason
+    #expect(sent?.utf16.count == 500)
   }
 
   @Test("converts a time of day to and from a picker's date")
@@ -426,6 +471,15 @@ struct SettingsModelTests {
     model.clearCopied()
 
     #expect(!model.didCopyReport)
+  }
+
+  @Test("builds the principal settings model once, however often the view is rebuilt")
+  func principalModelIsHeld() async {
+    let (store, _, _) = await liveStore()
+    defer { store.stop() }
+    let model = model()
+
+    #expect(model.principal(for: store) === model.principal(for: store))
   }
 
   @Test("copies the diagnostics report through the injected pasteboard")
