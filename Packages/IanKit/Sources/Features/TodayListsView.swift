@@ -55,7 +55,7 @@ struct TodayListsView: View {
         if !list.later.isEmpty {
           Section {
             ForEach(list.later) { row in
-              RowContent(kind: nil, title: row.unitName, tag: nil, isSettled: false)
+              RowContent(kind: row.kind, title: row.unitName, tag: nil, isSettled: false)
                 .accessibilityElement(children: .ignore)
                 .accessibilityLabel(row.accessibilityLabel)
                 .tag(TodaySelection.later(unitID: row.unitID))
@@ -98,8 +98,8 @@ struct TodayListsView: View {
 
 /// A kind swatch, the title at 13 points truncated, and a monospaced 11-point tag. A Now row's
 /// tag names its kind and a week row's counts its items, so colour is never the only signal.
-/// A Later row has no kind of its own, so its swatch is neutral. A settled row
-/// dims until it leaves.
+/// A Later row takes the kind of the field's later cell, and is neutral when the server sent
+/// none. A settled row dims until it leaves.
 private struct RowContent: View {
   let kind: Components.Schemas.ItemKind?
   let title: String

@@ -65,6 +65,19 @@ struct TodayListModelTests {
     #expect(rows[1].counts.map(\.section) == [.tasks])
   }
 
+  @Test("colours a Later row from the field's later cell, and leaves it neutral without one")
+  func laterRowKind() {
+    #expect(model().later.map(\.kind) == [.task, .task])
+
+    var state = TodayScenario.state
+    state.today?.field.cells.removeAll { $0.unitId == "unit_b" && $0.horizon == .later }
+    let rows = TodayListModel(
+      state: state, removals: [:], statuses: ItemStatuses(), at: Date()
+    ).later
+    #expect(rows.map(\.kind) == [.task, nil])
+    #expect(rows[1].counts.map(\.kind) == [.task])
+  }
+
   @Test("links an owed-by-you count and an owed-to-you count to Commitments")
   func commitmentCountsLinkToCommitments() {
     #expect(ItemKindStyle.section(for: .commitmentBy) == .commitments)
