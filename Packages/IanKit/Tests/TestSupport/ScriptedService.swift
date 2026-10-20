@@ -34,6 +34,7 @@ public final class ScriptedService: DesktopService, @unchecked Sendable {
   private var signInFailure: (any Error)?
   private var snapshotHook: (@Sendable (Int) async -> Void)?
   private var signInHook: (@Sendable () async -> Void)?
+  private var heartbeatScript = HeartbeatScript()
 
   public init(
     me: Components.Schemas.Me = Fixtures.me(),
@@ -277,4 +278,39 @@ public final class ScriptedService: DesktopService, @unchecked Sendable {
     await hook?()
     return try result.get()
   }
+}
+
+// MARK: Session heartbeats
+
+extension ScriptedService {
+  /// The heartbeats `recordSession` was sent, in order.
+  public var heartbeats: [Components.Schemas.SessionHeartbeat] {
+    lock.withLock { heartbeatScript.sent }
+  }
+
+  /// What `recordSession` answers, from the next call on.
+  public func planHeartbeatResult(_ result: Result<Void, DesktopError>) {
+    lock.withLock { heartbeatScript.result = result }
+  }
+
+  /// Runs inside `recordSession` after the heartbeat is recorded and before it returns, so a test
+  /// can hold a call open while something else happens.
+  public func planHeartbeatHook(_ hook: @escaping @Sendable () async -> Void) {
+    lock.withLock { heartbeatScript.hook = hook }
+  }
+
+  public func recordSession(_ heartbeat: Components.Schemas.SessionHeartbeat) async throws {
+    let (result, hook) = lock.withLock {
+      heartbeatScript.sent.append(heartbeat)
+      return (heartbeatScript.result, heartbeatScript.hook)
+    }
+    await hook?()
+    try result.get()
+  }
+}
+
+private struct HeartbeatScript {
+  var sent: [Components.Schemas.SessionHeartbeat] = []
+  var result: Result<Void, DesktopError> = .success(())
+  var hook: (@Sendable () async -> Void)?
 }
