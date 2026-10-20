@@ -14,12 +14,13 @@ D1 adds three workflows. Dom owns the GitHub side (Lance ADR 0007 applies here t
 
 1. Check out the repository.
 2. Select Xcode 27.1 with `xcode-select`.
-3. Print `xcodebuild -version`, `swift --version` and `swift format --version`, so a formatting difference against a developer's toolchain can be diagnosed.
+3. Print `sw_vers`, the region, the system's Reduce Motion setting, `xcodebuild -version`, `swift --version` and `swift format --version`, so a formatting or rendering difference against a developer's Mac can be diagnosed.
 4. `swift format lint --recursive --strict Packages App scripts`
 5. `swift build --package-path Packages/IanKit --force-resolved-versions`
-6. `swift test --package-path Packages/IanKit --force-resolved-versions`
-7. `scripts/check-generated.sh`, which regenerates the contract code, its fixtures, the Xcode project and the project's copy of IanKit's pins, and fails on drift.
-8. `xcodebuild -project App/Ian.xcodeproj -scheme Ian -configuration Debug -destination 'platform=macOS' -onlyUsePackageVersionsFromResolvedFile build`
+6. `swift test --package-path Packages/IanKit --force-resolved-versions`, with `SNAPSHOT_ARTIFACTS` set so swift-snapshot-testing writes failed images to the runner's temp folder.
+7. On failure, upload those images as the `failed-snapshots` artefact, kept for 7 days. They are rendered from invented mock fixtures only.
+8. `scripts/check-generated.sh`, which regenerates the contract code, its fixtures, the Xcode project and the project's copy of IanKit's pins, and fails on drift.
+9. `xcodebuild -project App/Ian.xcodeproj -scheme Ian -configuration Debug -destination 'platform=macOS' -onlyUsePackageVersionsFromResolvedFile build`
 
 `mock.yml`, in order:
 
