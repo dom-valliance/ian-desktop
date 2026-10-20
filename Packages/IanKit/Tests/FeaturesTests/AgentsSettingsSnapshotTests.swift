@@ -59,7 +59,8 @@ struct AgentsSettingsSnapshotTests {
     let hosting = NSHostingView(
       rootView: view.frame(width: size.width, height: size.height)
         .background(ClientPalette.ground).foregroundStyle(ClientPalette.text)
-        .environment(\.colorScheme, .dark))
+        .environment(\.colorScheme, .dark)
+        .environment(\.reduceMotionReading, false))
     hosting.appearance = NSAppearance(named: .darkAqua)
     hosting.frame = CGRect(origin: .zero, size: size)
     hosting.layoutSubtreeIfNeeded()

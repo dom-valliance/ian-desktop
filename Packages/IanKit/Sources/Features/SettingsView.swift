@@ -136,6 +136,8 @@ private struct PrincipalSettingsSection: View {
       displayedComponents: .hourAndMinute
     )
     .labelsHidden()
+    // Every time Ian writes is 24-hour British, whatever the Mac's region.
+    .environment(\.locale, Locale(identifier: "en_GB"))
   }
 
   private var pushBudget: some View {
@@ -256,6 +258,7 @@ private struct ClientSettingsSection: View {
   let controller: SurfaceController
   let model: SettingsModel
   @Environment(\.accessibilityReduceMotion) private var systemReducesMotion
+  @Environment(\.reduceMotionReading) private var reduceMotionReading
 
   var body: some View {
     SettingsGroup(title: "This Mac") {
@@ -288,7 +291,7 @@ private struct ClientSettingsSection: View {
   private var motion: some View {
     SettingRow(
       title: "Motion",
-      detail: systemReducesMotion
+      detail: reduceMotionReading ?? systemReducesMotion
         ? "The system's Reduce Motion setting is on, so motion is reduced whatever you choose."
         : "The system's Reduce Motion setting always forces reduced."
     ) {
@@ -464,4 +467,10 @@ extension NotificationLevel {
     case .banner: "Banner"
     }
   }
+}
+
+extension EnvironmentValues {
+  /// The app reads the system's Reduce Motion and leaves this nil. A snapshot sets it, so a
+  /// machine's accessibility settings cannot change what the Motion row draws.
+  @Entry var reduceMotionReading: Bool?
 }
