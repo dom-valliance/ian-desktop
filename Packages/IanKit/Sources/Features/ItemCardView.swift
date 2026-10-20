@@ -74,7 +74,7 @@ struct ItemCardView: View {
         .font(ClientPalette.label)
         .tracking(ClientPalette.labelTracking)
         .foregroundStyle(ClientPalette.secondary(0.7))
-      if let badge = model.badge {
+      ForEach([model.badge, model.urgency].compactMap { $0 }, id: \.self) { badge in
         Text(badge.uppercased())
           .font(ClientPalette.label)
           .tracking(ClientPalette.labelTracking)

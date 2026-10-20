@@ -32,8 +32,10 @@ struct ItemCardModel: Equatable {
   /// The server's line for an item it has just removed. When present the card is dimmed and has
   /// no actions and no hand-off, as a settled row on Today.
   let settlement: String?
-  /// The server's attention rung is `urgent` or `stop`, which gives the card its rim (ADR 0009).
-  let isUrgent: Bool
+  /// "Urgent" or "Stop" when the server's attention rung (ADR 0009) is one of those. It gives the
+  /// card its rim and its badge, so the cue is never colour alone.
+  let urgency: String?
+  var isUrgent: Bool { urgency != nil }
   let accessibilityLabel: String
 
   init(
@@ -47,7 +49,11 @@ struct ItemCardModel: Equatable {
     lanceURL = Self.webURL(item.links.lance)
     sourceURL = item.links.source.flatMap(Self.webURL)
     settlement = removal.map { $0.outcome ?? "Closed" }
-    isUrgent = item.attention == .urgent || item.attention == .stop
+    switch item.attention {
+    case .urgent: urgency = "Urgent"
+    case .stop: urgency = "Stop"
+    case .ambient, .needsYou: urgency = nil
+    }
 
     let format = CardDate(timeZone: timeZone)
     switch item.detail {
@@ -67,7 +73,8 @@ struct ItemCardModel: Equatable {
 
     accessibilityLabel = TodayListModel.itemLabel(
       item, horizon: ItemKindStyle.name(item.horizon).lowercased(),
-      status: removal != nil ? "settled" : statuses.description(of: item.id))
+      status: removal != nil ? "settled" : statuses.description(of: item.id),
+      attention: urgency?.lowercased())
   }
 
   /// Only web addresses open from a card; anything else the server sent is dropped.
