@@ -28,8 +28,6 @@ struct ListedGroup: Equatable, Identifiable {
   /// The server asked for this group to stay in view above the groups that scroll.
   let isPinned: Bool
 
-  var items: [Components.Schemas.Item] { entries.map(\.item) }
-
   init(
     _ group: Components.Schemas.ViewGroup, in state: StoreState,
     removals: [String: IanStore.Removal], idPrefix: String = ""
@@ -50,7 +48,9 @@ struct ProposalsListModel: Equatable {
 
   init(state: StoreState, removals: [String: IanStore.Removal] = [:]) {
     isLoaded = state.views != nil
-    groups = (state.views?.proposals ?? []).map { ListedGroup($0, in: state, removals: removals) }
+    groups = (state.views.map { LeavingItems.proposals($0, removals: removals) } ?? []).map {
+      ListedGroup($0, in: state, removals: removals)
+    }
   }
 }
 
@@ -83,7 +83,7 @@ struct CommitmentsListModel: Equatable {
 
   init(state: StoreState, removals: [String: IanStore.Removal] = [:]) {
     isLoaded = state.views != nil
-    let tabs = state.views?.commitments
+    let tabs = state.views.map { LeavingItems.commitments($0, removals: removals) }
     func entries(_ ids: [String]?) -> [ListedItem] {
       (ids ?? []).compactMap { ListedItem.resolve($0, in: state, removals: removals) }
     }
@@ -94,8 +94,6 @@ struct CommitmentsListModel: Equatable {
   }
 
   func entries(in tab: Tab) -> [ListedItem] { byTab[tab] ?? [] }
-
-  func items(in tab: Tab) -> [Components.Schemas.Item] { entries(in: tab).map(\.item) }
 }
 
 /// Tasks: the horizon sections of `views.tasks`, each holding its unit groups, as sent.
@@ -112,7 +110,8 @@ struct TasksListModel: Equatable {
 
   init(state: StoreState, removals: [String: IanStore.Removal] = [:]) {
     isLoaded = state.views != nil
-    sections = (state.views?.tasks ?? []).map { section in
+    sections = (state.views.map { LeavingItems.tasks($0, removals: removals) } ?? []).map {
+      section in
       Section(
         horizon: section.horizon, label: section.label,
         // A unit repeats across horizons, so its group id is scoped by the horizon.
@@ -133,7 +132,7 @@ struct AlertsListModel: Equatable {
 
   init(state: StoreState, removals: [String: IanStore.Removal] = [:]) {
     isLoaded = state.views != nil
-    let groups = (state.views?.alerts ?? []).map {
+    let groups = (state.views.map { LeavingItems.alerts($0, removals: removals) } ?? []).map {
       ListedGroup($0, in: state, removals: removals)
     }
     pinned = groups.filter(\.isPinned)

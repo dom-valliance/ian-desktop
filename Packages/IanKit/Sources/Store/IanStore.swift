@@ -51,13 +51,19 @@ public final class IanStore {
     /// Where the item stood in `today.lists.now` when it left, so its row can stay in place
     /// while it finishes leaving. Nil when Today did not list it there.
     public let nowListIndex: Int?
+    /// The views as they stood when the item left, so a view can keep its card at the group and
+    /// place it held until this record expires, though the server's next `views.updated` drops it.
+    public let viewsWhenRemoved: Components.Schemas.Views?
 
-    public init(item: StoreState.Item, outcome: String?, removedAt: Date, nowListIndex: Int? = nil)
-    {
+    public init(
+      item: StoreState.Item, outcome: String?, removedAt: Date, nowListIndex: Int? = nil,
+      viewsWhenRemoved: Components.Schemas.Views? = nil
+    ) {
       self.item = item
       self.outcome = outcome
       self.removedAt = removedAt
       self.nowListIndex = nowListIndex
+      self.viewsWhenRemoved = viewsWhenRemoved
     }
   }
 
@@ -239,7 +245,8 @@ public final class IanStore {
   private func recordRemoval(_ item: StoreState.Item, outcome: String?) {
     removals[item.id] = Removal(
       item: item, outcome: outcome, removedAt: now(),
-      nowListIndex: state.today?.lists.now.firstIndex(of: item.id))
+      nowListIndex: state.today?.lists.now.firstIndex(of: item.id),
+      viewsWhenRemoved: state.views)
     removalExpiries[item.id]?.cancel()
     let id = item.id
     removalExpiries[id] = Task { [weak self, clock = self.clock] in
