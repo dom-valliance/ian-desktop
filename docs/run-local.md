@@ -148,6 +148,14 @@ To start only the mock, for example to run the integration tests:
 scripts/dev.sh --mock-only
 ```
 
+Then, in another terminal, run the integration tests one at a time, since they share the one mock and some take it offline and move its clock:
+
+```
+IAN_MOCK_URL=http://localhost:4317 swift test --package-path Packages/IanKit --force-resolved-versions --no-parallel --filter Integration
+```
+
+Without `IAN_MOCK_URL` they are skipped. Run them against a mock you started for the purpose, and stop it afterwards.
+
 `MOCK_PORT` and `MOCK_HOST` change where it listens. The app's mock profile expects port 4317, so the app is opened only when the port is 4317.
 
 ## Troubleshooting

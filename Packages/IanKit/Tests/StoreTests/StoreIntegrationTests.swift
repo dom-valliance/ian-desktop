@@ -70,7 +70,8 @@ func settles(
 }
 
 /// Serialised because every test drives the one shared mock, and switching it to `offline` in one
-/// test would cut another's stream.
+/// test would cut another's stream. The other integration suite is in another test target, which
+/// SwiftPM runs in its own process after this one; run both with `swift test --no-parallel`.
 @Suite("Mock integration", .serialized, .enabled(if: mockOrigin != nil))
 @MainActor
 struct StoreIntegrationTests {

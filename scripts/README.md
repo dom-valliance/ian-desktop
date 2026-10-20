@@ -10,6 +10,10 @@
 | `test-measure-lib.sh` | Checks the parsing `measure-cpu.sh` does on the mock's state and on `ps`, against fixed samples. Needs no display and starts nothing |
 | `check-generated.sh` | Runs both generators and fails if any generated file differs from what is committed. CI runs it |
 
+## Running the integration tests
+
+Start `scripts/dev.sh --mock-only`, then run `IAN_MOCK_URL=http://localhost:4317 swift test --package-path Packages/IanKit --force-resolved-versions --no-parallel --filter Integration`. The suites share one mock and the recovery tests take it offline and move its clock, so they must not overlap. On this toolchain SwiftPM already runs each test target in its own `swiftpm-testing-helper` process, one after the other, so the two integration suites never overlap; `--no-parallel` also keeps each process to one test at a time, and is the documented command so the guarantee does not depend on that detail.
+
 ## What `measure-cpu.sh` measures
 
 It opens Ian on your screen, so run it from a terminal on a Mac you are not using, with the display awake and unlocked. It needs Xcode 27, Node 22 and pnpm.

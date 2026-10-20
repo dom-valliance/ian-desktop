@@ -3,8 +3,10 @@ import Testing
 
 @testable import Store
 
-/// Added to the existing integration suite, which is serialised: every test drives the one shared
-/// mock.
+/// Added to the existing integration suite. `.serialized` orders the tests of this suite only, and
+/// these tests take the mock offline and move its clock. They cannot meet the other integration
+/// suite's tests because SwiftPM runs each test target in its own process, one after another, and
+/// `--no-parallel` (the documented command) keeps each process to one test at a time.
 extension StoreIntegrationTests {
   /// An item the mock's world does not hold, copied from one it does. Sent as an event it lives
   /// only in the mock's event log, so a snapshot can never contain it: finding it in the store
