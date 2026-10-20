@@ -512,7 +512,7 @@ The last three were measured by the lead on the app's own process with `ps -o ti
 ### D7. Agents and Settings
 
 - Date: 20 October 2026, built from 19 October
-- Branch: `feat/d7-agents-settings`, rebased onto `feat/d6-views` at `d6dac5e`. Commits `a828d16..2ffeaea`, plus this entry. Merge D6 first.
+- Branch: `feat/d7-agents-settings`, rebased onto `feat/d6-views` at `d6dac5e`. Commits `a828d16..2ffeaea`, this entry (`0e22a0e`), the CI fix `d4ff493..8ef6807` and its update to this entry. Merge D6 first.
 - Machine: MacBook Pro, Apple M4 Pro (Mac16,7), macOS 27.0.1, Xcode 27.1 (27A9275).
 
 #### Commands and exit codes
@@ -581,5 +581,6 @@ The last three were measured by the lead on the app's own process with `ps -o ti
   - error copy still named Lance.
 
   All are fixed, and the pause reason is now counted in UTF-16 code units.
-- **Lesson.** The dialog fault is recorded in `.claude/notes/surface.md`.
+- **CI.** The first pull request run failed three Settings snapshots that passed locally. The `xcode-27` runner has Reduce Motion on and a US English region: the motion row's text wrapped to a second line, and the quiet hours pickers read 7:00 PM. Forcing both locally gave CI's numbers exactly. `d4ff493` pins the pickers to `en_GB`, like every other time in Ian, and gives the motion row an environment value the snapshots hold at false. The six Agents and Settings snapshots and the view snapshots pass unchanged with a US locale and Reduce Motion forced on. `8ef6807` makes CI print the runner's macOS, region and Reduce Motion, and upload failed snapshot images for seven days.
+- **Lessons.** The dialog fault and the runner's settings are recorded in `.claude/notes/surface.md`.
 - **For D8.** D8 reads the levels and toggles through `ClientSettings` and ADR 0019. Dom asked for a notification when an alert arrives, which D8's ladder delivers: P0 always, and P1 with a banner by default.

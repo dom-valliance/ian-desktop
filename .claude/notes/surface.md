@@ -22,3 +22,10 @@ Append-only. Lessons about the window model, SwiftUI hosting in AppKit panels, p
 **Correction**: Dom's hand check found Go live did nothing. Pressing the button dismisses the dialog first, the setter clears the flag, and the Task then returns early. The model and integration tests called the confirm step directly, so they never saw the dismissal.
 **Rule**: Pass the confirmed value through `confirmationDialog(_:isPresented:presenting:)` into the action, and never guard a confirm step on state the dismissal clears. Test the real order: request, dismissal, then confirm.
 **Applies to**: Features and Surface (every dialog, alert or sheet with a confirm action)
+
+### [2026-10-20] The CI runner has Reduce Motion on and a US region
+
+**Context**: D7's Settings snapshots passed on Dom's Mac and failed on the `xcode-27` runner, at 92% of pixels.
+**Correction**: Dom's pull request failed CI. The motion row's text follows the system's Reduce Motion, which is on in the runner, and wraps to a second line; the native time pickers follow the region, US English there, and read 7:00 PM. Forcing both locally reproduced CI's numbers exactly.
+**Rule**: A snapshot must not depend on the machine's accessibility settings, region or time zone. Pin `en_GB` on any native control that formats a date or number, give any view that reads a system accessibility setting a seam the snapshot holds fixed, and before recording, render once with a US locale and with Reduce Motion forced on to prove the image does not change.
+**Applies to**: Features and Surface snapshot tests
