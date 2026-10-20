@@ -13,6 +13,7 @@ struct ItemActionsView: View {
   @State private var until = Date().addingTimeInterval(3600)
   @State private var note = ""
   @FocusState private var focus: PromptFocus?
+  @Environment(\.promptOwner) private var promptOwner
 
   /// The control that takes focus when a prompt opens, so the keyboard can answer it at once.
   private enum PromptFocus: Hashable { case confirm, until, note }
@@ -34,6 +35,8 @@ struct ItemActionsView: View {
       isConnecting: store.connection == .connecting)
   }
 
+  private var promptKey: String { "action:\(item.id)" }
+
   private var canAct: Bool { store.actionsEnabled && store.pending[item.id] == nil }
 
   var body: some View {
@@ -53,7 +56,13 @@ struct ItemActionsView: View {
       if let status = model.status { statusView(status) }
     }
     .onChange(of: item.actions) { _, actions in flow.cancelIfMissing(from: actions) }
-    .onChange(of: flow.prompt) { _, prompt in
+    .onDisappear { promptOwner?.closed(promptKey) }
+    .onChange(of: flow.prompt) { old, prompt in
+      if prompt == nil {
+        promptOwner?.closed(promptKey)
+      } else if old == nil {
+        promptOwner?.opened(promptKey) { [flow] in flow.cancel() }
+      }
       switch prompt {
       case .confirm: focus = .confirm
       case .until:

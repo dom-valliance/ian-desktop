@@ -40,6 +40,7 @@ public struct ExpandedClientView: View {
     }
     .foregroundStyle(ClientPalette.text)
     .preferredColorScheme(.dark)
+    .environment(\.promptOwner, model.prompts)
   }
 
   @ViewBuilder private var content: some View {

@@ -12,6 +12,7 @@ import Surface
 public final class ClientModel {
   var section: ClientSection = .today
   let today = TodayModel()
+  let prompts = PromptOwner()
 
   let layout: PaneLayout
   let settings: SettingsModel
