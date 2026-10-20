@@ -13,6 +13,8 @@ public final class SystemActivityMonitor: ActivityMonitoring {
   private let workspaceCenter: NotificationCenter
   private let distributedCenter: DistributedNotificationCenter
   private let sessionState: @MainActor () -> [String: Any]?
+  private let sleep: @Sendable (Duration) async throws -> Void
+  private var followUp: Task<Void, Never>?
   private var workspaceTokens: [any NSObjectProtocol] = []
   private var distributedTarget: DistributedTarget?
   private var onChange: (@MainActor () -> Void)?
@@ -25,16 +27,19 @@ public final class SystemActivityMonitor: ActivityMonitoring {
   ///   - workspaceCenter: Where sleep and wake are posted. Tests pass their own centre.
   ///   - distributedCenter: Where the lock and unlock are posted, across processes.
   ///   - sessionState: The login session's dictionary. Tests pass their own.
+  ///   - sleep: Waits before the second look after a lock or unlock. Tests pass their own.
   public init(
     workspaceCenter: NotificationCenter = NSWorkspace.shared.notificationCenter,
     distributedCenter: DistributedNotificationCenter = .default(),
     sessionState: @escaping @MainActor () -> [String: Any]? = {
       CGSessionCopyCurrentDictionary() as? [String: Any]
-    }
+    },
+    sleep: @escaping @Sendable (Duration) async throws -> Void = { try await Task.sleep(for: $0) }
   ) {
     self.workspaceCenter = workspaceCenter
     self.distributedCenter = distributedCenter
     self.sessionState = sessionState
+    self.sleep = sleep
   }
 
   /// The screen is unlocked, the session is on the console (not switched away from), the
@@ -57,7 +62,7 @@ public final class SystemActivityMonitor: ActivityMonitoring {
     guard distributedTarget == nil else { return }
     self.onChange = onChange
     lastReportedActive = isActive
-    let target = DistributedTarget { [weak self] in self?.report() }
+    let target = DistributedTarget { [weak self] in self?.lockChanged() }
     // Delivered at once even while Ian is in the background, which is nearly always.
     for name in ["com.apple.screenIsLocked", "com.apple.screenIsUnlocked"] {
       distributedCenter.addObserver(
@@ -76,8 +81,21 @@ public final class SystemActivityMonitor: ActivityMonitoring {
     distributedTarget = nil
     for token in workspaceTokens { workspaceCenter.removeObserver(token) }
     workspaceTokens = []
+    followUp?.cancel()
+    followUp = nil
     onChange = nil
     lastReportedActive = nil
+  }
+
+  /// The session dictionary may update a moment after the notification arrives, so look once
+  /// now and once again after a second.
+  private func lockChanged() {
+    report()
+    followUp?.cancel()
+    followUp = Task { [weak self, sleep] in
+      guard (try? await sleep(.seconds(1))) != nil, !Task.isCancelled else { return }
+      self?.report()
+    }
   }
 
   private func watch(

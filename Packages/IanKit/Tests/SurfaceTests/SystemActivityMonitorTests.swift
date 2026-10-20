@@ -31,7 +31,7 @@ private struct Rig {
     let session = session
     monitor = SystemActivityMonitor(
       workspaceCenter: workspace, distributedCenter: distributed,
-      sessionState: { session.read() })
+      sessionState: { session.read() }, sleep: { _ in })
     let changes = changes
     monitor.start { changes.count += 1 }
   }
@@ -93,6 +93,18 @@ struct SystemActivityMonitorTests {
 
     #expect(rig.monitor.isActive)
     #expect(rig.changes.count == 2)
+  }
+
+  @Test("looks again after a lock notification, in case the session updated a moment later")
+  func looksAgainAfterTheNotification() async {
+    let rig = Rig()
+
+    rig.distributed.post(name: Notification.Name("com.apple.screenIsLocked"), object: nil)
+    rig.session.isLocked = true
+    try? await Task.sleep(for: .milliseconds(20))
+
+    #expect(!rig.monitor.isActive)
+    #expect(rig.changes.count == 1)
   }
 
   @Test("follows display sleep and wake")
