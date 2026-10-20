@@ -61,6 +61,15 @@ struct CommitmentsListModel: Equatable {
 
     var id: String { rawValue }
 
+    /// The digit that, with Command, shows this tab while Commitments is on screen.
+    var shortcutKey: Character {
+      switch self {
+      case .owedByMe: "1"
+      case .owedToMe: "2"
+      case .toConfirm: "3"
+      }
+    }
+
     var title: String {
       switch self {
       case .owedByMe: "Owed by me"

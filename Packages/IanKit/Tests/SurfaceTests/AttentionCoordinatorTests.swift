@@ -48,6 +48,12 @@ private final class Controls {
   var shown: [ItemDestination] = []
 }
 
+/// The lines the coordinator asked VoiceOver to speak.
+@MainActor
+private final class Announced {
+  var lines: [String] = []
+}
+
 @MainActor
 private final class Harness {
   let store: IanStore
@@ -59,6 +65,7 @@ private final class Harness {
   let settings: ClientSettings
   let coordinator: AttentionCoordinator
   let controls = Controls()
+  let announced = Announced()
   private var lastEvent = 10
 
   /// A started store holding `items`, with the coordinator started and settled on them.
@@ -83,10 +90,12 @@ private final class Harness {
     delivery = FakeDelivery()
     settings = ClientSettings(defaults: defaults)
     let controls = controls
+    let announced = announced
     coordinator = AttentionCoordinator(
       store: store, settings: settings, suppression: { controls.suppression },
       delivery: delivery, whisper: whisper, stopArming: stopArming,
-      isPanelOpen: { controls.isPanelOpen }, showItem: { controls.shown.append($0) })
+      isPanelOpen: { controls.isPanelOpen }, showItem: { controls.shown.append($0) },
+      announce: { announced.lines.append($0) })
     store.start()
     _ = await eventually { await MainActor.run { self.store.connection == .live } }
     guard startsCoordinator else { return }
@@ -151,6 +160,7 @@ struct AttentionCoordinatorTests {
       #expect(added.first?.category.buttons.map(\.title) == ["Approve", "Open"])
       #expect(added.first?.playsSound == false)
       #expect(harness.whisper.title == "Reply to [PERSON] about [CLIENT]")
+      #expect(harness.announced.lines == ["Reply to [PERSON] about [CLIENT]"])
       #expect(!harness.stopArming.isArmed)
     }
   }
@@ -202,6 +212,7 @@ struct AttentionCoordinatorTests {
 
       #expect(harness.delivery.added.isEmpty)
       #expect(harness.whisper.title != nil)
+      #expect(harness.announced.lines == [harness.whisper.title])
     }
   }
 
@@ -252,11 +263,13 @@ struct AttentionCoordinatorTests {
       await harness.upsert(urgent())
       #expect(harness.delivery.added.isEmpty)
       #expect(harness.whisper.title == nil)
+      #expect(harness.announced.lines.isEmpty)
 
       harness.controls.suppression = .none
       await harness.sync()
       #expect(harness.delivery.added.isEmpty)
       #expect(harness.whisper.title == nil)
+      #expect(harness.announced.lines.isEmpty)
     }
   }
 

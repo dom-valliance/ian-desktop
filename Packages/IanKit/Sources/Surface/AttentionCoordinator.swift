@@ -18,6 +18,7 @@ public final class AttentionCoordinator {
   private let stopArming: StopArming
   private let isPanelOpen: @MainActor () -> Bool
   private let showItem: @MainActor (ItemDestination) -> Void
+  private let announce: @MainActor (String) -> Void
 
   /// What the coordinator knows of a notification it delivered and the system may still hold.
   private struct Delivered {
@@ -40,7 +41,8 @@ public final class AttentionCoordinator {
     store: IanStore, settings: ClientSettings,
     suppression: @escaping @MainActor () -> Suppression, delivery: any NotificationDelivering,
     whisper: Whisper, stopArming: StopArming, isPanelOpen: @escaping @MainActor () -> Bool,
-    showItem: @escaping @MainActor (ItemDestination) -> Void
+    showItem: @escaping @MainActor (ItemDestination) -> Void,
+    announce: @escaping @MainActor (String) -> Void
   ) {
     self.store = store
     self.settings = settings
@@ -50,6 +52,7 @@ public final class AttentionCoordinator {
     self.stopArming = stopArming
     self.isPanelOpen = isPanelOpen
     self.showItem = showItem
+    self.announce = announce
   }
 
   public convenience init(
@@ -59,7 +62,7 @@ public final class AttentionCoordinator {
       store: store, settings: controller.settings, suppression: { controller.suppression },
       delivery: delivery, whisper: controller.whisper, stopArming: controller.stopArming,
       isPanelOpen: { controller.isExpandedVisible },
-      showItem: { controller.showItem($0) })
+      showItem: { controller.showItem($0) }, announce: { Announcer.post($0) })
   }
 
   /// Clears what an earlier launch left in Notification Centre, asks for permission once, then
@@ -126,6 +129,9 @@ public final class AttentionCoordinator {
       }
     if let urgent = batch.first(where: { $0.behaviour.orbit == .whisper }) {
       whisper.show(urgent.item.title)
+      // A person who has urgent banners off still hears it, and item text is never spoken while
+      // suppressed.
+      if !current.isActive { announce(urgent.item.title) }
     }
     if let stop = batch.first(where: { $0.behaviour.orbit == .opensOnPointerMovement }) {
       stopArming.arm(

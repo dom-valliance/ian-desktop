@@ -161,3 +161,13 @@ struct ViewListTests {
     #expect(AlertsListModel(state: state).pinned.isEmpty)
   }
 }
+
+@Suite("Commitments tab keys")
+struct CommitmentsTabKeyTests {
+  @Test("maps Command-1, Command-2 and Command-3 to the tabs in their order")
+  func digitsFollowTheTabs() {
+    let tabs = CommitmentsListModel.Tab.allCases
+    #expect(tabs.map(\.shortcutKey) == ["1", "2", "3"])
+    #expect(tabs.map(\.title) == ["Owed by me", "Owed to me", "To confirm"])
+  }
+}

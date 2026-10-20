@@ -94,6 +94,19 @@ struct CommitmentsView: View {
         ForEach(entries) { ItemCardView(store: store, entry: $0).focusSection() }
       }
     }
+    .background { tabShortcuts }
+  }
+
+  /// Command-1 to Command-3 while Commitments is shown. The buttons draw nothing and VoiceOver
+  /// skips them: the picker is the control, these are its keys.
+  private var tabShortcuts: some View {
+    ForEach(CommitmentsListModel.Tab.allCases) { shortcut in
+      Button(shortcut.title) { tab = shortcut }
+        .keyboardShortcut(KeyEquivalent(shortcut.shortcutKey), modifiers: .command)
+        .opacity(0)
+        .frame(width: 0, height: 0)
+        .accessibilityHidden(true)
+    }
   }
 }
 

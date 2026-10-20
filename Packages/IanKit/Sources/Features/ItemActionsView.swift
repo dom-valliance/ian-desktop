@@ -63,6 +63,7 @@ struct ItemActionsView: View {
       } else if old == nil {
         promptOwner?.opened(promptKey) { [flow] in flow.cancel() }
       }
+      if let text = prompt?.announcement { AccessibilityNotification.Announcement(text).post() }
       switch prompt {
       case .confirm: focus = .confirm
       case .until:
