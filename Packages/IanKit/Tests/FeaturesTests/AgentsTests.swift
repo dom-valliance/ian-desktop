@@ -25,6 +25,7 @@ struct AgentRowTests {
     #expect(row.breaker == nil)
     #expect(row.cost == "£1.50")
     #expect(row.share == "10%")
+    #expect(row.costAndShare == "£1.50, 10%")
   }
 
   @Test("names a half open breaker beside a state that does not say it")
@@ -54,8 +55,7 @@ struct AgentRowTests {
   func timesUseTheZone() {
     let row = AgentRow(agent: Fixtures.agent(), timeZone: london)
 
-    #expect(row.lastRun.contains("16 Oct 2026"))
-    #expect(row.lastRun.contains("8:55"))
+    #expect(row.lastRun == "16 Oct, 08:55")
   }
 
   @Test("offers Pause to a running agent and Resume to a paused one")

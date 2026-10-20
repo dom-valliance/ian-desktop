@@ -304,7 +304,7 @@ private struct ClientSettingsSection: View {
       }
       .pickerStyle(.segmented)
       .labelsHidden()
-      .frame(width: 160)
+      .fixedSize()
     }
   }
 
@@ -323,7 +323,7 @@ private struct ClientSettingsSection: View {
             }
             .pickerStyle(.segmented)
             .labelsHidden()
-            .frame(width: 160)
+            .fixedSize()
           } else {
             Text("Always").font(.system(size: 13))
           }

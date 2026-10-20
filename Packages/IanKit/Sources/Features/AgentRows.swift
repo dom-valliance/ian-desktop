@@ -18,6 +18,8 @@ struct AgentRow: Identifiable, Equatable {
   let nextRun: String
   let cost: String
   let share: String
+  /// Both as the server sent them, such as "£0.42, 2.8%".
+  var costAndShare: String { "\(cost), \(share)" }
   /// The one command the row offers, nil when the agent is not pausable.
   let command: Command?
 
@@ -27,8 +29,9 @@ struct AgentRow: Identifiable, Equatable {
     kind = Self.kindName(agent.kind)
     state = Self.stateName(agent.state)
     breaker = agent.state == .breakerOpen ? nil : agent.breaker.flatMap(Self.breakerName)
-    lastRun = Self.time(agent.lastRunAt, timeZone: timeZone) ?? "Not yet"
-    nextRun = Self.time(agent.nextRunAt, timeZone: timeZone) ?? "None planned"
+    let format = CardDate(timeZone: timeZone)
+    lastRun = agent.lastRunAt.map(format.string) ?? "Not yet"
+    nextRun = agent.nextRunAt.map(format.string) ?? "None planned"
     cost = Self.money(agent.costTodayGbp)
     share = Self.percent(agent.ceilingFraction)
     command = agent.pausable ? (agent.state == .paused ? .resume : .pause) : nil
@@ -69,13 +72,6 @@ struct AgentRow: Identifiable, Equatable {
   static func percent(_ fraction: Double) -> String {
     fraction.formatted(
       .percent.precision(.fractionLength(0...1)).locale(Locale(identifier: "en_GB")))
-  }
-
-  static func time(_ date: Date?, timeZone: TimeZone) -> String? {
-    date?.formatted(
-      Date.FormatStyle(
-        date: .abbreviated, time: .shortened, locale: Locale(identifier: "en_GB"),
-        timeZone: timeZone))
   }
 }
 

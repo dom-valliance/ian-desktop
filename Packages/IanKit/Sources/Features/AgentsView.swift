@@ -65,47 +65,42 @@ private struct AgentTable: View {
   let store: IanStore
 
   /// Times follow the principal's zone, as the server's own meta lines do.
-  private var timeZone: TimeZone {
-    store.state.me.flatMap { TimeZone(identifier: $0.timeZone) } ?? .current
-  }
+  private var timeZone: TimeZone { CardDate.timeZone(for: store.state.me) }
 
+  /// The columns, with fixed widths where the content is short. The name takes what is left, so
+  /// the table fits 600 points and stretches with the panel.
   private enum Column: String, CaseIterable {
     case name = "Name"
-    case kind = "Kind"
     case state = "State"
     case lastRun = "Last run"
     case nextRun = "Next run"
     case cost = "Cost today"
-    case share = "Of ceiling"
 
     var width: CGFloat? {
       switch self {
       case .name: nil
-      case .kind: 70
-      case .state: 110
-      case .lastRun, .nextRun: 130
-      case .cost: 80
-      case .share: 80
+      case .state: 90
+      case .lastRun, .nextRun: 90
+      case .cost: 88
       }
     }
   }
 
-  private static let commandWidth: CGFloat = 96
-  private static let tableMinimumWidth: CGFloat = 960
+  private static let commandWidth: CGFloat = 92
+  private static let spacing: CGFloat = 6
 
   var body: some View {
-    // The columns need more room than a narrow panel gives, so the table scrolls sideways rather
-    // than squeezing the name.
-    ScrollView([.horizontal, .vertical]) {
+    ScrollView {
       LazyVStack(alignment: .leading, spacing: 0) {
-        HStack(spacing: 12) {
+        HStack(spacing: Self.spacing) {
           ForEach(Column.allCases, id: \.self) { column in
             Text(column.rawValue.uppercased())
               .font(ClientPalette.label)
               .tracking(ClientPalette.labelTracking)
               .foregroundStyle(ClientPalette.secondary(0.7))
+              .lineLimit(2)
               .frame(
-                minWidth: column.width ?? 160, maxWidth: column.width ?? .infinity,
+                minWidth: column.width ?? 120, maxWidth: column.width ?? .infinity,
                 alignment: .leading)
           }
           Color.clear.frame(width: Self.commandWidth, height: 1)
@@ -116,11 +111,10 @@ private struct AgentTable: View {
         ForEach(store.state.agents, id: \.id) { agent in
           AgentRowView(
             store: store, row: AgentRow(agent: agent, timeZone: timeZone),
-            commandWidth: Self.commandWidth)
+            commandWidth: Self.commandWidth, spacing: Self.spacing)
           Divider().overlay(ClientPalette.line)
         }
       }
-      .frame(minWidth: Self.tableMinimumWidth, alignment: .leading)
     }
   }
 
@@ -128,19 +122,27 @@ private struct AgentTable: View {
     let store: IanStore
     let row: AgentRow
     let commandWidth: CGFloat
+    let spacing: CGFloat
 
     private var isPending: Bool { store.agentPending.contains(row.id) }
 
     var body: some View {
       VStack(alignment: .leading, spacing: 4) {
-        HStack(spacing: 12) {
-          cell(.name, row.name)
-          cell(.kind, row.kind)
+        HStack(spacing: spacing) {
+          VStack(alignment: .leading, spacing: 2) {
+            Text(row.name).font(.system(size: 13))
+            Text(row.kind)
+              .font(.system(size: 11))
+              .foregroundStyle(ClientPalette.secondary())
+          }
+          .frame(minWidth: Column.name.width ?? 120, maxWidth: .infinity, alignment: .leading)
+          .accessibilityElement(children: .combine)
+          .accessibilityLabel("\(row.name), \(row.kind)")
           cell(.state, row.state + (row.breaker.map { ", \($0.lowercased())" } ?? ""))
           cell(.lastRun, row.lastRun)
           cell(.nextRun, row.nextRun)
-          cell(.cost, row.cost)
-          cell(.share, row.share)
+          cell(
+            .cost, row.costAndShare, label: "Cost today \(row.cost), \(row.share) of the ceiling")
           HStack(spacing: 0) {
             Spacer(minLength: 0)
             command
@@ -158,13 +160,11 @@ private struct AgentTable: View {
       .accessibilityElement(children: .contain)
     }
 
-    private func cell(_ column: Column, _ value: String) -> some View {
+    private func cell(_ column: Column, _ value: String, label: String? = nil) -> some View {
       Text(value)
         .font(.system(size: 13))
-        .frame(
-          minWidth: column.width ?? 160, maxWidth: column.width ?? .infinity, alignment: .leading
-        )
-        .accessibilityLabel("\(row.name), \(column.rawValue): \(value)")
+        .frame(width: column.width, alignment: .leading)
+        .accessibilityLabel("\(row.name), \(label ?? "\(column.rawValue): \(value)")")
     }
 
     @ViewBuilder private var command: some View {
