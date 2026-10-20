@@ -24,5 +24,6 @@ Numbers here are this repository's own. Lance's ADRs are cited as "Lance ADR NNN
 | 0017 | [The Orbit's motion runs in Core Animation](0017-orbit-motion-runs-in-core-animation.md) | Accepted |
 | 0018 | [The field draws with Core Graphics on a display link](0018-the-field-draws-with-core-graphics-on-a-display-link.md) | Accepted |
 | 0019 | [Notification levels, suppression toggles and the order of a new agent](0019-settings-levels-toggles-and-agent-order.md) | Accepted |
+| 0020 | [The attention ladder and local notifications](0020-the-attention-ladder-and-local-notifications.md) | Accepted |
 
 Later numbers go to deviations as they arise.
