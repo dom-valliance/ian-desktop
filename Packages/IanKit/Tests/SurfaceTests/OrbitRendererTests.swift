@@ -139,6 +139,14 @@ struct OrbitRendererTests {
     #expect(drawing(working, time: 2.2, reduced: true).core.radius == 6.5)
   }
 
+  @Test("rings a working core when Reduce Motion holds it still, and only then")
+  func workingRing() {
+    let working = model(working: true)
+    #expect(drawing(working, time: 0.6, reduced: true).core.ring == 10)
+    #expect(drawing(working, time: 0.6).core.ring == nil)
+    #expect(drawing(model(working: false), time: 0.6, reduced: true).core.ring == nil)
+  }
+
   @Test("rests the core grey and small when nothing is working")
   func coreResting() {
     let core = drawing(model(working: false), time: 0.6).core

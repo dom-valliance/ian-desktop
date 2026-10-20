@@ -12,6 +12,9 @@ public struct OrbitDrawing: Equatable, Sendable {
   public struct Core: Equatable, Sendable {
     public let radius: Double
     public let colour: OrbitColour
+    /// The radius of a still ring round a working core. It is there only when Reduce Motion
+    /// holds the breath still, so a working core is not marked by colour alone (spec 6.8).
+    public let ring: Double?
   }
 
   public struct Rim: Equatable, Sendable {
@@ -60,6 +63,9 @@ public enum OrbitRenderer {
   /// The rim's opacity runs from this to 1 as the pulse runs from 0 to 1.
   static let rimMinimumAlpha = 0.5
   static let restingCoreRadius = 6.0
+  /// The still ring round a working core, a little outside the breath's largest radius.
+  static let workingRingRadius = 10.0
+  static let workingRingWidth = 1.5
   static let satelliteRadius = 4.5
   static let alertRadius = 6.5
   static let rimWidth = 1.5
@@ -104,8 +110,9 @@ public enum OrbitRenderer {
     let core =
       model.working
       ? OrbitDrawing.Core(
-        radius: restingCoreRadius + breathRange * breath, colour: OrbitPalette.workingCore)
-      : OrbitDrawing.Core(radius: restingCoreRadius, colour: OrbitPalette.restingCore)
+        radius: restingCoreRadius + breathRange * breath, colour: OrbitPalette.workingCore,
+        ring: reducedMotion ? workingRingRadius : nil)
+      : OrbitDrawing.Core(radius: restingCoreRadius, colour: OrbitPalette.restingCore, ring: nil)
 
     let satellites = model.satellites.compactMap { satellite -> OrbitDrawing.Satellite? in
       guard satellite.slot < satelliteAngles.count else { return nil }

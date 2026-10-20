@@ -47,6 +47,11 @@ public struct OrbitDrawingView: View {
         circle(
           CGPoint(x: centre.x, y: centre.y), drawing.core.radius * scale),
         with: .color(drawing.core.colour.color))
+      if let ring = drawing.core.ring {
+        context.stroke(
+          circle(centre, ring * scale), with: .color(drawing.core.colour.color),
+          lineWidth: OrbitRenderer.workingRingWidth * scale)
+      }
     }
 
     for satellite in drawing.satellites {
