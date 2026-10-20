@@ -92,34 +92,47 @@ private struct ClientHeader: View {
 
   var body: some View {
     TimelineView(.animation(minimumInterval: 15, paused: !isTicking)) { timeline in
-      let status = ClientStatus(
-        environmentName: store.profile.isMock ? nil : store.profile.displayName,
-        phase: store.phase, connection: store.connection, lastUpdatedAt: store.lastUpdatedAt,
-        isSigningIn: store.isSigningIn, now: timeline.date)
-      VStack(spacing: 0) {
-        HStack(spacing: 16) {
-          Text("Ian")
-            .font(.system(size: 18, weight: .medium))
-          Spacer()
-          if let environment = status.environment {
-            Text(environment.uppercased())
-              .font(ClientPalette.label)
-              .tracking(ClientPalette.labelTracking)
-              .foregroundStyle(ClientPalette.secondary(0.7))
-          }
-          if let age = status.dataAge {
-            Text(age)
-              .font(.system(size: 13))
-              .foregroundStyle(ClientPalette.secondary())
-          }
-          Button("Close", action: close)
-            .buttonStyle(ActionButtonStyle(style: .secondary))
+      ClientHeaderBar(
+        status: ClientStatus(
+          environmentName: store.profile.isMock ? nil : store.profile.displayName,
+          phase: store.phase, connection: store.connection, lastUpdatedAt: store.lastUpdatedAt,
+          isSigningIn: store.isSigningIn, now: timeline.date),
+        signIn: { Task { await store.signIn() } }, close: close)
+    }
+  }
+}
+
+/// The header for one status: the name, the environment, the data's age and the banner. It reads
+/// no clock, so a snapshot draws it from a status built at a fixed time.
+struct ClientHeaderBar: View {
+  let status: ClientStatus
+  let signIn: () -> Void
+  let close: () -> Void
+
+  var body: some View {
+    VStack(spacing: 0) {
+      HStack(spacing: 16) {
+        Text("Ian")
+          .font(.system(size: 18, weight: .medium))
+        Spacer()
+        if let environment = status.environment {
+          Text(environment.uppercased())
+            .font(ClientPalette.label)
+            .tracking(ClientPalette.labelTracking)
+            .foregroundStyle(ClientPalette.secondary(0.7))
         }
-        .padding(.horizontal, 20)
-        .padding(.vertical, 10)
-        if let banner = status.banner {
-          BannerView(banner: banner, signIn: { Task { await store.signIn() } })
+        if let age = status.dataAge {
+          Text(age)
+            .font(.system(size: 13))
+            .foregroundStyle(ClientPalette.secondary())
         }
+        Button("Close", action: close)
+          .buttonStyle(ActionButtonStyle(style: .secondary))
+      }
+      .padding(.horizontal, 20)
+      .padding(.vertical, 10)
+      if let banner = status.banner {
+        BannerView(banner: banner, signIn: signIn)
       }
     }
   }
