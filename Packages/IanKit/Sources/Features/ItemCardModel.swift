@@ -49,11 +49,7 @@ struct ItemCardModel: Equatable {
     lanceURL = Self.webURL(item.links.lance)
     sourceURL = item.links.source.flatMap(Self.webURL)
     settlement = removal.map { $0.outcome ?? "Closed" }
-    switch item.attention {
-    case .urgent: urgency = "Urgent"
-    case .stop: urgency = "Stop"
-    case .ambient, .needsYou: urgency = nil
-    }
+    urgency = ItemKindStyle.urgency(of: item)
 
     let format = CardDate(timeZone: timeZone)
     switch item.detail {

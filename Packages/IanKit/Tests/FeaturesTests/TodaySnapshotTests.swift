@@ -15,7 +15,7 @@ import Testing
 @Suite("Today snapshots")
 @MainActor
 struct TodaySnapshotTests {
-  private static let size = CGSize(width: 640, height: 560)
+  private static let size = CGSize(width: 640, height: 720)
   private nonisolated static let now = Date(timeIntervalSince1970: 1_792_137_600)
 
   private struct Harness {

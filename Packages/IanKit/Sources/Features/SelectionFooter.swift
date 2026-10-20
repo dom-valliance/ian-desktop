@@ -23,6 +23,9 @@ struct FooterContent: Equatable {
   let meta: String
   let trailing: Trailing
 
+  /// What the footer is about, for the container VoiceOver enters from the list.
+  var accessibilityLabel: String { "Selected: \(title)" }
+
   /// - Returns: Nil when the selection names an item the store neither holds nor remembers.
   init?(selection: TodaySelection, state: StoreState, removals: [String: IanStore.Removal]) {
     switch selection {
@@ -107,6 +110,8 @@ struct SelectionFooter: View {
       }
       .padding(.horizontal, 20)
       .padding(.vertical, 14)
+      .accessibilityElement(children: .contain)
+      .accessibilityLabel(content.accessibilityLabel)
     }
   }
 
@@ -144,7 +149,8 @@ struct SelectionFooter: View {
               .buttonStyle(ListRowButtonStyle(isSelected: selection == .item(id)))
               .accessibilityLabel(
                 TodayListModel.itemLabel(
-                  item, horizon: "this week", status: statuses.description(of: id)))
+                  item, horizon: "this week", status: statuses.description(of: id),
+                  attention: ItemKindStyle.urgency(of: item)?.lowercased()))
             }
           }
         }

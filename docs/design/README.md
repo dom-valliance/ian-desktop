@@ -108,7 +108,7 @@ The spec's table in 6.6 is authoritative. The Ladder artboard adds two columns t
 | The list is sorted on the client | The server sends the order |
 | Ladder holds notifications for Focus and screen sharing | Suppression list in 6.5; Focus is AGENTS.md Q13 |
 | The list sits beside the field | The Now list, This week and Later sit below the field (spec 6.3); the selection footer is pinned under them |
-| A rolled-up group's tag is not specified | The week tag shows the group's item count. A Later row takes its colour from the kind of its first count. Both follow the server's order |
+| A Now row's tag reads NOW; a rolled-up group's tag is not specified | A Now row's tag names the item's kind in the cards' own words (PROPOSAL, OWED BY YOU, OWED TO YOU, TASK, ALERT), since the section header already says Now and colour is never the only signal of kind (spec 6.8). The week tag shows the group's item count. A Later row has a neutral swatch, because the server puts a kind on a field cell and not on a Later group (AGENTS.md Q16). All follow the server's order |
 | The field only sways, at 10 degrees around 45 | The principal turns it by dragging sideways, all the way round, at 0.5 degrees a point; the sway carries on around the angle chosen, and Reduce Motion stops the sway but not the turn. A double-click returns to 45 degrees. The tilt never changes (D5.1, ADR 0016) |
 | Row labels sit left of the plate | They sit at whichever end of each row projects leftmost, chosen from the principal's angle rather than the sway, so they change side only when the principal turns the field past 90 or 270 degrees (D5.1) |
 | Field panel 860 points wide | Expanded client 1,040 by 720 points, with Today's field inside it |

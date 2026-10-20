@@ -25,6 +25,26 @@ struct TodayListModelTests {
     #expect(rows.allSatisfy { !$0.isSettled })
   }
 
+  @Test("says the kind and the attention rung in a Now row's label, so colour is not the signal")
+  func nowRowLabels() {
+    var state = TodayScenario.state
+    state.items["prop_a1"]?.attention = .urgent
+    state.items["cmt_a2"]?.attention = .stop
+    let rows = TodayListModel(
+      state: state, removals: [:], statuses: ItemStatuses(), at: Date()
+    ).now
+
+    #expect(rows[1].accessibilityLabel == "Proposal, Title of prop_a1, now, urgent")
+    #expect(rows[2].accessibilityLabel == "Owed by you, Title of cmt_a2, now, stop")
+    #expect(rows[0].accessibilityLabel == "Alert, Title of alrt_b1, now")
+  }
+
+  @Test("names the kind in a Now row's tag, in the kicker's own words")
+  func nowTags() {
+    #expect(ItemKindStyle.name(.commitmentBy).uppercased() == "OWED BY YOU")
+    #expect(ItemKindStyle.name(.proposal).uppercased() == "PROPOSAL")
+  }
+
   @Test("rolls This week up into one row per unit with its item count")
   func weekRows() {
     let rows = model().week
@@ -183,6 +203,12 @@ struct FooterContentTests {
     #expect(footer?.title == "Title of cmt_a2")
     #expect(footer?.meta == "Meta of cmt_a2")
     #expect(footer?.trailing == .actions)
+  }
+
+  @Test("labels the footer's container with the selected title")
+  func footerAccessibilityLabel() {
+    let footer = FooterContent(selection: .item("cmt_a2"), state: state, removals: [:])
+    #expect(footer?.accessibilityLabel == "Selected: Title of cmt_a2")
   }
 
   @Test("shows the outcome line instead of actions for a removed item")
