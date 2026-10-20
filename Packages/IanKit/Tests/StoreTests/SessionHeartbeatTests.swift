@@ -41,8 +41,10 @@ struct SessionHeartbeatStoreTests {
     let (store, service) = await liveStore(version: "0.4.2")
     defer { store.stop() }
 
-    await store.sendHeartbeat(deviceID: device, active: true, suppressed: false, idleSeconds: 42)
+    let delivered = await store.sendHeartbeat(
+      deviceID: device, active: true, suppressed: false, idleSeconds: 42)
 
+    #expect(delivered)
     let sent = service.heartbeats
     #expect(sent.count == 1)
     #expect(sent.first?.deviceId == "0f6b1c2e-3a4d-4e5f-8a9b-0c1d2e3f4a5b")
@@ -67,8 +69,10 @@ struct SessionHeartbeatStoreTests {
     let service = ScriptedService()
     let store = makeStore(service)
 
-    await store.sendHeartbeat(deviceID: device, active: true, suppressed: false, idleSeconds: 0)
+    let delivered = await store.sendHeartbeat(
+      deviceID: device, active: true, suppressed: false, idleSeconds: 0)
 
+    #expect(!delivered)
     #expect(store.heartbeatSession == nil)
     #expect(service.heartbeats.isEmpty)
   }
@@ -104,10 +108,13 @@ struct SessionHeartbeatStoreTests {
   @Test("a 401 sends the principal back to sign-in")
   func unauthorisedRequiresSignIn() async {
     let (store, service) = await liveStore()
+    defer { store.stop() }
     service.planHeartbeatResult(.failure(.unauthorised))
 
-    await store.sendHeartbeat(deviceID: device, active: true, suppressed: false, idleSeconds: 0)
+    let delivered = await store.sendHeartbeat(
+      deviceID: device, active: true, suppressed: false, idleSeconds: 0)
 
+    #expect(!delivered)
     #expect(store.phase == .signInRequired(message: nil))
     #expect(store.heartbeatSession == nil)
   }
@@ -128,10 +135,14 @@ struct SessionHeartbeatStoreTests {
     defer { store.stop() }
     service.planHeartbeatResult(.failure(.offline))
 
-    await store.sendHeartbeat(deviceID: device, active: true, suppressed: false, idleSeconds: 0)
+    let failed = await store.sendHeartbeat(
+      deviceID: device, active: true, suppressed: false, idleSeconds: 0)
     service.planHeartbeatResult(.success(()))
-    await store.sendHeartbeat(deviceID: device, active: true, suppressed: false, idleSeconds: 0)
+    let retried = await store.sendHeartbeat(
+      deviceID: device, active: true, suppressed: false, idleSeconds: 0)
 
+    #expect(!failed)
+    #expect(retried)
     #expect(store.phase == .running)
     #expect(service.heartbeats.count == 2)
   }
@@ -149,8 +160,9 @@ struct SessionHeartbeatStoreTests {
     #expect(await waitUntil("the heartbeat is out") { service.heartbeats.count == 1 })
     await store.signOut()
     await gate.open()
-    await send.value
+    let delivered = await send.value
 
+    #expect(!delivered)
     #expect(store.phase == .signInRequired(message: nil))
     #expect(service.signIns == 0)
   }

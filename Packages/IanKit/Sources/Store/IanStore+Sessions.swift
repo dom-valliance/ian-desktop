@@ -15,22 +15,27 @@ extension IanStore {
     return generation
   }
 
-  /// Reports this session to Lance once. Nothing is queued: while `heartbeatSession` is nil the
-  /// call does nothing, and a failed send waits for the next heartbeat.
+  /// Reports this session to Lance once and says whether Lance recorded it. Nothing is queued:
+  /// while `heartbeatSession` is nil the call does nothing and answers false, and a failed send
+  /// is the caller's to repeat.
   ///
   /// A `401` and a `426` take the store's usual sign-in and upgrade paths. A result that arrives
-  /// after a sign-out or a profile switch is dropped.
-  public func sendHeartbeat(deviceID: UUID, active: Bool, suppressed: Bool, idleSeconds: Int) async
-  {
-    guard let session = heartbeatSession else { return }
+  /// after a sign-out or a profile switch is dropped and counts as not delivered.
+  @discardableResult
+  public func sendHeartbeat(
+    deviceID: UUID, active: Bool, suppressed: Bool, idleSeconds: Int
+  ) async -> Bool {
+    guard let session = heartbeatSession else { return false }
     let heartbeat = Components.Schemas.SessionHeartbeat(
       deviceId: deviceID.uuidString.lowercased(), clientVersion: appVersion.description,
       active: active, suppressed: suppressed, idleSeconds: max(0, idleSeconds))
     do {
       try await service.recordSession(heartbeat)
+      return generation == session
     } catch {
-      guard generation == session else { return }
+      guard generation == session else { return false }
       handleHeartbeatFailure(error)
+      return false
     }
   }
 
