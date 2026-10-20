@@ -17,6 +17,8 @@ final class TodayModel {
   /// Counts each rebuild, so a view that draws rows leaving the list is redrawn when it is done.
   private(set) var revision = 0
   @ObservationIgnored private var memory = FieldMemory()
+  /// The keyboard path from the selected row into the footer's targets.
+  let footerKeys = FooterKeys()
 
   init() {}
 

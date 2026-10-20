@@ -56,8 +56,10 @@ struct TodayView: View {
       Divider().overlay(ClientPalette.line)
       SelectionFooter(
         store: store, selection: selection, onSelect: { model.select($0) },
-        onNavigate: onNavigate)
+        onNavigate: onNavigate, keys: model.footerKeys)
     }
+    .background { FooterKeyCommands(keys: model.footerKeys) }
+    .onChange(of: selection) { model.footerKeys.exit() }
     .onGeometryChange(for: Double.self, of: { $0.size.height }) { containerHeight = $0 }
     .task(id: trigger) { await keepSceneCurrent() }
   }
@@ -104,5 +106,38 @@ private struct FieldPane: View {
       direction: .horizontal, colour: ClientPalette.line, value: { height },
       onChange: { layout.resizeField(to: $0, containerHeight: containerHeight) },
       onEnd: { layout.commitPanes() })
+  }
+}
+
+/// Binds Return, Left, Right and Escape to `FooterKeys`. They are key equivalents, so they reach
+/// the window whatever has focus and with Keyboard navigation off. Return is claimed only while a
+/// target exists and no prompt is open, and the arrows and Escape only inside the mode, so a text
+/// field, a prompt or the panel's own Escape keeps its key the rest of the time. The buttons draw
+/// nothing and VoiceOver skips them: the footer's own buttons are its accessible controls.
+private struct FooterKeyCommands: View {
+  let keys: FooterKeys
+
+  var body: some View {
+    Group {
+      if keys.handlesReturn {
+        key("Act on the footer", .return) { keys.pressReturn() }
+      }
+      if keys.isActive {
+        key("Previous target", .leftArrow) { keys.move(-1) }
+        key("Next target", .rightArrow) { keys.move(1) }
+        key("Back to the list", .escape) { keys.pressEscape() }
+      }
+    }
+  }
+
+  private func key(_ title: String, _ equivalent: KeyEquivalent, _ action: @escaping () -> Void)
+    -> some View
+  {
+    Button(title, action: action)
+      .keyboardShortcut(equivalent, modifiers: [])
+      .opacity(0)
+      .frame(width: 0, height: 0)
+      .focusable(false)
+      .accessibilityHidden(true)
   }
 }

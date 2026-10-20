@@ -45,7 +45,8 @@ struct TodaySnapshotTests {
   }
 
   private func lower(
-    _ store: IanStore, selection: TodaySelection?, at time: Date = TodaySnapshotTests.now
+    _ store: IanStore, selection: TodaySelection?, at time: Date = TodaySnapshotTests.now,
+    keys: FooterKeys = FooterKeys()
   ) -> some View {
     VStack(spacing: 0) {
       TodayListsView(
@@ -55,7 +56,8 @@ struct TodaySnapshotTests {
         hasToday: store.state.today != nil, selection: .constant(selection))
       Divider().overlay(ClientPalette.line)
       SelectionFooter(
-        store: store, selection: selection, onSelect: { _ in }, onNavigate: { _ in })
+        store: store, selection: selection, onSelect: { _ in }, onNavigate: { _ in },
+        keys: keys)
     }
   }
 
@@ -101,5 +103,26 @@ struct TodaySnapshotTests {
     check(
       lower(harness.store, selection: .item(id), at: Self.now.addingTimeInterval(0.1)),
       named: "footer-removed")
+  }
+
+  @Test("draws the keyboard highlight on the second action, and on a week group's second member")
+  func keyboardHighlight() async throws {
+    let harness = await harness("normal")
+    defer { harness.store.stop() }
+    let id = try #require(harness.scenario.today.lists.now.first)
+    let keys = FooterKeys()
+    keys.setTargetCount(2)
+    keys.pressReturn()
+    keys.move(1)
+    check(lower(harness.store, selection: .item(id), keys: keys), named: "footer-item-keyboard")
+
+    let week = try #require(harness.scenario.today.lists.week.first)
+    let groupKeys = FooterKeys()
+    groupKeys.setTargetCount(2)
+    groupKeys.pressReturn()
+    groupKeys.move(1)
+    check(
+      lower(harness.store, selection: .week(unitID: week.unitId), keys: groupKeys),
+      named: "footer-week-keyboard")
   }
 }
