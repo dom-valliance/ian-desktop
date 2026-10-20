@@ -160,9 +160,22 @@ struct PrincipalSettingsTests {
 
     model.requestLive()
     model.cancelLive()
+
+    #expect(!model.isConfirmingLive)
+    #expect(service.settingsPatches.isEmpty)
+  }
+
+  @Test("sends the switch to live when the dialog's dismissal cancels before the button acts")
+  func liveSurvivesTheDialogDismissal() async {
+    let (store, service, _) = await liveStore(settings: Fixtures.settings(liveEligible: true))
+    defer { store.stop() }
+    let model = PrincipalSettingsModel(store: store)
+
+    model.requestLive()
+    model.cancelLive()
     await model.confirmLive()
 
-    #expect(service.settingsPatches.isEmpty)
+    #expect(service.settingsPatches == [.init(mode: .live)])
   }
 
   @Test("returns to dry run without asking")
@@ -431,13 +444,13 @@ struct SettingsModelTests {
     #expect(first.signOuts == 0)
 
     model.cancelProfile()
-    await model.confirmProfile(in: store)
+    #expect(model.pendingProfile == nil)
     #expect(first.signOuts == 0)
     #expect(store.profileID == "mock")
   }
 
   @Test("signs out, clears the store and restarts sync once the switch is confirmed")
-  func confirmedSwitch() async {
+  func confirmedSwitch() async throws {
     let remembered = Remembered()
     let next = ScriptedService(
       snapshots: [
@@ -447,8 +460,11 @@ struct SettingsModelTests {
     defer { store.stop() }
     let model = model()
     model.requestProfile("lance-dev", in: store)
+    let presented = try #require(model.pendingProfile)
+    // Dismissing the dialog cancels before the button's action runs.
+    model.cancelProfile()
 
-    await model.confirmProfile(in: store)
+    await model.confirmProfile(presented, in: store)
 
     #expect(first.signOuts == 1)
     #expect(remembered.value == "lance-dev")

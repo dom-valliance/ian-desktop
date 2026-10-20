@@ -377,15 +377,20 @@ private struct ClientSettingsSection: View {
       .frame(width: 160)
     }
     .confirmationDialog(
-      "Switch to \(model.pendingProfile?.displayName ?? "another environment")?",
+      "Switch environment?",
       isPresented: Binding(
         get: { model.pendingProfile != nil }, set: { if !$0 { model.cancelProfile() } }),
-      titleVisibility: .visible
-    ) {
-      Button("Sign out and switch") { Task { await model.confirmProfile(in: store) } }
+      titleVisibility: .visible,
+      presenting: model.pendingProfile
+    ) { choice in
+      Button("Sign out and switch to \(choice.displayName)") {
+        Task { await model.confirmProfile(choice, in: store) }
+      }
       Button("Cancel", role: .cancel) { model.cancelProfile() }
-    } message: {
-      Text("Ian signs out, clears its data and syncs again from the new environment.")
+    } message: { choice in
+      Text(
+        "Ian signs out, clears its data and syncs again from \(choice.displayName)."
+      )
     }
   }
 

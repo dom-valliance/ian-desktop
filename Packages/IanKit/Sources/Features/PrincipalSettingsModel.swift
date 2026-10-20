@@ -139,8 +139,9 @@ final class PrincipalSettingsModel {
     isConfirmingLive = false
   }
 
+  /// Sent only when the server says going live is allowed now. It is never guarded by the
+  /// confirming flag: the dialog's dismissal clears that flag before the button's action runs.
   func confirmLive() async {
-    guard isConfirmingLive else { return }
     isConfirmingLive = false
     guard canGoLive else { return }
     await send(.init(mode: .live))

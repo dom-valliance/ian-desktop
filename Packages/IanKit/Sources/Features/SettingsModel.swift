@@ -38,9 +38,10 @@ final class SettingsModel {
     pendingProfile = nil
   }
 
-  /// Signs out, clears the store and syncs against the chosen profile.
-  func confirmProfile(in store: IanStore) async {
-    guard let choice = pendingProfile else { return }
+  /// Signs out, clears the store and syncs against `choice`, the profile the dialog presented.
+  /// Taking it as an argument matters: dismissing the dialog clears `pendingProfile` before the
+  /// button's action runs.
+  func confirmProfile(_ choice: ProfileChoice, in store: IanStore) async {
     pendingProfile = nil
     await store.switchProfile(to: choice.id)
   }
