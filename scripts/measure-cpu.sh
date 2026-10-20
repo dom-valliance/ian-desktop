@@ -1,8 +1,21 @@
 #!/usr/bin/env bash
-# Measures the CPU Ian's own process uses in a Release build against the mock (P1, spec 6.9):
+# Measures Ian's own process in a Release build against the mock (P1 and D9, spec 6.9 and 11):
 # the Orbit alone in `quiet`, `normal` and `incident`, and the expanded client open on Today in
 # `normal`. CPU is the change in the process's cumulative CPU time over 30 seconds, after a
-# 10-second warm-up. Prints one table and exits non-zero when a target is missed.
+# 10-second warm-up. Resident memory is the average and the peak of `ps -o rss`, sampled each
+# second over the same 30 seconds. Launch to data is the time from starting the process to its
+# stream connection to the mock opening, for each launch. Prints one table and exits non-zero when
+# a target is missed.
+#
+# Memory: under 150 MB resident for the Orbit-only states (spec 6.9). The panel's figure has no
+# target and is shown for the record.
+#
+# Launch to data: spec 11 wants the `normal` scenario on screen within ten seconds of launch.
+# The app logs nothing when it applies the first snapshot, so this reads the nearest outside
+# signal. The sync engine applies the snapshot and then opens the event stream, so the stream's
+# first TCP connection to the mock (polled every 50 ms with lsof) marks the data arriving. It
+# is a tight proxy for the first snapshot applied, not the moment SwiftUI draws it; the lsof poll
+# adds up to about 100 ms. The first launch includes a cold start of the Release build.
 #
 # No M1 is available, so each target is two thirds of the spec's budget on this machine:
 # the Orbit alone under 0.7% in `normal` and `incident`, the panel open under 10%.
@@ -26,6 +39,8 @@ warm_up=10
 window=30
 orbit_target=0.7
 panel_target=10
+memory_target_mb=150
+launch_target=10
 
 fail() {
   echo "measure-cpu.sh: $*" >&2
@@ -153,6 +168,7 @@ set_scenario() {
 
 # Starts Ian on the mock, with any extra launch arguments, and waits until it holds a connection.
 launch_app() {
+  launch_started="$(now)"
   "$app_bin" -IanEnvironment mock "$@" >/dev/null 2>&1 &
   app_pid=$!
   disown "$app_pid"
@@ -165,13 +181,14 @@ launch_app() {
   done
   [[ "$command" == "$app_bin"* ]] ||
     fail "pid $app_pid is not Ian's binary (its command is '$command')."
-  for _ in $(seq 1 100); do
+  for _ in $(seq 1 400); do
     kill -0 "$app_pid" 2>/dev/null || fail "Ian exited while starting."
     if lsof -nP -a -p "$app_pid" -iTCP@127.0.0.1:"$port" -sTCP:ESTABLISHED 2>/dev/null |
       grep -q ESTABLISHED; then
+      launch_seconds="$(awk -v t0="$launch_started" -v t1="$(now)" 'BEGIN { printf "%.2f", t1 - t0 }')"
       return 0
     fi
-    sleep 0.2
+    sleep 0.05
   done
   fail "Ian held no connection to the mock within twenty seconds."
 }
@@ -185,22 +202,39 @@ now() {
   perl -MTime::HiRes=time -e 'printf "%.3f\n", time'
 }
 
-# Prints Ian's CPU percentage and WindowServer's over the measuring window.
+# Resident set size of a process in megabytes, from ps's kilobytes.
+rss_mb() {
+  ps -o rss= -p "$1" | awk '{ printf "%.1f\n", $1 / 1024 }'
+}
+
+# Reads megabyte samples, one per line, and prints their average and their peak.
+summarise_rss() {
+  awk '{ s += $1; if ($1 > m) m = $1; n++ } END { if (n == 0) exit 1; printf "%.1f %.1f\n", s / n, m }'
+}
+
+# Prints Ian's CPU percentage, WindowServer's, and Ian's average and peak resident megabytes over
+# the measuring window.
 measure() {
   sleep "$warm_up"
   kill -0 "$app_pid" 2>/dev/null || fail "Ian exited during the warm-up."
-  local cpu_before time_before cpu_after time_after ws_before ws_after
+  local cpu_before time_before cpu_after time_after ws_before ws_after samples rss
   cpu_before="$(cpu_seconds "$app_pid")"
   ws_before="$(cpu_seconds "$window_server_pid")"
   time_before="$(now)"
-  sleep "$window"
-  kill -0 "$app_pid" 2>/dev/null || fail "Ian exited during the measurement."
+  samples="$(mktemp -t ian-measure-rss.XXXXXX)"
+  for _ in $(seq 1 "$window"); do
+    sleep 1
+    kill -0 "$app_pid" 2>/dev/null || fail "Ian exited during the measurement."
+    rss_mb "$app_pid" >>"$samples"
+  done
   cpu_after="$(cpu_seconds "$app_pid")"
   ws_after="$(cpu_seconds "$window_server_pid")"
   time_after="$(now)"
+  rss="$(summarise_rss <"$samples")" || fail "no resident memory samples were taken."
+  rm -f "$samples"
   awk -v c0="$cpu_before" -v c1="$cpu_after" -v w0="$ws_before" -v w1="$ws_after" \
-    -v t0="$time_before" -v t1="$time_after" \
-    'BEGIN { printf "%.2f %.2f\n", (c1 - c0) / (t1 - t0) * 100, (w1 - w0) / (t1 - t0) * 100 }'
+    -v t0="$time_before" -v t1="$time_after" -v rss="$rss" \
+    'BEGIN { printf "%.2f %.2f %s\n", (c1 - c0) / (t1 - t0) * 100, (w1 - w0) / (t1 - t0) * 100, rss }'
 }
 
 window_server_pid="$(pgrep -x WindowServer | head -n 1 || true)"
@@ -208,22 +242,24 @@ window_server_pid="$(pgrep -x WindowServer | head -n 1 || true)"
 
 echo "Measuring the Orbit alone."
 launch_app
+orbit_launch="$launch_seconds"
 set_scenario quiet
 result="$(measure)"
-read -r quiet quiet_ws <<<"$result"
+read -r quiet quiet_ws quiet_rss quiet_peak <<<"$result"
 set_scenario normal
 result="$(measure)"
-read -r normal normal_ws <<<"$result"
+read -r normal normal_ws normal_rss normal_peak <<<"$result"
 set_scenario incident
 result="$(measure)"
-read -r incident incident_ws <<<"$result"
+read -r incident incident_ws incident_rss incident_peak <<<"$result"
 stop_app
 
 echo "Measuring the panel open on Today."
 set_scenario normal
 launch_app -IanOpenPanelOnLaunch YES
+panel_launch="$launch_seconds"
 result="$(measure)"
-read -r panel panel_ws <<<"$result"
+read -r panel panel_ws panel_rss panel_peak <<<"$result"
 stop_app
 
 status=0
@@ -245,7 +281,18 @@ if ! awk -v p="$panel" -v n="$normal" 'BEGIN { exit !(p > n + 2) }'; then
   opened="NO"
   status=1
 fi
-for result in "$normal_verdict" "$incident_verdict" "$panel_verdict"; do
+
+# A memory target is met when the peak, not the average, stays under it.
+memory_verdict() {
+  if awk -v v="$1" -v t="$memory_target_mb" 'BEGIN { exit !(v < t) }'; then echo "met"; else echo "MISSED"; fi
+}
+quiet_mem_verdict="$(memory_verdict "$quiet_peak")"
+normal_mem_verdict="$(memory_verdict "$normal_peak")"
+incident_mem_verdict="$(memory_verdict "$incident_peak")"
+orbit_launch_verdict="$(verdict "$orbit_launch" "$launch_target")"
+panel_launch_verdict="$(verdict "$panel_launch" "$launch_target")"
+for result in "$normal_verdict" "$incident_verdict" "$panel_verdict" "$quiet_mem_verdict" \
+  "$normal_mem_verdict" "$incident_mem_verdict" "$orbit_launch_verdict" "$panel_launch_verdict"; do
   [[ "$result" == "MISSED" ]] && status=1
 done
 
@@ -257,6 +304,20 @@ printf '%-30s %8s %10s %8s %14s\n' "Orbit only, quiet" "$quiet" "none" "-" "$qui
 printf '%-30s %8s %10s %8s %14s\n' "Orbit only, normal" "$normal" "< $orbit_target" "$normal_verdict" "$normal_ws"
 printf '%-30s %8s %10s %8s %14s\n' "Orbit only, incident" "$incident" "< $orbit_target" "$incident_verdict" "$incident_ws"
 printf '%-30s %8s %10s %8s %14s\n' "Panel open on Today, normal" "$panel" "< $panel_target" "$panel_verdict" "$panel_ws"
+
+echo
+echo "Resident memory, sampled each second over the same window."
+printf '%-30s %10s %8s %10s %8s\n' "State" "Average MB" "Peak MB" "Target" "Result"
+printf '%-30s %10s %8s %10s %8s\n' "Orbit only, quiet" "$quiet_rss" "$quiet_peak" "< $memory_target_mb" "$quiet_mem_verdict"
+printf '%-30s %10s %8s %10s %8s\n' "Orbit only, normal" "$normal_rss" "$normal_peak" "< $memory_target_mb" "$normal_mem_verdict"
+printf '%-30s %10s %8s %10s %8s\n' "Orbit only, incident" "$incident_rss" "$incident_peak" "< $memory_target_mb" "$incident_mem_verdict"
+printf '%-30s %10s %8s %10s %8s\n' "Panel open on Today, normal" "$panel_rss" "$panel_peak" "none" "-"
+
+echo
+echo "Launch to data: process start to the stream connection opening, which follows the first snapshot."
+printf '%-30s %10s %10s %8s\n' "Launch" "Seconds" "Target" "Result"
+printf '%-30s %10s %10s %8s\n' "Orbit only, normal" "$orbit_launch" "< $launch_target" "$orbit_launch_verdict"
+printf '%-30s %10s %10s %8s\n' "Panel open, normal" "$panel_launch" "< $launch_target" "$panel_launch_verdict"
 
 if [[ "$opened" == "NO" ]]; then
   echo "measure-cpu.sh: the panel did not appear to open: its figure is not clearly above the Orbit alone in normal. Check that the display is awake and unlocked." >&2
