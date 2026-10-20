@@ -30,9 +30,10 @@ enum SnapshotHarness {
       let held = NSWindow(
         contentRect: hosting.frame, styleMask: .borderless, backing: .buffered, defer: true)
       window = held
+      held.sharingType = .none
       held.contentView = hosting
       held.appearance = hosting.appearance
-      RunLoop.current.run(until: Date(timeIntervalSinceNow: 0.2))
+      waitForRows(in: hosting)
     }
     hosting.layoutSubtreeIfNeeded()
     guard let rep = hosting.bitmapImageRepForCachingDisplay(in: hosting.bounds) else {
@@ -43,6 +44,34 @@ enum SnapshotHarness {
     let image = NSImage(size: size)
     image.addRepresentation(rep)
     return image
+  }
+
+  /// Steps the run loop in short slices until every table the view hosts has drawn a row, so a
+  /// loaded machine gets the time it needs and a fast one does not wait. It stops the test
+  /// with a message when no table has its rows by the deadline.
+  private static func waitForRows(in view: NSView, deadline: TimeInterval = 5) {
+    let limit = Date(timeIntervalSinceNow: deadline)
+    while Date() < limit {
+      view.layoutSubtreeIfNeeded()
+      let tables = tableViews(in: view)
+      if !tables.isEmpty,
+        tables.allSatisfy({
+          $0.numberOfRows > 0 && $0.rowView(atRow: 0, makeIfNecessary: false) != nil
+        })
+      {
+        return
+      }
+      RunLoop.current.run(until: Date(timeIntervalSinceNow: 0.02))
+    }
+    preconditionFailure(
+      "The hosted List drew no rows within \(Int(deadline)) seconds, so the snapshot would be blank."
+    )
+  }
+
+  private static func tableViews(in view: NSView) -> [NSTableView] {
+    view.subviews.flatMap { subview in
+      (subview as? NSTableView).map { [$0] } ?? tableViews(in: subview)
+    }
   }
 
   static func check(
