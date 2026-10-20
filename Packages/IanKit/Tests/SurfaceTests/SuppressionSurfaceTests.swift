@@ -71,6 +71,21 @@ struct SuppressionSurfaceTests {
     }
   }
 
+  @Test("a shown whisper is the hover label until a trigger suppresses it")
+  func whisperHiddenWhenSuppressed() async {
+    for trigger in [nil] + Trigger.allCases.map(Optional.some) {
+      await withScratchDefaultsAsync { defaults in
+        let (controller, box) = await controller(trigger, defaults: defaults)
+        defer { box.store.stop() }
+        controller.whisper.show("Reply to [PERSON]")
+        defer { controller.whisper.hide() }
+        #expect(
+          controller.hoverLabel == (trigger == nil ? "Reply to [PERSON]" : nil),
+          "\(String(describing: trigger))")
+      }
+    }
+  }
+
   @Test("keeps item text out of the menu bar title and the menu")
   func titleAndMenuCarryNoItemText() async {
     await withScratchDefaultsAsync { defaults in

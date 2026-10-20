@@ -11,10 +11,12 @@ public enum Fixtures {
   public struct ActionSpec: Sendable {
     public var id: String
     public var input: String
+    public var confirm: String?
 
-    public init(_ id: String, input: String = "none") {
+    public init(_ id: String, input: String = "none", confirm: String? = nil) {
       self.id = id
       self.input = input
+      self.confirm = confirm
     }
   }
 
@@ -36,12 +38,13 @@ public enum Fixtures {
   public static func itemJSON(
     id: String = "task_1", alert: Bool = false, version: Int = 1,
     title: String = "Draft the agenda for the [CLIENT] steering group",
-    actions: [ActionSpec] = [ActionSpec("done")], working: Bool = false
+    actions: [ActionSpec] = [ActionSpec("done")], working: Bool = false,
+    attention: String = "needs_you", meta: String = "Notion"
   ) -> String {
     let actionList = actions.map {
       """
-      {"id":"\($0.id)","label":"\($0.id.capitalized)","style":"primary","confirm":null,\
-      "input":"\($0.input)"}
+      {"id":"\($0.id)","label":"\($0.id.capitalized)","style":"primary",\
+      "confirm":\($0.confirm.map { "\"\($0)\"" } ?? "null"),"input":"\($0.input)"}
       """
     }.joined(separator: ",")
     let detail =
@@ -56,8 +59,8 @@ public enum Fixtures {
       "status":"In Progress","project":null}
       """
     return """
-      {"id":"\(id)","kind":"\(alert ? "alert" : "task")","title":"\(title)","meta":"Notion",\
-      "unit":{"id":"other","name":"Other"},"horizon":"now","pressure":0.4,"attention":"needs_you",\
+      {"id":"\(id)","kind":"\(alert ? "alert" : "task")","title":"\(title)","meta":"\(meta)",\
+      "unit":{"id":"other","name":"Other"},"horizon":"now","pressure":0.4,"attention":"\(attention)",\
       "dueAt":"2026-10-16T17:00:00.000Z",\(alert ? "\"severity\":\"P1\"," : "")\
       "working":\(working),"version":\(version),"actions":[\(actionList)],"detail":\(detail),\
       "links":{"lance":"https://lance.example.invalid/items/\(id)","source":null}}
@@ -67,11 +70,13 @@ public enum Fixtures {
   public static func item(
     id: String = "task_1", alert: Bool = false, version: Int = 1,
     title: String = "Draft the agenda for the [CLIENT] steering group",
-    actions: [ActionSpec] = [ActionSpec("done")], working: Bool = false
+    actions: [ActionSpec] = [ActionSpec("done")], working: Bool = false,
+    attention: String = "needs_you", meta: String = "Notion"
   ) -> Schemas.Item {
     decode(
       itemJSON(
-        id: id, alert: alert, version: version, title: title, actions: actions, working: working))
+        id: id, alert: alert, version: version, title: title, actions: actions, working: working,
+        attention: attention, meta: meta))
   }
 
   // MARK: Blocks

@@ -6,10 +6,6 @@ import Testing
 
 @testable import Store
 
-/// These run only against a live mock server. Start it, then run
-/// `IAN_MOCK_URL=http://localhost:4317 swift test --filter Integration`.
-private let mockOrigin = ProcessInfo.processInfo.environment["IAN_MOCK_URL"]
-
 private let limit = Duration.seconds(30)
 
 /// Polls with real time, since these tests talk to a real server.

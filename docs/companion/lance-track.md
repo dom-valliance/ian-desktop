@@ -53,6 +53,8 @@ D1 read Lance on 17 October 2026 to match the contract's vocabulary (ADR 0009). 
 - **DL4, settings.** `liveEligible` and `liveOpensAt` exist only as the refusal in `assertLiveOpen` (`packages/ledger/src/control.ts`); the façade must expose them, and answer `422` to going live while not eligible.
 - **DL4, agents.** Lance has no per-agent pause (only `jobs.enabled`, through Slack), no next run for agents and no last run for jobs. A pause or resume on an agent whose `pausable` is false answers `403`. The contract has one ceiling, the principal's `cost_ceiling_gbp`; Lance's agents view reads `config.cost.dailyCeilingGbp` instead, so the façade must use the principal's.
 - **DL4, ledger.** No ledger payload carries `surface` today, and the decide path has no origin field (`packages/ledger/src/proposals.ts`). Adding `surface: 'desktop'` needs a place in each payload the façade writes.
+- **DL5, one delivery decision.** The desktop posts a local notification for each escalation it receives: a new item, or a rise in `attention`, at a rung that notifies (ADR 0020). The contract carries no per-item delivery decision, so while Slack holds an item (ten idle minutes, or no live session) the desktop's banner also waits in Notification Centre. Until a contract minor adds the decision to the item event, Lance applies the push budget through the rung it sends.
+- **DL5, liveness.** The client cannot promise a final heartbeat with `active: false` before the Mac sleeps, loses its network or quits. Treat a session with no heartbeat for about two intervals (two minutes) as not alive (ADR 0021).
 
 ## Fast-follow prerequisites (spec section 12)
 

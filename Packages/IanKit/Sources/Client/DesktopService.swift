@@ -45,4 +45,8 @@ public protocol DesktopService: Sendable {
   /// `DesktopError.rejected`.
   func pauseAgent(id: String) async throws -> Components.Schemas.Agent
   func resumeAgent(id: String) async throws -> Components.Schemas.Agent
+
+  /// Reports the session to Lance (`POST /sessions`). The client only reports; Lance decides where
+  /// to deliver.
+  func recordSession(_ heartbeat: Components.Schemas.SessionHeartbeat) async throws
 }

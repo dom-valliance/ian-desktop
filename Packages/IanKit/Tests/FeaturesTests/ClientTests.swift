@@ -134,6 +134,21 @@ struct ClientModelTests {
     }
   }
 
+  @Test("shows the view that holds the item a notification named")
+  func showsItemDestination() {
+    withScratchDefaults { defaults in
+      let model = ClientModel(defaults: defaults)
+      let expected: [(ItemDestination, ClientSection)] = [
+        (.alerts, .alerts), (.proposals, .proposals), (.commitments, .commitments),
+        (.tasks, .tasks), (.today, .today),
+      ]
+      for (destination, section) in expected {
+        model.show(destination)
+        #expect(model.section == section)
+      }
+    }
+  }
+
   @Test("keeps the last view and the selection when the panel is hidden and shown again")
   func remembersLastView() async {
     _ = NSApplication.shared

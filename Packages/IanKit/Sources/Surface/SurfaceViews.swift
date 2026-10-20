@@ -32,7 +32,8 @@ struct OrbitRootView: View {
   }
 }
 
-/// The top item's title beside the Orbit. It draws nothing while suppressed.
+/// The top item's title, or the urgent item's whisper, beside the Orbit. It draws nothing while
+/// suppressed.
 struct HoverLabelView: View {
   private weak var controller: SurfaceController?
 
@@ -49,7 +50,7 @@ struct HoverLabelView: View {
   @ViewBuilder private func label(of controller: SurfaceController) -> some View {
     HStack {
       if controller.corner.isRight { Spacer(minLength: 0) }
-      if let text = controller.presentation.hoverText {
+      if let text = controller.hoverLabel {
         Text(text)
           .font(.system(size: 12))
           .foregroundStyle(Color.white)
