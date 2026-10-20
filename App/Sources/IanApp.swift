@@ -11,6 +11,7 @@ struct IanApp: App {
   @State private var store: IanStore
   @State private var surface: SurfaceController
   @State private var attention: AttentionCoordinator
+  @State private var heartbeat: HeartbeatReporter
 
   init() {
     let store = IanStore.live(openURL: { url in
@@ -23,9 +24,12 @@ struct IanApp: App {
     surface.onShowItem = { [weak model] destination in model?.show(destination) }
     let attention = AttentionCoordinator(
       store: store, controller: surface, delivery: UserNotificationCentre())
+    let heartbeat = HeartbeatReporter(
+      store: store, activity: SystemActivityMonitor(), suppressed: { surface.suppression.isActive })
     _store = State(initialValue: store)
     _surface = State(initialValue: surface)
     _attention = State(initialValue: attention)
+    _heartbeat = State(initialValue: heartbeat)
     // Read from the argument domain only, so it is never saved (scripts/measure-cpu.sh).
     let opensPanelOnLaunch =
       UserDefaults.standard.volatileDomain(forName: UserDefaults.argumentDomain)[
@@ -38,6 +42,7 @@ struct IanApp: App {
         store.start()
         surface.start()
         attention.start()
+        heartbeat.start()
         if opensPanelOnLaunch { surface.showExpandedAfterFirstSnapshot() }
       }
     }
