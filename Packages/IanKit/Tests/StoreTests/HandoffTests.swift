@@ -139,17 +139,17 @@ struct HandoffTests {
       store.notices["task_1"] == .failed("Shorten the instruction to 2000 characters or fewer."))
   }
 
-  @Test("counts the limit in Unicode scalars of the trimmed text, as the contract does")
-  func limitCountsScalars() async {
-    let family = "\u{1F468}\u{200D}\u{1F469}\u{200D}\u{1F467}"
+  @Test("counts the limit in UTF-16 code units of the trimmed text, as the mock and Lance do")
+  func limitCountsUTF16() async {
+    // One scalar, two code units: 1001 of them are 1001 scalars but 2002 code units.
     let (store, service, _) = await handoffStore()
     defer { store.stop() }
 
-    // 401 of these are 401 characters but 2005 scalars.
-    await store.handOff(itemID: "task_1", instruction: " " + String(repeating: family, count: 401))
+    await store.handOff(
+      itemID: "task_1", instruction: " " + String(repeating: "\u{1F600}", count: 1001))
     #expect(service.handoffCalls.isEmpty)
 
-    await store.handOff(itemID: "task_1", instruction: String(repeating: family, count: 400))
+    await store.handOff(itemID: "task_1", instruction: String(repeating: "\u{1F600}", count: 1000))
     #expect(service.handoffCalls.count == 1)
   }
 

@@ -209,6 +209,24 @@ struct ItemCardModelTests {
     #expect(rims == [.ambient: false, .needsYou: false, .urgent: true, .stop: true])
   }
 
+  @Test("adds a text cue and a spoken rung for urgent and stop, so the rim is not the only signal")
+  func urgencyIsNotColourAlone() {
+    var base = proposal(confidence: nil)
+    base.attention = .urgent
+    let urgent = card(base)
+    base.attention = .stop
+    let stop = card(base)
+    base.attention = .needsYou
+    let calm = card(base)
+
+    #expect(urgent.urgency == "Urgent")
+    #expect(stop.urgency == "Stop")
+    #expect(calm.urgency == nil)
+    #expect(urgent.accessibilityLabel == "Proposal, Title of prop_1, now, urgent")
+    #expect(stop.accessibilityLabel == "Proposal, Title of prop_1, now, stop")
+    #expect(calm.accessibilityLabel == "Proposal, Title of prop_1, now")
+  }
+
   @Test("does not key the rim on an alert's severity")
   func severityGivesNoRim() {
     var alert = item(
