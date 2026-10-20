@@ -105,6 +105,7 @@ struct CommitmentsView: View {
         .keyboardShortcut(KeyEquivalent(shortcut.shortcutKey), modifiers: .command)
         .opacity(0)
         .frame(width: 0, height: 0)
+        .focusable(false)
         .accessibilityHidden(true)
     }
   }
