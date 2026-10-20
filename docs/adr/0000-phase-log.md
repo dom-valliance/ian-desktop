@@ -19,7 +19,7 @@ Each entry records:
 | D5.1 | Done, 19 October 2026 |
 | P1 | Done, 19 October 2026 |
 | D6 | Done, 20 October 2026 |
-| D7 | Not started |
+| D7 | Done, 20 October 2026 |
 | D8 | Not started |
 | D9 | Not started |
 
@@ -508,3 +508,78 @@ The last three were measured by the lead on the app's own process with `ps -o ti
 - **Review.** An Opus review against REVIEW.md found 2 Blocking (card actions out of the Tab order; this entry), 8 Should fix and 5 Suggestions. All are fixed.
 - **Verification.** A second Opus pass confirmed the fixes and found 2 Blocking (urgency shown by colour alone; this entry), 3 Should fix and some Suggestions. All are fixed; the stale-outcome guard on actions and the hand-off went to D7, where the profile switch makes it reachable.
 - **Alert notifications.** Dom asked during the hand check for a notification when an alert arrives, perhaps only for the highest priority. That is D8; D7's defaults already notify P0 always and P1 with a banner.
+
+### D7. Agents and Settings
+
+- Date: 20 October 2026, built from 19 October
+- Branch: `feat/d7-agents-settings`, rebased onto `feat/d6-views` at `d6dac5e`. Commits `a828d16..2ffeaea`, plus this entry. Merge D6 first.
+- Machine: MacBook Pro, Apple M4 Pro (Mac16,7), macOS 27.0.1, Xcode 27.1 (27A9275).
+
+#### Commands and exit codes
+
+| Command | Exit |
+|---|---|
+| `swift format lint --recursive --strict Packages App scripts` | 0 |
+| `swift build --package-path Packages/IanKit --force-resolved-versions` | 0 |
+| `swift test --package-path Packages/IanKit --force-resolved-versions`, three runs | 0 each: 583 tests, the integration tests skipped |
+| `scripts/check-generated.sh` | 0 |
+| `xcodebuild -project App/Ian.xcodeproj -scheme Ian -configuration Debug -destination 'platform=macOS' -onlyUsePackageVersionsFromResolvedFile -derivedDataPath build/DerivedData build` | 0 |
+| `pnpm --dir contract install --frozen-lockfile && pnpm --dir contract lint` | 0 |
+| `pnpm --dir mock lint && pnpm --dir mock typecheck && pnpm --dir mock test` | 0 |
+| `scripts/dev.sh --mock-only`, then `IAN_MOCK_URL=http://localhost:4317 swift test --package-path Packages/IanKit --force-resolved-versions --filter Integration` | 0: 15 tests |
+
+#### Done when
+
+1. **Each setting round-trips against the mock.** The integration suite, against the running mock:
+   - quiet hours, the push budget, and the principal's own pause with a reason and its resume, each shown only after `settings.updated`;
+   - going live refused with `422` in `normal`, and in `quiet` going live and back to dry run, once through the store and once through the Settings model with the dialog's dismissal in between;
+   - pausing and resuming an agent, and `403` with the server's detail on `job_nightly_median`, which is not `pausable`;
+   - `GET /agents` in the server's order.
+
+   The client settings are tested against a scratch defaults suite: corner, motion, the three notification levels and the two suppression toggles are saved and read back, and each takes effect (the Orbit moves, motion reaches the Orbit and the field, a toggled-off trigger stops counting). A profile switch signs out, clears the store, saves `IanEnvironment` and syncs against the new profile.
+2. **Settings survive a relaunch where they should.** The client settings and the environment are read back from a fresh defaults object in the tests, and Dom relaunched on screen and found them as he left them. The principal's settings live in Lance and come back with the snapshot.
+3. **The diagnostics report from `normal` holds no item title.** `DiagnosticsReportTests` builds the report from the `normal` scenario fixture, with a pause reason, a kill-switch reason and agent names added, and finds no title, meta line, evidence quote, counterparty, reason or agent name in it. Every line starts with a label from a fixed list: app version, contract version, environment, event lag and last snapshot.
+4. **Snapshots.** Six references in `Packages/IanKit/Tests/FeaturesTests/__Snapshots__/AgentsSettingsSnapshotTests/`: Agents in `normal` at 640 and 1,000 points wide, Agents in `incident` with the kill-switch banner, and Settings in `normal` (the top and the whole view) and with going live allowed. They caught a table that could not fit the panel, which was rebuilt.
+5. **Hand check.** Dom checked on screen against the mock on 20 October 2026 and reported everything working:
+   - Agents: pause and resume, no button on the job, and the kill-switch banner in `incident`;
+   - Settings: quiet hours, push budget, pausing Ian everywhere, going live and back in `quiet`, the corner moving the Orbit, motion, the camera toggle, launch at login refusing cleanly on the unsigned build, the environment switch to Lance dev and back, and the copied report;
+   - every control by keyboard and VoiceOver, and the settings after a relaunch.
+
+   The first pass found that going live did nothing; the environment switch had the same fault. Both are fixed in `8b8be5f`, tested in the dialog's real order, and Dom rechecked both.
+
+#### Choices recorded
+
+- **ADR 0019.**
+  - Stop always notifies, so it has no setting.
+  - The levels are Off and Banner, with spec 6.6's defaults: Ambient off, Needs you off, Urgent banner.
+  - A toggled-off suppression trigger stops counting everywhere, including D8's heartbeat flag. Quiet hours and the principal's pause are not toggles, and P0 still notifies.
+  - A new agent first appears at the end of the list. The store then refetches `GET /agents` and takes the server's order, and a snapshot that arrives first wins over the older reply.
+- **Keys on disk.** New spec 6.4 settings in `UserDefaults`: `IanReducedMotion`, `IanSuppressOnCamera`, `IanSuppressInExternalMeeting`, `IanNotificationLevelAmbient`, `IanNotificationLevelNeedsYou` and `IanNotificationLevelUrgent`. `IanOrbitCorner` and `IanEnvironment` are unchanged. Launch at login is read from `SMAppService` and not saved.
+- **Contract 1.1.1.** Descriptions only:
+  - `GET /agents` is in display order.
+  - Lance emits `settings.updated` after every accepted PATCH that changes a value.
+  - A PATCH that changes nothing answers with the current settings and emits no event, and the client settles on that reply.
+
+  The mock now behaves that way. `docs/companion/lance-track.md` has a DL4 row for each rule. Dom tags `contract-v1.1.1` after `contract-v1.1.0`.
+- **Nothing moves on a click.** A PATCH, a pause or a resume only marks pending. Only `settings.updated`, `agent.updated` or a snapshot moves the shown value. A refused change resets only its own controls to the server's value.
+- **Stale outcomes are dropped.** Every command, action and hand-off carries the store's generation. A result that arrives after a sign-out or a profile switch is dropped, whether it is a notice, a pending clear, a `401` sign-out or a `426`. A sign-out or switch also cancels a sign-in in progress.
+- **Event lag.** The clock offset is estimated from `me.serverTime` against the midpoint of the `GET /me` request. Lag is a heartbeat's arrival minus its `serverTime`, corrected by that offset, so it can be slightly negative.
+- **Where things live.**
+  - `ClientSettings` and the pasteboard are in Surface.
+  - The levels and the toggles are in Attention.
+  - The `SMAppService` adapter is in the app target, behind a protocol, so no test touches the real login items.
+- **Copy says Ian.** Settings, Agents and the client's error messages no longer name Lance, except the environment name "Lance dev" and "Open in Lance".
+
+#### Reviews and what is left
+
+- **Review.** An Opus review against REVIEW.md found no Blocking findings, 8 Should fix and 12 Suggestions. Among the Should fix: a sign-in racing a profile switch, one unsettled PATCH locking every setting, and two refetch races. All are fixed.
+- **Verification.** A second Opus pass confirmed the fixes. It found stale outcomes on actions and the hand-off, and five Suggestions:
+  - the settings model was rebuilt on every event;
+  - a refusal reset every draft;
+  - drafts survived a profile switch;
+  - the controls were locked during sign-in;
+  - error copy still named Lance.
+
+  All are fixed, and the pause reason is now counted in UTF-16 code units.
+- **Lesson.** The dialog fault is recorded in `.claude/notes/surface.md`.
+- **For D8.** D8 reads the levels and toggles through `ClientSettings` and ADR 0019. Dom asked for a notification when an alert arrives, which D8's ladder delivers: P0 always, and P1 with a banner by default.
