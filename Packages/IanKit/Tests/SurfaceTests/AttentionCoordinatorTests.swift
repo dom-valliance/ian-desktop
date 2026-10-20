@@ -2,27 +2,29 @@ import Attention
 import Client
 import Contract
 import Foundation
-import Store
 import TestSupport
 import Testing
 
+@testable import Store
 @testable import Surface
 
 /// A notification centre that records what it is asked. It never touches the system.
 private final class FakeDelivery: NotificationDelivering, @unchecked Sendable {
   private let lock = NSLock()
-  private let grants: Bool
+  private var _authorisations = 0
+  private var _withdrawAlls = 0
   private var _added: [NotificationContent] = []
   private var _withdrawn: [[String]] = []
   private var _categories: [[NotificationCategory]] = []
 
-  init(grants: Bool = true) { self.grants = grants }
-
   var added: [NotificationContent] { lock.withLock { _added } }
   var withdrawn: [[String]] { lock.withLock { _withdrawn } }
+  var authorisations: Int { lock.withLock { _authorisations } }
+  var withdrawAlls: Int { lock.withLock { _withdrawAlls } }
   var lastCategories: [NotificationCategory]? { lock.withLock { _categories.last } }
 
-  func authorise() async -> Bool { grants }
+  func requestAuthorisation() async { lock.withLock { _authorisations += 1 } }
+  func withdrawAll() async { lock.withLock { _withdrawAlls += 1 } }
   func setCategories(_ categories: [NotificationCategory]) async {
     lock.withLock { _categories.append(categories) }
   }
@@ -59,15 +61,24 @@ private final class Harness {
 
   /// A started store holding `items`, with the coordinator started and settled on them.
   init(
-    items: [String], defaults: UserDefaults, grants: Bool = true
+    items: [String], defaults: UserDefaults, nextProfile: ScriptedService? = nil,
+    startsCoordinator: Bool = true
   ) async {
     service = ScriptedService(
       snapshots: [.success(Fixtures.snapshot(cursor: "10", items: items))])
     feed = service.planStream()
+    let switcher = nextProfile.map { next in
+      ProfileSwitcher(
+        choices: [ProfileChoice(id: "lance-dev", displayName: "Lance dev")],
+        build: { _ in
+          (.lanceDev(entra: .init(tenantID: "t", clientID: "c", scope: "s")), next)
+        },
+        remember: { _ in })
+    }
     store = IanStore(
       service: service, profile: .mock,
-      appVersion: SemanticVersion(major: 0, minor: 1, patch: 0))
-    delivery = FakeDelivery(grants: grants)
+      appVersion: SemanticVersion(major: 0, minor: 1, patch: 0), profileSwitcher: switcher)
+    delivery = FakeDelivery()
     settings = ClientSettings(defaults: defaults)
     let controls = controls
     coordinator = AttentionCoordinator(
@@ -76,6 +87,7 @@ private final class Harness {
       isPanelOpen: { controls.isPanelOpen }, showItem: { controls.shown.append($0) })
     store.start()
     _ = await eventually { await MainActor.run { self.store.connection == .live } }
+    guard startsCoordinator else { return }
     coordinator.start()
     await sync()
   }
@@ -90,20 +102,20 @@ private final class Harness {
     await coordinator.settled()
   }
 
-  func upsert(_ item: String) async {
-    await send(Fixtures.upsertedJSON(item))
+  func upsert(_ item: String, settling: Bool = true) async {
+    await send(Fixtures.upsertedJSON(item), settling: settling)
   }
 
   func remove(_ id: String) async {
     await send(Fixtures.removedJSON(id))
   }
 
-  private func send(_ json: String) async {
+  private func send(_ json: String, settling: Bool = true) async {
     lastEvent += 1
     let id = lastEvent
     feed.yield(.event(id: String(id), Fixtures.event(json)))
     _ = await eventually { await MainActor.run { self.store.state.lastEventID == UInt64(id) } }
-    await sync()
+    if settling { await sync() }
   }
 }
 
@@ -300,7 +312,7 @@ struct AttentionCoordinatorTests {
       await harness.remove("task_1")
 
       #expect(harness.delivery.withdrawn == [["task_1"]])
-      #expect(harness.delivery.lastCategories?.map(\.id) == ["ian.item.later"])
+      #expect(harness.delivery.lastCategories?.map(\.id) == ["ian.item.task_2"])
     }
   }
 
@@ -318,25 +330,29 @@ struct AttentionCoordinatorTests {
     }
   }
 
-  @Test("nothing is delivered when permission is refused, and the whisper still shows")
-  func refused() async {
+  @Test(
+    "asks for permission once at start, clears earlier notifications, and always tries to deliver")
+  func permissionAtStart() async {
     await withScratchDefaultsAsync { defaults in
-      let harness = await Harness(items: [], defaults: defaults, grants: false)
+      let harness = await Harness(items: [], defaults: defaults)
       defer { harness.finish() }
+      #expect(harness.delivery.authorisations == 1)
+      #expect(harness.delivery.withdrawAlls == 1)
 
       await harness.upsert(urgent())
+      await harness.upsert(urgent("task_2"))
 
-      #expect(harness.delivery.added.isEmpty)
-      #expect(harness.whisper.title != nil)
+      #expect(harness.delivery.authorisations == 1)
+      #expect(harness.delivery.added.count == 2)
     }
   }
 
   @Test("an action button runs the item's action and leaves the item pending, not moved")
   func actionButton() async {
     await withScratchDefaultsAsync { defaults in
-      let harness = await Harness(
-        items: [urgent(actions: [Fixtures.ActionSpec("approve")])], defaults: defaults)
+      let harness = await Harness(items: [], defaults: defaults)
       defer { harness.finish() }
+      await harness.upsert(urgent(actions: [Fixtures.ActionSpec("approve")]))
 
       await harness.coordinator.handle(
         NotificationResponse(itemID: "task_1", choice: .action("approve"))
@@ -346,6 +362,45 @@ struct AttentionCoordinatorTests {
       #expect(harness.service.actionCalls.map(\.itemID) == ["task_1"])
       #expect(harness.store.pending["task_1"] != nil)
       #expect(harness.store.state.items["task_1"] != nil)
+      #expect(harness.controls.shown.isEmpty)
+    }
+  }
+
+  @Test("a button does nothing but open the view when the item changed after the banner")
+  func staleButton() async {
+    await withScratchDefaultsAsync { defaults in
+      let harness = await Harness(items: [], defaults: defaults)
+      defer { harness.finish() }
+      await harness.upsert(urgent(actions: [Fixtures.ActionSpec("approve")], version: 1))
+      await harness.upsert(
+        urgent(actions: [Fixtures.ActionSpec("approve", confirm: "Approve for good?")], version: 2))
+      #expect(harness.delivery.added.count == 1)
+
+      await harness.coordinator.handle(
+        NotificationResponse(itemID: "task_1", choice: .action("approve"))
+      ).value
+
+      #expect(harness.service.actionCalls.isEmpty)
+      #expect(harness.store.pending["task_1"] == nil)
+      #expect(harness.controls.shown == [.tasks])
+    }
+  }
+
+  @Test("a button from a notification that was withdrawn opens the view instead")
+  func withdrawnButton() async {
+    await withScratchDefaultsAsync { defaults in
+      let harness = await Harness(items: [], defaults: defaults)
+      defer { harness.finish() }
+      await harness.upsert(urgent(actions: [Fixtures.ActionSpec("approve")]))
+      harness.controls.suppression = paused
+      await harness.sync()
+
+      await harness.coordinator.handle(
+        NotificationResponse(itemID: "task_1", choice: .action("approve"))
+      ).value
+
+      #expect(harness.service.actionCalls.isEmpty)
+      #expect(harness.controls.shown == [.tasks])
     }
   }
 
@@ -362,6 +417,133 @@ struct AttentionCoordinatorTests {
       harness.coordinator.handle(NotificationResponse(itemID: "gone", choice: .open))
 
       #expect(harness.controls.shown == [.tasks, .alerts, .today])
+    }
+  }
+
+  @Test(
+    "suppression starting withdraws the notifications that carry item text, not a held back stop")
+  func suppressionWithdrawsText() async {
+    await withScratchDefaultsAsync { defaults in
+      let harness = await Harness(items: [], defaults: defaults)
+      defer { harness.finish() }
+      await harness.upsert(urgent("task_1"))
+      harness.controls.suppression = paused
+      await harness.upsert(urgent("task_2", attention: "stop"))
+      #expect(harness.delivery.withdrawn == [["task_1"]])
+
+      harness.controls.suppression = .none
+      await harness.sync()
+
+      #expect(harness.delivery.added.map(\.id) == ["task_1", "task_2"])
+      #expect(harness.delivery.withdrawn == [["task_1"]])
+    }
+  }
+
+  @Test("notifications reach the centre through the observation path with no manual reconcile")
+  func observationPath() async {
+    await withScratchDefaultsAsync { defaults in
+      let harness = await Harness(items: [], defaults: defaults)
+      defer { harness.finish() }
+
+      await harness.upsert(urgent(), settling: false)
+
+      let delivered = await eventually {
+        await MainActor.run { harness.delivery.added.count == 1 }
+      }
+      #expect(delivered)
+      #expect(harness.whisper.title != nil)
+    }
+  }
+
+  @Test("a sign-out hides the whisper and disarms Stop")
+  func resetClearsCues() async {
+    await withScratchDefaultsAsync { defaults in
+      let harness = await Harness(items: [], defaults: defaults)
+      defer { harness.finish() }
+      await harness.upsert(urgent("task_1"))
+      await harness.upsert(urgent("task_2", attention: "stop"))
+      #expect(harness.whisper.title != nil)
+      #expect(harness.stopArming.isArmed)
+
+      await harness.store.signOut()
+      await harness.sync()
+
+      #expect(harness.whisper.title == nil)
+      #expect(!harness.stopArming.isArmed)
+    }
+  }
+
+  @Test("removing the stop item that armed Stop disarms it")
+  func removalDisarms() async {
+    await withScratchDefaultsAsync { defaults in
+      let harness = await Harness(items: [], defaults: defaults)
+      defer { harness.finish() }
+      await harness.upsert(urgent("task_2", attention: "stop"))
+      #expect(harness.stopArming.isArmed)
+
+      await harness.remove("task_2")
+
+      #expect(!harness.stopArming.isArmed)
+    }
+  }
+
+  @Test("a batch delivers the least urgent first, and the whisper takes the most urgent")
+  func batchOrder() async {
+    await withScratchDefaultsAsync { defaults in
+      let harness = await Harness(items: [], defaults: defaults)
+      defer { harness.finish() }
+
+      // Set together, with no suspension between, so one reconcile sees all three.
+      for (id, title, attention) in [
+        ("b", "Second", "urgent"), ("c", "Third", "stop"), ("a", "First", "urgent"),
+      ] {
+        harness.store.state.items[id] = Fixtures.item(id: id, title: title, attention: attention)
+      }
+      await harness.sync()
+
+      #expect(harness.delivery.added.map(\.id) == ["b", "a", "c"])
+      #expect(harness.whisper.title == "First")
+    }
+  }
+
+  @Test("starting again after a stop clears the centre and runs one observation")
+  func restart() async {
+    await withScratchDefaultsAsync { defaults in
+      let harness = await Harness(items: [], defaults: defaults)
+      defer { harness.finish() }
+      harness.coordinator.stop()
+      harness.coordinator.start()
+      harness.coordinator.start()
+
+      await harness.upsert(urgent())
+
+      #expect(harness.delivery.added.count == 1)
+      await harness.coordinator.settled()
+      #expect(harness.delivery.withdrawAlls == 2)
+    }
+  }
+
+  @Test("after a profile switch only stop items notify on the new profile's first snapshot")
+  func baselineAfterSwitch() async {
+    await withScratchDefaultsAsync { defaults in
+      let next = ScriptedService(
+        snapshots: [
+          .success(
+            Fixtures.snapshot(
+              cursor: "50",
+              items: [urgent("task_8", attention: "stop"), urgent("task_9")]))
+        ])
+      next.planStream()
+      let harness = await Harness(items: [], defaults: defaults, nextProfile: next)
+      defer { harness.finish() }
+
+      await harness.store.switchProfile(to: "lance-dev")
+      _ = await eventually {
+        await MainActor.run { harness.store.state.items["task_9"] != nil }
+      }
+      await harness.sync()
+
+      #expect(harness.delivery.added.map(\.id) == ["task_8"])
     }
   }
 }

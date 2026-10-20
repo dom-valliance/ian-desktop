@@ -47,17 +47,28 @@ public struct NotificationCategory: Equatable, Sendable {
   public let id: String
   public let buttons: [NotificationButton]
 
-  /// Only the item's actions that need no confirmation, time or note, in the order sent, then
-  /// Open. The others are reached through Open, where the expanded client asks what it needs.
-  /// While suppressed there is only Open, so no action label (item text) reaches the screen.
+  /// The ids of the item's actions a notification button may run: those with no `confirm` and no
+  /// `input`, in the order sent. The others are reached through Open, where the expanded client
+  /// asks for what they need.
+  public static func quickActionIDs(of item: StoreState.Item) -> [String] {
+    item.actions.filter { $0.confirm == nil && $0.input == .none }.map(\.id)
+  }
+
+  /// One category per notification, named for the item's id (not item text), because two items
+  /// can share an action id and show different labels. While suppressed there is only Open, under
+  /// one shared id, so no action label (item text) reaches the screen.
   public init(item: StoreState.Item, showsItemText: Bool) {
-    let quick =
-      showsItemText
-      ? item.actions.filter { $0.confirm == nil && $0.input == .none } : []
-    buttons = quick.map { NotificationButton(actionID: $0.id, label: $0.label) } + [.open]
-    id =
-      quick.isEmpty
-      ? "ian.item.open" : "ian.item." + quick.map(\.id).joined(separator: ".")
+    guard showsItemText else {
+      id = "ian.item.open"
+      buttons = [.open]
+      return
+    }
+    let quick = Set(Self.quickActionIDs(of: item))
+    id = "ian.item." + item.id
+    buttons =
+      item.actions.filter { quick.contains($0.id) }.map {
+        NotificationButton(actionID: $0.id, label: $0.label)
+      } + [.open]
   }
 }
 

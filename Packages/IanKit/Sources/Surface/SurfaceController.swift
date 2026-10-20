@@ -46,7 +46,8 @@ public final class SurfaceController {
     content: NSView())
   @ObservationIgnored private var isDragging = false
   @ObservationIgnored private var isHovering = false
-  @ObservationIgnored private var isObservingWhisper = false
+  @ObservationIgnored private var whisperObservation: Int?
+  @ObservationIgnored private var whisperObservations = 0
   @ObservationIgnored private var monitors: [Any] = []
   @ObservationIgnored private var observers: [any NSObjectProtocol] = []
 
@@ -140,8 +141,11 @@ public final class SurfaceController {
     signals.start()
     orbitPanel.orderFrontRegardless()
     installPointerMonitors()
-    isObservingWhisper = true
-    observeWhisper()
+    if whisperObservation == nil {
+      whisperObservations += 1
+      whisperObservation = whisperObservations
+      observeWhisper(token: whisperObservations)
+    }
     observeSystem()
     secureSystemWindows()
   }
@@ -152,7 +156,7 @@ public final class SurfaceController {
     monitors = []
     for observer in observers { NotificationCenter.default.removeObserver(observer) }
     observers = []
-    isObservingWhisper = false
+    whisperObservation = nil
     whisper.hide()
     stopArming.disarm()
     signals.stop()
@@ -265,6 +269,7 @@ public final class SurfaceController {
     cornerSetting.corner = corner
     placeOrbit()
     if expandedPanel.isVisible { repositionExpanded() }
+    syncHoverPanel()
   }
 
   private func placeOrbit() {
@@ -286,6 +291,7 @@ public final class SurfaceController {
       OrbitPlacement.orbitFrame(corner: corner, in: area), display: true, animate: true)
     if expandedPanel.isVisible { repositionExpanded() }
     updatePointer()
+    syncHoverPanel()
   }
 
   // MARK: Pointer
@@ -350,14 +356,14 @@ public final class SurfaceController {
   }
 
   /// Shows and hides the hover panel as the whisper starts and ends.
-  private func observeWhisper() {
-    guard isObservingWhisper else { return }
+  private func observeWhisper(token: Int) {
+    guard whisperObservation == token else { return }
     withObservationTracking {
       _ = whisper.title
     } onChange: { [weak self] in
       Task { @MainActor in
         self?.syncHoverPanel()
-        self?.observeWhisper()
+        self?.observeWhisper(token: token)
       }
     }
   }

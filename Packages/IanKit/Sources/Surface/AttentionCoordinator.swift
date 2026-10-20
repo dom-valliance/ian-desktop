@@ -6,7 +6,7 @@ import Store
 /// watches the store's items and the suppression, asks the planner which items escalated and the
 /// ladder what each rung does, then delivers notifications, shows the whisper and arms Stop.
 ///
-/// It decides no rung and holds no state beyond the planner's memory. Delivery calls run one
+/// It decides no rung and holds no state beyond the planner's memory and what it delivered. Delivery calls run one
 /// after another, in the order they were made.
 @MainActor
 public final class AttentionCoordinator {
@@ -19,12 +19,20 @@ public final class AttentionCoordinator {
   private let isPanelOpen: @MainActor () -> Bool
   private let showItem: @MainActor (ItemDestination) -> Void
 
+  /// What the coordinator knows of a notification it delivered and the system may still hold.
+  private struct Delivered {
+    let category: NotificationCategory
+    /// The item's version when delivered, so a button never acts on a newer one.
+    let version: Int
+    /// False for a notification that was delivered while suppressed.
+    let showsItemText: Bool
+  }
+
   private var planner = EscalationPlanner()
-  /// The category of each notification the system may still hold, so the registered set stays to
-  /// what those notifications need.
-  private var delivered: [String: NotificationCategory] = [:]
-  private var isAuthorised = false
+  private var delivered: [String: Delivered] = [:]
   private var isRunning = false
+  /// Raised by each start, so a stale observation or delivery of an earlier run does nothing.
+  private var run = 0
   private var queue: Task<Void, Never>?
 
   public init(
@@ -53,17 +61,25 @@ public final class AttentionCoordinator {
       showItem: { controller.showItem($0) })
   }
 
-  /// Asks for permission once, then watches the store.
+  /// Clears what an earlier launch left in Notification Centre, asks for permission once, then
+  /// watches the store. Starting again after `stop()` begins afresh.
   public func start() {
     guard !isRunning else { return }
     isRunning = true
+    run += 1
+    planner = EscalationPlanner()
+    delivered = [:]
     delivery.setResponseHandler { [weak self] response in self?.handle(response) }
-    enqueue { [self] in isAuthorised = await delivery.authorise() }
-    observe()
+    enqueue { [delivery] in
+      await delivery.withdrawAll()
+      await delivery.requestAuthorisation()
+    }
+    observe(run: run)
   }
 
   public func stop() {
     isRunning = false
+    queue = nil
   }
 
   /// Resolves once every delivery call made so far has finished.
@@ -73,57 +89,65 @@ public final class AttentionCoordinator {
 
   // MARK: Watching
 
-  private func observe() {
-    guard isRunning else { return }
+  private func observe(run: Int) {
+    guard isRunning, run == self.run else { return }
     withObservationTracking {
       reconcile()
     } onChange: { [weak self] in
-      Task { @MainActor in self?.observe() }
+      Task { @MainActor in self?.observe(run: run) }
     }
   }
 
   func reconcile() {
     let state = store.state
     let current = suppression()
-    if current.isActive {
+    let hasSnapshot = state.today != nil
+    if current.isActive || !hasSnapshot {
       whisper.hide()
       stopArming.disarm()
     }
-    let plan = planner.observe(
-      state.items.values.map(ObservedItem.init), hasSnapshot: state.today != nil)
+    if current.isActive {
+      withdraw(delivered.filter { $0.value.showsItemText }.keys.sorted())
+    }
+    let plan = planner.observe(state.items.values.map(ObservedItem.init), hasSnapshot: hasSnapshot)
+    for id in plan.removed { stopArming.disarm(ifArmedFor: id) }
     withdraw(plan.removed)
-    for escalation in plan.escalations {
-      guard let item = state.items[escalation.id] else { continue }
-      let behaviour = AttentionLadder.behaviour(
-        of: escalation.rung, level: settings.level(for: escalation.rung), suppression: current)
-      apply(behaviour, to: item, rung: escalation.rung, suppression: current)
-    }
-  }
 
-  private func apply(
-    _ behaviour: AttentionBehaviour, to item: StoreState.Item, rung: NotificationRung,
-    suppression current: Suppression
-  ) {
-    switch behaviour.orbit {
-    case .whisper:
-      whisper.show(item.title)
-    case .opensOnPointerMovement:
-      stopArming.arm(
-        ItemDestination(item: item), isPanelOpen: isPanelOpen(), suppression: current)
-    case .stateOnly, .growsAndHoldsColour:
-      break
+    // The plan lists the most urgent first, then by id. The whisper and Stop take the first that
+    // asks for them, so the most urgent wins and the lowest id breaks a tie.
+    let batch: [(item: StoreState.Item, rung: NotificationRung, behaviour: AttentionBehaviour)] =
+      plan.escalations.compactMap { escalation in
+        guard let item = state.items[escalation.id] else { return nil }
+        let level = settings.level(for: escalation.rung)
+        return (
+          item, escalation.rung,
+          AttentionLadder.behaviour(of: escalation.rung, level: level, suppression: current)
+        )
+      }
+    if let urgent = batch.first(where: { $0.behaviour.orbit == .whisper }) {
+      whisper.show(urgent.item.title)
     }
-    guard behaviour.notification != .none else { return }
-    deliver(NotificationContent(item: item, rung: rung, showsItemText: behaviour.showsItemText))
+    if let stop = batch.first(where: { $0.behaviour.orbit == .opensOnPointerMovement }) {
+      stopArming.arm(
+        ItemDestination(item: stop.item), for: stop.item.id, isPanelOpen: isPanelOpen(),
+        suppression: current)
+    }
+    // Least urgent first, so a Stop banner lands last and on top.
+    for entry in batch.reversed() where entry.behaviour.notification != .none {
+      deliver(
+        NotificationContent(
+          item: entry.item, rung: entry.rung, showsItemText: entry.behaviour.showsItemText),
+        version: entry.item.version, showsItemText: entry.behaviour.showsItemText)
+    }
   }
 
   // MARK: Delivering
 
-  private func deliver(_ content: NotificationContent) {
-    delivered[content.id] = content.category
+  private func deliver(_ content: NotificationContent, version: Int, showsItemText: Bool) {
+    delivered[content.id] = Delivered(
+      category: content.category, version: version, showsItemText: showsItemText)
     let categories = registeredCategories
-    enqueue { [self] in
-      guard isAuthorised else { return }
+    enqueue { [delivery] in
       await delivery.setCategories(categories)
       await delivery.add(content)
     }
@@ -134,39 +158,48 @@ public final class AttentionCoordinator {
     guard !held.isEmpty else { return }
     for id in held { delivered[id] = nil }
     let categories = registeredCategories
-    enqueue { [self] in
+    enqueue { [delivery] in
       await delivery.withdraw(ids: held)
       await delivery.setCategories(categories)
     }
   }
 
+  /// Exactly the categories the held notifications use.
   private var registeredCategories: [NotificationCategory] {
-    Dictionary(grouping: delivered.values, by: \.id).values.compactMap(\.first).sorted {
-      $0.id < $1.id
-    }
+    Dictionary(grouping: delivered.values.map(\.category), by: \.id).values.compactMap(\.first)
+      .sorted { $0.id < $1.id }
   }
 
   private func enqueue(_ operation: @escaping @MainActor () async -> Void) {
     let previous = queue
+    let mine = run
     queue = Task { @MainActor in
       await previous?.value
+      guard isRunning, mine == run else { return }
       await operation()
     }
   }
 
   // MARK: Responses
 
-  /// Runs what the principal chose on a notification. An action goes through the store, which
-  /// marks the item pending and leaves the server to move it (AGENTS.md rule 2). Open, and the
-  /// notification itself, bring up the view that holds the item, or Today if it has gone.
+  /// Runs what the principal chose on a notification. An action goes through the store only when
+  /// the item is still the version the banner showed and the action is still one a banner may
+  /// run; otherwise the view opens, so the principal sees what changed. The store marks the item
+  /// pending and leaves the server to move it (AGENTS.md rule 2). Open, and the notification
+  /// itself, bring up the view that holds the item, or Today if it has gone.
   @discardableResult
   func handle(_ response: NotificationResponse) -> Task<Void, Never> {
-    switch response.choice {
-    case .open:
-      showItem(store.state.items[response.itemID].map { ItemDestination(item: $0) } ?? .today)
-      return Task {}
-    case .action(let actionID):
+    if case .action(let actionID) = response.choice, canRun(actionID, on: response.itemID) {
       return Task { await store.run(actionID: actionID, on: response.itemID) }
     }
+    showItem(store.state.items[response.itemID].map { ItemDestination(item: $0) } ?? .today)
+    return Task {}
+  }
+
+  private func canRun(_ actionID: String, on itemID: String) -> Bool {
+    guard let held = delivered[itemID], let item = store.state.items[itemID],
+      item.version == held.version, store.actionsEnabled
+    else { return false }
+    return NotificationCategory.quickActionIDs(of: item).contains(actionID)
   }
 }

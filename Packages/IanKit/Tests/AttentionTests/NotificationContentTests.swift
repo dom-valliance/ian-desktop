@@ -64,7 +64,7 @@ struct NotificationContentTests {
       category.buttons.map { NotificationButton.actionID(forIdentifier: $0.identifier) } == [
         "approve", "later", nil,
       ])
-    #expect(category.id == "ian.item.approve.later")
+    #expect(category.id == "ian.item.task_9")
   }
 
   @Test("only Open is offered while suppressed")
@@ -75,10 +75,21 @@ struct NotificationContentTests {
     #expect(category.id == "ian.item.open")
   }
 
-  @Test("an item with no quick action gets the same category as a suppressed one")
+  @Test("an item with no quick action offers only Open, under its own category")
   func noQuickActions() {
     let source = item(actions: [Fixtures.ActionSpec("reject", confirm: "Sure?")])
-    #expect(NotificationCategory(item: source, showsItemText: true).id == "ian.item.open")
+    let category = NotificationCategory(item: source, showsItemText: true)
+    #expect(category.buttons.map(\.title) == ["Open"])
+    #expect(category.id == "ian.item.task_9")
+  }
+
+  @Test("two items with the same action id get different categories")
+  func categoriesPerItem() {
+    let first = Fixtures.item(id: "commitment_1", actions: [Fixtures.ActionSpec("settle")])
+    let second = Fixtures.item(id: "commitment_2", actions: [Fixtures.ActionSpec("settle")])
+    #expect(
+      NotificationCategory(item: first, showsItemText: true).id
+        != NotificationCategory(item: second, showsItemText: true).id)
   }
 
   @Test("each item kind opens the view that holds it")

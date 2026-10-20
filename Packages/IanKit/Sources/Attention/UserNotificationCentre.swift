@@ -1,34 +1,46 @@
 import Foundation
-@preconcurrency import UserNotifications
+import UserNotifications
+import os
 
 /// `UNUserNotificationCenter` behind `NotificationDelivering`. Only the app target creates it.
 /// `UNUserNotificationCenter.current()` raises an exception in a process with no bundle, so no
 /// test reaches this type.
+///
+/// `@unchecked Sendable`: the protocol is `Sendable` and the delegate is an `NSObject`, so the
+/// compiler cannot see that the only mutable state, the response handler, sits behind a lock.
 public final class UserNotificationCentre: NSObject, NotificationDelivering,
   UNUserNotificationCenterDelegate, @unchecked Sendable
 {
   private static let itemIDKey = "itemID"
 
+  /// Read by the delegate on a system queue, so it is set once, under the lock.
+  private let handler = OSAllocatedUnfairLock<
+    (@MainActor @Sendable (NotificationResponse) -> Void)?
+  >(
+    initialState: nil)
+
   /// Looked up on first use, so building the adapter touches no bundle state.
   private var centre: UNUserNotificationCenter { .current() }
-  // Set once, before the delegate is installed, and read only after.
-  private nonisolated(unsafe) var onResponse: (@MainActor @Sendable (NotificationResponse) -> Void)?
 
   public override init() {
     super.init()
   }
 
+  /// The first handler stays; a later call (a restart of the coordinator) changes nothing, so the
+  /// delegate never sees the handler replaced while it may be reading it.
   public func setResponseHandler(
     _ handler: @escaping @MainActor @Sendable (NotificationResponse) -> Void
   ) {
-    onResponse = handler
+    self.handler.withLock { if $0 == nil { $0 = handler } }
     centre.delegate = self
   }
 
-  public func authorise() async -> Bool {
-    (try? await centre.requestAuthorization(options: [.alert, .sound])) ?? false
+  public func requestAuthorisation() async {
+    _ = try? await centre.requestAuthorization(options: [.alert, .sound])
   }
 
+  /// Returns once the system reports the categories, so a banner is never shown before its
+  /// buttons are known. The wait is bounded, and the banner goes out regardless.
   public func setCategories(_ categories: [NotificationCategory]) async {
     centre.setNotificationCategories(
       Set(
@@ -40,6 +52,12 @@ public final class UserNotificationCentre: NSObject, NotificationDelivering,
             },
             intentIdentifiers: [])
         }))
+    let wanted = Set(categories.map(\.id))
+    for _ in 0..<20 {
+      let known = await centre.notificationCategories().map(\.identifier)
+      if wanted.isSubset(of: known) { return }
+      try? await Task.sleep(for: .milliseconds(25))
+    }
   }
 
   public func add(_ content: NotificationContent) async {
@@ -58,6 +76,11 @@ public final class UserNotificationCentre: NSObject, NotificationDelivering,
     centre.removePendingNotificationRequests(withIdentifiers: ids)
   }
 
+  public func withdrawAll() async {
+    centre.removeAllDeliveredNotifications()
+    centre.removeAllPendingNotificationRequests()
+  }
+
   // MARK: UNUserNotificationCenterDelegate
 
   /// Banners show even while Ian is frontmost (the expanded client may be open).
@@ -72,14 +95,10 @@ public final class UserNotificationCentre: NSObject, NotificationDelivering,
   ) async {
     let userInfo = response.notification.request.content.userInfo
     guard let itemID = userInfo[Self.itemIDKey] as? String else { return }
-    let button = response.actionIdentifier
-    let choice: NotificationResponse.Choice
-    if let actionID = NotificationButton.actionID(forIdentifier: button) {
-      choice = .action(actionID)
-    } else {
-      choice = .open
-    }
-    let handler = onResponse
+    let choice: NotificationResponse.Choice =
+      NotificationButton.actionID(forIdentifier: response.actionIdentifier).map { .action($0) }
+      ?? .open
+    let handler = handler.withLock { $0 }
     await MainActor.run { handler?(NotificationResponse(itemID: itemID, choice: choice)) }
   }
 }
