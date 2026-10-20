@@ -12,8 +12,9 @@ public struct OrbitDrawing: Equatable, Sendable {
   public struct Core: Equatable, Sendable {
     public let radius: Double
     public let colour: OrbitColour
-    /// The radius of a still ring round a working core. It is there only when Reduce Motion
-    /// holds the breath still, so a working core is not marked by colour alone (spec 6.8).
+    /// The radius of a still ring round a working core, drawn whenever the breath is held still:
+    /// under Reduce Motion, and for the still pose an Orbit shows while it is suppressed or
+    /// occluded with motion on. A working core is then not marked by colour alone (spec 6.8).
     public let ring: Double?
   }
 
