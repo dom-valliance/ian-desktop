@@ -11,10 +11,11 @@ extension IanStore {
     return trimmed?.isEmpty == false ? trimmed : nil
   }
 
-  /// Whether the instruction, as it would be sent, is within the contract's limit. The limit
-  /// counts Unicode scalars, as the contract's schema does.
+  /// Whether the instruction, as it would be sent, is within the contract's limit. It counts
+  /// UTF-16 code units, the strictest count: the mock's Zod `max(2000)` and Lance's TypeScript
+  /// count them, and a count in scalars or characters would let through text they refuse.
   public static func instructionFits(_ text: String?) -> Bool {
-    (normalisedInstruction(text)?.unicodeScalars.count ?? 0) <= handoffInstructionLimit
+    (normalisedInstruction(text)?.utf16.count ?? 0) <= handoffInstructionLimit
   }
 
   /// Whether the server offers "Hand to Ian" to this client (`Me.capabilities.handoff`).
