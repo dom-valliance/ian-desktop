@@ -1,0 +1,24 @@
+# 0021. The session heartbeat
+
+Date: 2026-10-20
+Status: Accepted
+
+## Context
+
+Spec section 4 (step 7) has the client post a session heartbeat every 60 seconds and on any change. Section 6.6 says Lance uses it to arbitrate delivery: the desktop while the principal is active, Slack after ten idle minutes or when no session is alive. The rule lives in Lance (DL5); the client only reports (ADR 0001). The contract's `SessionHeartbeat` has `deviceId`, `clientVersion`, `active`, `suppressed` and `idleSeconds`, and leaves open what counts as a change, how `active` is read, and what happens when a send fails. ADR 0019 settles that a toggled-off suppression trigger stops counting, including for this flag.
+
+## Decision
+
+- **When a heartbeat goes.** Every 60 seconds, counted from the last heartbeat sent for any reason, and at once when `active` changes, when `suppressed` changes, or when the principal returns after being idle for at least one interval (idle seconds were 60 or more at the last look and are now below 60). The first goes as soon as the store is running, live and holds a snapshot. The reporter looks every 5 seconds and whenever a monitor or the observed inputs announce a change, so an idle return is seen within 5 seconds. Pure policy (`HeartbeatPolicy`) is separate from scheduling (`HeartbeatReporter`), which takes an injected clock, so tests do not wait.
+- **What it reports.** `deviceId` is a random UUID made once per process and held in memory; nothing is written to disk. `clientVersion` is the app's version. `active` is true while the screen is unlocked, the displays are awake and the system is not going to sleep, read from the screen lock notifications (`com.apple.screenIsLocked` and `com.apple.screenIsUnlocked` on `DistributedNotificationCenter`) and from `NSWorkspace` display and system sleep and wake. `idleSeconds` is whole seconds since the last keyboard or pointer input, from `CGEventSource.secondsSinceLastEventType` in the combined session state for any input type, never below 0. The client applies no ten-minute rule; Lance does, from `idleSeconds`. `suppressed` is `Suppression.isActive` as `SurfaceController` computes it, with the toggles of ADR 0019.
+- **When it does not go.** Only while the store is running, live and holding a snapshot (`IanStore.heartbeatSession`). Offline, signed out or before the first snapshot, a heartbeat is skipped, never queued. A change made meanwhile still counts when the session returns, because changes are measured against the last heartbeat sent. A sign-out or a profile switch gives the session a new identity, so the reporter forgets what it sent and the first heartbeat of the new session goes at once, with the same device id.
+- **Failures.** A `401` takes the store's sign-in path and a `426` its upgrade path. Any other failure is logged by kind only and the next heartbeat tries again. A result from before a sign-out or profile switch is dropped by the store's `generation` guard. Sends run in order, one after another.
+- **Imports.** `Attention` imports `Client` for `SyncClock`, the clock seam the store and sync loop already use. `Surface` uses CoreGraphics through AppKit, which it already imports (`CGEventSource`, `CGSessionCopyCurrentDictionary`). No other framework is added, and the README's import column records the first.
+
+## Consequences
+
+- Lance sees a heartbeat within 5 seconds of a lock, an unlock, a display sleep, a suppression change or a return to the keyboard, and at least one a minute otherwise.
+- A return to the keyboard may be reported up to 5 seconds late. Lance's ten-minute rule is far coarser.
+- The client sends one number about input and never the input itself. `idleSeconds` and `active` are the only signals about the principal's presence that leave the Mac, and they carry no item content.
+- Screen sharing has no public signal (AGENTS.md E5), so it does not set `suppressed`.
+- The mock stamps `receivedAt` from its own clock, which stands still under `scripts/dev.sh`, so tests against it read count, order and fields and not the stamp.
