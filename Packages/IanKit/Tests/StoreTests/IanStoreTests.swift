@@ -451,13 +451,13 @@ private func makesMockStoreByDefault() {
 }
 
 @MainActor
-@Test("builds the lance-dev store from the Info.plist settings")
-private func makesLanceDevStore() {
+@Test("builds the ian-dev store from the Info.plist settings")
+private func makesIanDevStore() {
   let store = IanStore.make(
-    profileName: "lance-dev", info: ["IanLanceTenantID": "tenant-1"],
+    profileName: "ian-dev", info: ["IanDevTenantID": "tenant-1"],
     bundleIdentifier: "ai.valliance.ian.desktop.dev", shortVersion: "0.1.0", openURL: { _ in })
 
-  #expect(store.profile.name == .lanceDev)
+  #expect(store.profile.name == .ianDev)
 }
 
 @MainActor
@@ -522,7 +522,7 @@ private func showsSignInFailure() async {
     Issue.record("expected signInRequired, got \(store.phase)")
     return
   }
-  #expect(message?.contains("IAN_LANCE_SCOPE") == true)
+  #expect(message?.contains("IAN_DEV_SCOPE") == true)
   #expect(message?.contains("DL1") == true)
 }
 

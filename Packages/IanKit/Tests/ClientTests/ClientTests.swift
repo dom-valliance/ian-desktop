@@ -54,13 +54,13 @@ private func defaultsToMock() throws {
   #expect(profile.signIn == .devToken)
 }
 
-@Test("points lance-dev at the dev api host and reads its sign-in settings from Info.plist")
-private func lanceDevReadsConfiguration() throws {
+@Test("points ian-dev at the dev api host and reads its sign-in settings from Info.plist")
+private func ianDevReadsConfiguration() throws {
   let info: [String: Any] = [
-    "IanLanceTenantID": "tenant-1", "IanLanceClientID": "client-1", "IanLanceScope": "api://x/y",
+    "IanDevTenantID": "tenant-1", "IanDevClientID": "client-1", "IanDevScope": "api://x/y",
   ]
 
-  let profile = try EnvironmentProfile.resolve(requested: "lance-dev", info: info)
+  let profile = try EnvironmentProfile.resolve(requested: "ian-dev", info: info)
 
   #expect(
     profile.baseURL.absoluteString
@@ -68,17 +68,17 @@ private func lanceDevReadsConfiguration() throws {
   #expect(
     profile.signIn
       == .entra(EntraConfiguration(tenantID: "tenant-1", clientID: "client-1", scope: "api://x/y")))
-  #expect(profile.displayName == "Lance dev")
+  #expect(profile.displayName == "Ian dev")
   #expect(!profile.isMock)
 }
 
-@Test("leaves unset lance-dev settings empty so sign-in names them")
-private func lanceDevLeavesMissingSettingsEmpty() throws {
+@Test("leaves unset ian-dev settings empty so sign-in names them")
+private func ianDevLeavesMissingSettingsEmpty() throws {
   let profile = try EnvironmentProfile.resolve(
-    requested: "lance-dev", info: ["IanLanceTenantID": "tenant-1"])
+    requested: "ian-dev", info: ["IanDevTenantID": "tenant-1"])
 
   guard case .entra(let configuration) = profile.signIn else {
-    Issue.record("lance-dev must sign in with Entra")
+    Issue.record("ian-dev must sign in with Entra")
     return
   }
   #expect(configuration.clientID.isEmpty)
@@ -91,20 +91,54 @@ private func rejectsUnknownProfile() {
     try EnvironmentProfile.resolve(requested: "production", info: [:])
   }
 
-  #expect(error?.errorDescription?.contains("mock, lance-dev") == true)
+  #expect(error?.errorDescription?.contains("mock, ian-dev") == true)
 }
 
 @Test("uses one Keychain service per profile")
 private func keychainServicePerProfile() {
-  let lanceDev = EnvironmentProfile.lanceDev(
+  let ianDev = EnvironmentProfile.ianDev(
     entra: EntraConfiguration(tenantID: "", clientID: "", scope: ""))
 
   #expect(
-    lanceDev.keychainService(bundleIdentifier: "ai.valliance.ian.desktop")
-      == "ai.valliance.ian.desktop.lance-dev")
+    ianDev.keychainService(bundleIdentifier: "ai.valliance.ian.desktop")
+      == "ai.valliance.ian.desktop.ian-dev")
   #expect(
     EnvironmentProfile.mock.keychainService(bundleIdentifier: "ai.valliance.ian.desktop")
       == "ai.valliance.ian.desktop.mock")
+}
+
+@Test("reads a launch argument of lance-dev from an earlier build as ian-dev")
+private func readsLegacyArgumentAsIanDev() throws {
+  let profile = try EnvironmentProfile.resolve(requested: "lance-dev", info: [:])
+
+  #expect(profile.name == .ianDev)
+  #expect(profile.displayName == "Ian dev")
+}
+
+@MainActor
+@Test("opens a saved lance-dev choice as ian-dev and rewrites it once")
+private func migratesSavedLegacyChoice() throws {
+  try withScratchDefaults { defaults in
+    defaults.set("lance-dev", forKey: EnvironmentProfile.defaultsKey)
+
+    let profile = try EnvironmentProfile.resolve(defaults: defaults, info: [:])
+
+    #expect(profile.name == .ianDev)
+    #expect(defaults.string(forKey: EnvironmentProfile.defaultsKey) == "ian-dev")
+    #expect(EnvironmentProfile.requestedName(defaults: defaults) == "ian-dev")
+  }
+}
+
+@MainActor
+@Test("leaves a saved mock or ian-dev choice and an empty setting as they are")
+private func leavesCurrentChoicesAlone() {
+  withScratchDefaults { defaults in
+    #expect(EnvironmentProfile.requestedName(defaults: defaults) == nil)
+    defaults.set("mock", forKey: EnvironmentProfile.defaultsKey)
+    #expect(EnvironmentProfile.requestedName(defaults: defaults) == "mock")
+    defaults.set("ian-dev", forKey: EnvironmentProfile.defaultsKey)
+    #expect(EnvironmentProfile.requestedName(defaults: defaults) == "ian-dev")
+  }
 }
 
 // MARK: Stream decoding

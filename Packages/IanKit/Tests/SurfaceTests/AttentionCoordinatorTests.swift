@@ -78,9 +78,9 @@ private final class Harness {
     feed = service.planStream()
     let switcher = nextProfile.map { next in
       ProfileSwitcher(
-        choices: [ProfileChoice(id: "lance-dev", displayName: "Lance dev")],
+        choices: [ProfileChoice(id: "ian-dev", displayName: "Ian dev")],
         build: { _ in
-          (.lanceDev(entra: .init(tenantID: "t", clientID: "c", scope: "s")), next)
+          (.ianDev(entra: .init(tenantID: "t", clientID: "c", scope: "s")), next)
         },
         remember: { _ in })
     }
@@ -555,7 +555,7 @@ struct AttentionCoordinatorTests {
       let harness = await Harness(items: [], defaults: defaults, nextProfile: next)
       defer { harness.finish() }
 
-      await harness.store.switchProfile(to: "lance-dev")
+      await harness.store.switchProfile(to: "ian-dev")
       _ = await eventually {
         await MainActor.run { harness.store.state.items["task_9"] != nil }
       }

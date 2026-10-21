@@ -25,7 +25,7 @@ public struct KeychainTokenStore: TokenStore {
   private static let account = "tokens"
   private let service: String
 
-  /// - Parameter service: One per profile, such as `ai.valliance.ian.desktop.lance-dev`.
+  /// - Parameter service: One per profile, such as `ai.valliance.ian.desktop.ian-dev`.
   public init(service: String) {
     self.service = service
   }

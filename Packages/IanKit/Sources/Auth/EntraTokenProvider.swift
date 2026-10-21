@@ -1,6 +1,6 @@
 import Foundation
 
-/// Entra authorisation code with PKCE for the `lance-dev` profile (spec section 8). The system
+/// Entra authorisation code with PKCE for the `ian-dev` profile (spec section 8). The system
 /// browser shows the sign-in page, a loopback listener receives the code, and the tokens are kept
 /// in the `TokenStore`.
 public actor EntraTokenProvider: TokenProvider {

@@ -25,9 +25,9 @@ private func makeStore(
   _ service: ScriptedService, switchingTo next: ScriptedService? = nil
 ) -> IanStore {
   let switcher = ProfileSwitcher(
-    choices: [ProfileChoice(id: "lance-dev", displayName: "Lance dev")],
+    choices: [ProfileChoice(id: "ian-dev", displayName: "Ian dev")],
     build: { _ in
-      next.map { (.lanceDev(entra: .init(tenantID: "t", clientID: "c", scope: "s")), $0) }
+      next.map { (.ianDev(entra: .init(tenantID: "t", clientID: "c", scope: "s")), $0) }
     },
     remember: { _ in })
   return IanStore(
@@ -83,7 +83,7 @@ struct HeartbeatStoreWiringTests {
     try? await Task.sleep(for: .milliseconds(30))
     #expect(first.heartbeats.count == 1)
 
-    await store.switchProfile(to: "lance-dev")
+    await store.switchProfile(to: "ian-dev")
 
     #expect(await eventually("the second profile's heartbeat") { second.heartbeats.count == 1 })
     #expect(second.heartbeats.first?.deviceId == first.heartbeats.first?.deviceId)

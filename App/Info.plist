@@ -2,11 +2,11 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
-	<key>IanLanceTenantID</key>
-	<string>$(IAN_LANCE_TENANT_ID)</string>
-	<key>IanLanceClientID</key>
-	<string>$(IAN_LANCE_CLIENT_ID)</string>
-	<key>IanLanceScope</key>
-	<string>$(IAN_LANCE_SCOPE)</string>
+	<key>IanDevTenantID</key>
+	<string>$(IAN_DEV_TENANT_ID)</string>
+	<key>IanDevClientID</key>
+	<string>$(IAN_DEV_CLIENT_ID)</string>
+	<key>IanDevScope</key>
+	<string>$(IAN_DEV_SCOPE)</string>
 </dict>
 </plist>

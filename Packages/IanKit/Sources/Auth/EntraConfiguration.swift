@@ -1,6 +1,6 @@
 import Foundation
 
-/// What the `lance-dev` sign-in needs, all read from build settings (AGENTS.md erratum E2).
+/// What the `ian-dev` sign-in needs, all read from build settings (AGENTS.md erratum E2).
 public struct EntraConfiguration: Equatable, Sendable {
   public var tenantID: String
   public var clientID: String

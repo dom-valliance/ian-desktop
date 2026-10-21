@@ -197,7 +197,7 @@ public final class IanStore {
     if phase == .running { phase = .stopped }
   }
 
-  /// Signs in, which opens the system browser for `lance-dev`, then starts syncing.
+  /// Signs in, which opens the system browser for `ian-dev`, then starts syncing.
   public func signIn() async {
     guard !isSigningIn else { return }
     isSigningIn = true
@@ -494,7 +494,7 @@ extension IanStore {
   /// - Parameters:
   ///   - profileName: The requested profile, or nil for `mock`. An unknown name logs and falls
   ///     back to `mock`.
-  ///   - info: The Info.plist, carrying the `lance-dev` sign-in settings.
+  ///   - info: The Info.plist, carrying the `ian-dev` sign-in settings.
   ///   - shortVersion: `CFBundleShortVersionString`.
   ///   - openURL: Opens the sign-in page in the system browser. AppKit is the app's to import.
   public static func make(
@@ -561,7 +561,7 @@ extension IanStore {
     openURL: @escaping @Sendable (URL) async -> Void
   ) -> IanStore {
     make(
-      profileName: defaults.string(forKey: EnvironmentProfile.defaultsKey),
+      profileName: EnvironmentProfile.requestedName(defaults: defaults),
       info: bundle.infoDictionary ?? [:],
       bundleIdentifier: bundle.bundleIdentifier ?? "ai.valliance.ian.desktop",
       shortVersion: bundle.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String,

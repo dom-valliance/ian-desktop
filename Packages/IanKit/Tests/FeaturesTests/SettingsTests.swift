@@ -409,11 +409,11 @@ struct SettingsModelTests {
     let switcher = ProfileSwitcher(
       choices: [
         ProfileChoice(id: "mock", displayName: "Mock"),
-        ProfileChoice(id: "lance-dev", displayName: "Lance dev"),
+        ProfileChoice(id: "ian-dev", displayName: "Ian dev"),
       ],
       build: { id in
-        id == "lance-dev"
-          ? (.lanceDev(entra: .init(tenantID: "t", clientID: "c", scope: "s")), next) : nil
+        id == "ian-dev"
+          ? (.ianDev(entra: .init(tenantID: "t", clientID: "c", scope: "s")), next) : nil
       },
       remember: { remembered.value = $0 })
     let store = IanStore(
@@ -439,8 +439,8 @@ struct SettingsModelTests {
     model.requestProfile("mock", in: store)
     #expect(model.pendingProfile == nil)
 
-    model.requestProfile("lance-dev", in: store)
-    #expect(model.pendingProfile?.displayName == "Lance dev")
+    model.requestProfile("ian-dev", in: store)
+    #expect(model.pendingProfile?.displayName == "Ian dev")
     #expect(first.signOuts == 0)
 
     model.cancelProfile()
@@ -459,7 +459,7 @@ struct SettingsModelTests {
     let (store, first) = await switchingStore(next: next, remembered: remembered)
     defer { store.stop() }
     let model = model()
-    model.requestProfile("lance-dev", in: store)
+    model.requestProfile("ian-dev", in: store)
     let presented = try #require(model.pendingProfile)
     // Dismissing the dialog cancels before the button's action runs.
     model.cancelProfile()
@@ -467,8 +467,8 @@ struct SettingsModelTests {
     await model.confirmProfile(presented, in: store)
 
     #expect(first.signOuts == 1)
-    #expect(remembered.value == "lance-dev")
-    #expect(store.profileID == "lance-dev")
+    #expect(remembered.value == "ian-dev")
+    #expect(store.profileID == "ian-dev")
     #expect(
       await eventually("the new profile syncs") {
         await MainActor.run { store.state.items["task_9"] != nil }
