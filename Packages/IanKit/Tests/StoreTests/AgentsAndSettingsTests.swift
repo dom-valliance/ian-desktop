@@ -620,6 +620,7 @@ struct ProfileSwitcherFactoryTests {
       #expect(switcher.choices.map(\.id) == ["mock", "ian-dev"])
       #expect(switcher.build("ian-dev")?.0.name == .ianDev)
       #expect(switcher.build("production") == nil)
+      #expect(switcher.build("lance-dev") == nil)
     }
   }
 

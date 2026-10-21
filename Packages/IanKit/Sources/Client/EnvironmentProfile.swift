@@ -93,11 +93,19 @@ extension EnvironmentProfile {
   /// The requested profile name: the launch argument, else the saved setting. A saved
   /// `lance-dev` from an earlier build is rewritten to `ian-dev` once, so nobody falls back to
   /// the mock silently. A launch argument is read the same way and never saved.
-  public static func requestedName(defaults: UserDefaults = .standard) -> String? {
-    let requested = defaults.string(forKey: defaultsKey)
-    guard requested == legacyIanDevName else { return requested }
-    let fromArgument = defaults.volatileDomain(forName: UserDefaults.argumentDomain)[defaultsKey]
-    if fromArgument == nil { defaults.set(Name.ianDev.rawValue, forKey: defaultsKey) }
+  /// - Parameter arguments: The launch arguments' domain, which `defaults` reads before the saved
+  ///   setting.
+  public static func requestedName(
+    defaults: UserDefaults = .standard,
+    arguments: [String: Any] = UserDefaults.standard.volatileDomain(
+      forName: UserDefaults.argumentDomain)
+  ) -> String? {
+    if let argument = arguments[defaultsKey] as? String {
+      return argument == legacyIanDevName ? Name.ianDev.rawValue : argument
+    }
+    let saved = defaults.string(forKey: defaultsKey)
+    guard saved == legacyIanDevName else { return saved }
+    defaults.set(Name.ianDev.rawValue, forKey: defaultsKey)
     return Name.ianDev.rawValue
   }
 
@@ -105,18 +113,21 @@ extension EnvironmentProfile {
   /// - Parameter info: The app's Info.plist, which carries the `ian-dev` sign-in settings.
   public static func resolve(
     defaults: UserDefaults = .standard,
-    info: [String: Any] = Bundle.main.infoDictionary ?? [:]
+    info: [String: Any] = Bundle.main.infoDictionary ?? [:],
+    arguments: [String: Any] = UserDefaults.standard.volatileDomain(
+      forName: UserDefaults.argumentDomain)
   ) throws -> EnvironmentProfile {
-    try resolve(requested: requestedName(defaults: defaults), info: info)
+    try resolve(
+      requested: requestedName(defaults: defaults, arguments: arguments), info: info)
   }
 
-  /// - Parameter requested: The profile name, or nil or empty for `mock`.
+  /// - Parameter requested: The profile name, or nil or empty for `mock`. The legacy name is
+  ///   mapped by `requestedName`, so the profile switcher never accepts or saves it.
   public static func resolve(
     requested: String?, info: [String: Any]
   ) throws -> EnvironmentProfile {
     guard let requested, !requested.isEmpty else { return .mock }
-    let current = requested == legacyIanDevName ? Name.ianDev.rawValue : requested
-    guard let name = Name(rawValue: current) else {
+    guard let name = Name(rawValue: requested) else {
       throw ResolutionError.unknownProfile(requested)
     }
     switch name {

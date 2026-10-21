@@ -107,12 +107,37 @@ private func keychainServicePerProfile() {
       == "ai.valliance.ian.desktop.mock")
 }
 
-@Test("reads a launch argument of lance-dev from an earlier build as ian-dev")
-private func readsLegacyArgumentAsIanDev() throws {
-  let profile = try EnvironmentProfile.resolve(requested: "lance-dev", info: [:])
+@Test("does not resolve lance-dev by name, so the profile switcher cannot accept it")
+private func resolveRefusesLegacyName() {
+  #expect(throws: EnvironmentProfile.ResolutionError.self) {
+    try EnvironmentProfile.resolve(requested: "lance-dev", info: [:])
+  }
+}
 
-  #expect(profile.name == .ianDev)
-  #expect(profile.displayName == "Ian dev")
+@MainActor
+@Test("reads a launch argument of lance-dev as ian-dev and leaves the saved choice alone")
+private func mapsLegacyArgumentWithoutSaving() {
+  withScratchDefaults { defaults in
+    defaults.set("mock", forKey: EnvironmentProfile.defaultsKey)
+
+    let name = EnvironmentProfile.requestedName(
+      defaults: defaults, arguments: [EnvironmentProfile.defaultsKey: "lance-dev"])
+
+    #expect(name == "ian-dev")
+    #expect(defaults.string(forKey: EnvironmentProfile.defaultsKey) == "mock")
+  }
+}
+
+@MainActor
+@Test("does not save a launch argument of ian-dev")
+private func doesNotSaveArgument() {
+  withScratchDefaults { defaults in
+    let name = EnvironmentProfile.requestedName(
+      defaults: defaults, arguments: [EnvironmentProfile.defaultsKey: "ian-dev"])
+
+    #expect(name == "ian-dev")
+    #expect(defaults.string(forKey: EnvironmentProfile.defaultsKey) == nil)
+  }
 }
 
 @MainActor
@@ -121,11 +146,11 @@ private func migratesSavedLegacyChoice() throws {
   try withScratchDefaults { defaults in
     defaults.set("lance-dev", forKey: EnvironmentProfile.defaultsKey)
 
-    let profile = try EnvironmentProfile.resolve(defaults: defaults, info: [:])
+    let profile = try EnvironmentProfile.resolve(defaults: defaults, info: [:], arguments: [:])
 
     #expect(profile.name == .ianDev)
     #expect(defaults.string(forKey: EnvironmentProfile.defaultsKey) == "ian-dev")
-    #expect(EnvironmentProfile.requestedName(defaults: defaults) == "ian-dev")
+    #expect(EnvironmentProfile.requestedName(defaults: defaults, arguments: [:]) == "ian-dev")
   }
 }
 
@@ -133,11 +158,11 @@ private func migratesSavedLegacyChoice() throws {
 @Test("leaves a saved mock or ian-dev choice and an empty setting as they are")
 private func leavesCurrentChoicesAlone() {
   withScratchDefaults { defaults in
-    #expect(EnvironmentProfile.requestedName(defaults: defaults) == nil)
+    #expect(EnvironmentProfile.requestedName(defaults: defaults, arguments: [:]) == nil)
     defaults.set("mock", forKey: EnvironmentProfile.defaultsKey)
-    #expect(EnvironmentProfile.requestedName(defaults: defaults) == "mock")
+    #expect(EnvironmentProfile.requestedName(defaults: defaults, arguments: [:]) == "mock")
     defaults.set("ian-dev", forKey: EnvironmentProfile.defaultsKey)
-    #expect(EnvironmentProfile.requestedName(defaults: defaults) == "ian-dev")
+    #expect(EnvironmentProfile.requestedName(defaults: defaults, arguments: [:]) == "ian-dev")
   }
 }
 
