@@ -284,3 +284,5 @@ Done when:
 - A search of `Packages`, `App`, `scripts` and the current docs finds "Lance" only where the ADR allows it.
 - A test shows a saved `lance-dev` choice opens as `ian-dev`, with scratch defaults.
 - Every check passes by exit code, and Dom has looked at Settings, a card and the header against the mock.
+- `scripts/measure-cpu.sh` passes after the star's drawing change, with its figures in the phase log.
+- Dom has looked at the star against the mock: off-white at rest, breathing blue in `normal`, with its ring under Reduce Motion, and legible over a white window.
