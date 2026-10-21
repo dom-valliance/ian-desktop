@@ -31,6 +31,9 @@ enum OrbitPalette {
   static let chipStroke = OrbitColour(255, 255, 255, alpha: 0.3)
   static let chipText = OrbitColour(255, 255, 255)
   static let ground = OrbitColour(0x17, 0x17, 0x17)
+  /// The star's outline is the ground's own colour, so it cannot be seen on the dark ground the
+  /// design draws and keeps the star legible over a light window (ADR 0024).
+  static let keyline = ground
 
   static func colour(for kind: OrbitModel.Kind) -> OrbitColour {
     switch kind {

@@ -154,6 +154,17 @@ struct OrbitRendererTests {
     #expect(core.colour == OrbitColour(0xF2, 0xEE, 0xEE))
   }
 
+  @Test("outlines the star in the ground colour, half a unit showing, at rest and while working")
+  func keyline() {
+    let ground = OrbitColour(0x17, 0x17, 0x17)
+    for working in [false, true] {
+      let keyline = drawing(model(working: working), time: 0.6).core.keyline
+      #expect(keyline.colour == ground, "working \(working)")
+      #expect(keyline.width == 1.0, "working \(working)")
+      #expect(keyline.width / 2 == OrbitRenderer.keylineVisibleWidth)
+    }
+  }
+
   @Test("grows the star's breath by the proportion the dot's radius grew, one in six")
   func breathProportion() {
     #expect(OrbitRenderer.breathRange / OrbitRenderer.restingCoreHalfSide == 1.0 / 6.0)
@@ -169,7 +180,8 @@ struct OrbitRendererTests {
     let armEnd = (1 - 2 * StarShape.innerRadiusFraction) * longest * 2
     let corner = hypot(longest, armEnd / 2)
     #expect(ring - corner > 2.8)
-    #expect(ring - OrbitRenderer.workingRingWidth / 2 > corner)
+    #expect(
+      ring - OrbitRenderer.workingRingWidth / 2 > corner + OrbitRenderer.keylineVisibleWidth)
   }
 
   // MARK: Motion
