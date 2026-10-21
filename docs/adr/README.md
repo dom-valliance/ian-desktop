@@ -8,7 +8,7 @@ Numbers here are this repository's own. Lance's ADRs are cited as "Lance ADR NNN
 |---|---|---|
 | 0001 | [The client is thin and holds no write power](0001-the-client-is-thin.md) | Accepted |
 | 0002 | [The contract is owned here and versioned](0002-the-contract-is-owned-here.md) | Accepted |
-| 0003 | [The mock server is the default environment](0003-the-mock-is-the-default-environment.md) | Accepted |
+| 0003 | [The mock server is the default environment](0003-the-mock-is-the-default-environment.md) | Accepted, amended by 0023 |
 | 0004 | [Rendering stays in SwiftUI](0004-rendering-stays-in-swiftui.md) | Accepted, amended by 0017 and 0018 |
 | 0005 | [Window model](0005-window-model.md) | Accepted |
 | 0006 | [Privacy on screen](0006-privacy-on-screen.md) | Accepted |
@@ -27,6 +27,6 @@ Numbers here are this repository's own. Lance's ADRs are cited as "Lance ADR NNN
 | 0020 | [The attention ladder and local notifications](0020-the-attention-ladder-and-local-notifications.md) | Accepted |
 | 0021 | [The session heartbeat](0021-session-heartbeat.md) | Accepted |
 | 0022 | [How the keyboard reaches the expanded client](0022-keyboard-reach-and-pointer-only-conveniences.md) | Accepted |
-| 0023 | [Call it Ian everywhere](0023-call-it-ian-everywhere.md) | Accepted |
+| 0023 | [Call it Ian everywhere](0023-call-it-ian-everywhere.md) | Accepted, amends 0003 |
 
 Later numbers go to deviations as they arise.

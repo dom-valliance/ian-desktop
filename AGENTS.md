@@ -66,7 +66,7 @@ Checked against the Lance repository on 17 October 2026. The spec text is unchan
 | E4 | 6.3: "colour is kind" | The design canvas colours commitments, proposals and alerts; `task` has no colour | Q12 |
 | E5 | 6.5: suppression list | The Ladder artboard also holds notifications for Focus and screen sharing | The spec wins. Focus is Q13. Screen sharing has no public signal; `sharingType` is the defence |
 | E6 | 12: Intune "Required for `Lance Users`"; Conditional Access | Lance ADR 0020: the tenant has no Entra ID P1, so the `Lance Users` group was never created, and Conditional Access needs P1 | Fast-follow prerequisite, recorded in [docs/companion/lance-track.md](docs/companion/lance-track.md). No effect on version 0 |
-| E7 | 4, 8 and elsewhere: the profile is `lance-dev` | Dom decided on 21 October 2026 that identifiers say Ian. The profile, its launch argument value and its build settings were renamed in N1 | Use `ian-dev`, `IAN_DEV_TENANT_ID`, `IAN_DEV_CLIENT_ID` and `IAN_DEV_SCOPE` wherever the spec says `lance-dev` or `IAN_LANCE_*`. Cite ADR 0023 |
+| E7 | The profile is `lance-dev` (sections 3, 8 to 10, 13 and 14), shown as "Lance dev" (0, 2, 8 and 11), and the card link reads "Open in Lance" (1 and 13) | Dom decided on 21 October 2026 that identifiers and visible names say Ian. N1 renamed the profile, its launch argument value and, in D3's build settings, `IAN_LANCE_*` | Use `ian-dev`, and `IAN_DEV_TENANT_ID`, `IAN_DEV_CLIENT_ID` and `IAN_DEV_SCOPE`. The environment shows as "Ian dev" (spec 8, line 337) and the card link reads "Open in Ian" (spec 1 and Q4); "the spec wins" does not restore the old words. Cite ADR 0023 |
 
 ## Open questions beyond the spec
 

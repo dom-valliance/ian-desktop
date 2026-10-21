@@ -173,6 +173,7 @@ Without `IAN_MOCK_URL` they are skipped. Run them against a mock you started for
 | The Today field stops moving until a relaunch | Run `log show --last 2h --style compact --predicate 'subsystem == "ai.valliance.ian.desktop" AND category == "motion"'` and send the lines. They hold the clock's state changes and no item content |
 | The panel header says the data is old | The stream to the mock has dropped. Look in the `scripts/dev.sh` window for a crash, then run the script again |
 | macOS says Ian cannot be opened because the developer cannot be verified | You opened a copy of the app that was downloaded or moved. Open it with `scripts/dev.sh`, which builds it on your machine, so it carries no quarantine flag |
+| An old Keychain item from a build that called the profile `lance-dev` | Only a developer who filled in both sign-in build settings and signed in has one. Nothing reads it any more. Delete it with `security delete-generic-password -s ai.valliance.ian.desktop.dev.lance-dev -a tokens` |
 
 ## Switch to Ian dev
 

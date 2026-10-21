@@ -16,7 +16,7 @@ Each step says what to do, where, and what the audience sees. Commands run in a 
 
 Where: the bottom right corner of the main display.
 
-- **Say.** Ian is a client for Lance, the personal operating agent. At rest it is only this avatar.
+- **Say.** Ian is the personal operating agent you see on your screen. At rest it is only this avatar.
 - **Point at.** The grey core, which breathes blue only while Ian is working on something. The thin ring, which fills as the day's load approaches its usual size. In `normal` the ring is full and a short peach arc outside it shows load above the median. The coloured dots on the ring, called satellites, which are what needs you now: pink for proposals, peach and blue for commitments you owe and are owed, teal for tasks, red with a pulsing rim for alerts. A "+n" chip counts the items that do not fit.
 - **Hover.** Move the pointer over the Orbit. A label beside it shows the top item's title, for example "Send the revised scope to [CLIENT A]".
 - **Menu bar.** Show "Ian" followed by a number at the right of the menu bar, or the Orbit's right-click menu if the entry hides behind the camera notch. Say that both give the same menu: Open, Pause me, Settings and Quit Ian.
