@@ -129,6 +129,7 @@ Promoted here when the same lesson appears more than twice in `.claude/notes/`. 
 - On a wide-colour display the system gives a layer a half-float backing store, and Core Graphics fills into it cost several times more. A view painted every frame asks for `.RGBA8Uint`.
 - `UserDefaults.removePersistentDomain` leaves an empty plist in `~/Library/Preferences`. Tests that write settings use a scratch suite (`withScratchDefaults`) that deletes the file too.
 - The scenario fixtures in `Packages/IanKit/Tests/TestSupport/Fixtures` are exported from the mock by `scripts/export-scenario-fixtures.sh` with a fixed clock. Re-run it, and re-record the Orbit, Pillars and view snapshots, when the mock's scenarios or the contract change.
+- A step Dom runs names its directory, branch and exact commands, says where on screen the result appears, and gives the full worktree path (`~/workspace/desktop-ian/.worktrees/<name>/...`) of any file not yet merged: Dom's editor shows the main checkout on `main`.
 - The `lance-dev` profile reads Dom's real dev data. Keep it out of every test, snapshot and recording.
 
 ## Review guidelines
