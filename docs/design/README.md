@@ -97,6 +97,10 @@ Copy on the canvas after an action ("Settled. Recorded on the ledger", "Approved
 
 The spec's table in 6.6 is authoritative. The Ladder artboard adds two columns the client does not act on, because Lance owns delivery (DL5): when Slack takes over (after ten idle minutes, or when the desktop app is not running; always at once for Stop) and when delivery is held back.
 
+## Quiet line
+
+The canvas does not draw this; it is an addition (21 October 2026). While suppression holds, motion stops (AGENTS.md rule 7), and nothing else on screen said so. The expanded client's header now shows one line beside "Ian", in the secondary style of the data's age: "Quiet while your camera is on", "Quiet during an external meeting", "Quiet in your quiet hours" or "Quiet while paused". Two triggers read "Quiet while your camera is on and in your quiet hours", in the order of `Suppression.Trigger.allCases`; three or more name the first and say "and more". The menu bar extra's menu and the Orbit's right-click menu show the same line as a disabled first entry, above a separator. VoiceOver reads it. It names a reason and never an item, so it shows while item text is hidden. Each change in suppression is also logged at `.notice` in the `motion` category, with the trigger names only.
+
 ## Where the canvas and the spec differ
 
 | Canvas | Spec, which wins |
