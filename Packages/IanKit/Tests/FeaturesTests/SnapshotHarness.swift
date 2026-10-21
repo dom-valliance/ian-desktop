@@ -35,7 +35,9 @@ enum SnapshotHarness {
       held.appearance = hosting.appearance
       waitForRows(in: hosting)
     }
+    removeScrollerGutters(in: hosting)
     hosting.layoutSubtreeIfNeeded()
+    if inWindow { waitForRows(in: hosting) }
     guard let rep = hosting.bitmapImageRepForCachingDisplay(in: hosting.bounds) else {
       preconditionFailure("The view did not produce a bitmap.")
     }
@@ -66,6 +68,21 @@ enum SnapshotHarness {
     preconditionFailure(
       "The hosted List drew no rows within \(Int(deadline)) seconds, so the snapshot would be blank."
     )
+  }
+
+  /// Forces every hosted scroll view to overlay scrollers with none shown, so no gutter is
+  /// reserved whatever the machine's scroller style or however late SwiftUI applies
+  /// `.scrollIndicators(.hidden)`. The reference images were recorded without a gutter.
+  private static func removeScrollerGutters(in view: NSView) {
+    for subview in view.subviews {
+      if let scrollView = subview as? NSScrollView {
+        scrollView.scrollerStyle = .overlay
+        scrollView.hasVerticalScroller = false
+        scrollView.hasHorizontalScroller = false
+        scrollView.tile()
+      }
+      removeScrollerGutters(in: subview)
+    }
   }
 
   private static func tableViews(in view: NSView) -> [NSTableView] {
