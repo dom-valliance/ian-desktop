@@ -44,8 +44,7 @@ public struct OrbitDrawingView: View {
 
     if layered.core == nil {
       context.fill(
-        circle(
-          CGPoint(x: centre.x, y: centre.y), drawing.core.radius * scale),
+        Path(StarShape.path(centre: centre, halfSide: drawing.core.halfSide * scale)),
         with: .color(drawing.core.colour.color))
       if let ring = drawing.core.ring {
         context.stroke(

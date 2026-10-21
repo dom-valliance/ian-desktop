@@ -24,6 +24,11 @@ final class OrbitMotionView: NSView {
   static let breathKey = "breath"
   static let pulseKey = "pulse"
 
+  /// The star's scale at the top of its breath, from its resting half side.
+  static let largestBreathScale =
+    (OrbitRenderer.restingCoreHalfSide + OrbitRenderer.breathRange)
+    / OrbitRenderer.restingCoreHalfSide
+
   private let box = CALayer()
   private var applied = OrbitMotion.still
 
@@ -86,14 +91,14 @@ final class OrbitMotionView: NSView {
   private func makeCoreLayer(_ core: OrbitDrawing.Core) -> CAShapeLayer {
     let layer = CAShapeLayer()
     layer.frame = box.bounds
-    layer.path = Self.circle(at: OrbitRenderer.centre, radius: core.radius)
+    layer.path = StarShape.path(
+      centre: OrbitRenderer.centre, halfSide: OrbitRenderer.restingCoreHalfSide)
     layer.fillColor = core.colour.cgColor
-    let breath = CABasicAnimation(keyPath: "path")
-    breath.fromValue = Self.circle(
-      at: OrbitRenderer.centre, radius: OrbitRenderer.restingCoreRadius)
-    breath.toValue = Self.circle(
-      at: OrbitRenderer.centre,
-      radius: OrbitRenderer.restingCoreRadius + OrbitRenderer.breathRange)
+    // The layer is the box's size and its anchor is the box's middle, which is the renderer's
+    // centre, so a scale breathes the star about its own centre.
+    let breath = CABasicAnimation(keyPath: "transform.scale")
+    breath.fromValue = 1.0
+    breath.toValue = Self.largestBreathScale
     layer.add(Self.loop(breath, rate: OrbitRenderer.breathRate), forKey: Self.breathKey)
     return layer
   }

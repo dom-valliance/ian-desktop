@@ -40,20 +40,22 @@ struct OrbitMotionTests {
 
   // MARK: Breath
 
-  @Test("breathes the core between radius 6 and 7 over half the sine's period while working")
+  @Test("breathes the star from 18 to 21 units across over half the sine period")
   func breath() throws {
     let view = motionView(showing: motion(model("normal")))
     let breath = try animation(of: view.coreLayer, key: OrbitMotionView.breathKey)
-    #expect(breath.keyPath == "path")
+    #expect(breath.keyPath == "transform.scale")
     #expect(abs(breath.duration - Double.pi / 1.5) < 1e-9)
     #expect(breath.autoreverses)
     #expect(breath.repeatCount == .infinity)
     #expect(breath.timingFunction == CAMediaTimingFunction(name: .easeInEaseOut))
-    #expect(abs(try bounds(of: breath.fromValue).width - 12) < 1e-6)
-    #expect(abs(try bounds(of: breath.toValue).width - 14) < 1e-6)
+    #expect(breath.fromValue as? Double == 1)
+    let largest = try #require(breath.toValue as? Double)
+    #expect(abs(largest * 18 - 21) < 1e-9)
+    #expect(view.coreLayer?.fillColor == OrbitPalette.workingCore.cgColor)
   }
 
-  @Test("draws the core's layer at the renderer's centre and radius")
+  @Test("draws the core's layer as the star at the renderer's centre, 18 units across at rest")
   func coreGeometry() throws {
     let model = model("normal")
     let core = OrbitRenderer.drawing(for: model, time: 0, reducedMotion: true).core
@@ -61,7 +63,8 @@ struct OrbitMotionTests {
     let box = try bounds(of: try #require(view.coreLayer).path)
     #expect(box.midX == OrbitRenderer.centre.x)
     #expect(box.midY == OrbitRenderer.centre.y)
-    #expect(abs(box.width - core.radius * 2) < 1e-6)
+    #expect(abs(box.width - OrbitRenderer.restingCoreHalfSide * 2) < 1e-6)
+    #expect(abs(box.height - OrbitRenderer.restingCoreHalfSide * 2) < 1e-6)
     #expect(view.coreLayer?.fillColor == core.colour.cgColor)
   }
 
@@ -255,9 +258,10 @@ struct OrbitMotionTests {
   @Test("leaves the working core out of the still pose only when a layer draws it")
   func stillPoseLeavesLayeredCore() throws {
     let model = model("normal")
-    let core = OrbitRenderer.centre
-    #expect(try !isGround(pixels(of: model, layered: .still), at: core))
-    #expect(try isGround(pixels(of: model, layered: motion(model)), at: core))
+    // The star's centre is a hole, so the point is on its top arm.
+    let arm = CGPoint(x: OrbitRenderer.centre.x, y: OrbitRenderer.centre.y - 6)
+    #expect(try !isGround(pixels(of: model, layered: .still), at: arm))
+    #expect(try isGround(pixels(of: model, layered: motion(model)), at: arm))
   }
 
   @Test("leaves each alert's rim out of the still pose only when a layer draws it")

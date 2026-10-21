@@ -124,34 +124,50 @@ struct OrbitRendererTests {
 
   // MARK: Core
 
-  @Test("breathes the core while working, from a radius of six to seven")
+  @Test("breathes the star while working, from a half side of nine to ten and a half")
   func coreBreath() {
     let working = model(working: true)
     let at = drawing(working, time: 0.6).core
-    #expect(abs(at.radius - (6 + 0.5 + 0.5 * sin(1.5 * 0.6))) < 1e-9)
+    #expect(abs(at.halfSide - (9 + 1.5 * (0.5 + 0.5 * sin(1.5 * 0.6)))) < 1e-9)
     #expect(at.colour == OrbitColour(0xB0, 0xC1, 0xE3))
   }
 
   @Test("holds the core still under reduced motion")
   func coreStillWhenReduced() {
     let working = model(working: true)
-    #expect(drawing(working, time: 0.6, reduced: true).core.radius == 6.5)
-    #expect(drawing(working, time: 2.2, reduced: true).core.radius == 6.5)
+    #expect(drawing(working, time: 0.6, reduced: true).core.halfSide == 9.75)
+    #expect(drawing(working, time: 2.2, reduced: true).core.halfSide == 9.75)
   }
 
   @Test("rings a working core when Reduce Motion holds it still, and only then")
   func workingRing() {
     let working = model(working: true)
-    #expect(drawing(working, time: 0.6, reduced: true).core.ring == 10)
+    #expect(drawing(working, time: 0.6, reduced: true).core.ring == 13.5)
     #expect(drawing(working, time: 0.6).core.ring == nil)
     #expect(drawing(model(working: false), time: 0.6, reduced: true).core.ring == nil)
   }
 
-  @Test("rests the core grey and small when nothing is working")
+  @Test("rests the star off-white, 18 units across, when nothing is working")
   func coreResting() {
     let core = drawing(model(working: false), time: 0.6).core
-    #expect(core.radius == 6)
-    #expect(core.colour == OrbitColour(0xA1, 0x9A, 0x9A))
+    #expect(core.halfSide == 9)
+    #expect(core.colour == OrbitColour(0xF2, 0xEE, 0xEE))
+  }
+
+  @Test("grows the star's breath by the proportion the dot's radius grew, one in six")
+  func breathProportion() {
+    #expect(OrbitRenderer.breathRange / OrbitRenderer.restingCoreHalfSide == 1.0 / 6.0)
+  }
+
+  @Test("keeps the ring clear of the star's arms at their longest and of their corners")
+  func ringClearsTheStar() {
+    let longest = OrbitRenderer.restingCoreHalfSide + OrbitRenderer.breathRange
+    let ring = OrbitRenderer.workingRingRadius
+    #expect(ring - longest == 3)
+    // An arm's end is 0.176 of the star's side wide, so its corner is a little farther out.
+    let corner = hypot(longest, 0.088 * 2 * longest)
+    #expect(ring - corner > 2.8)
+    #expect(ring - OrbitRenderer.workingRingWidth / 2 > corner)
   }
 
   // MARK: Motion
