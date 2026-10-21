@@ -174,9 +174,9 @@ Without `IAN_MOCK_URL` they are skipped. Run them against a mock you started for
 | The panel header says the data is old | The stream to the mock has dropped. Look in the `scripts/dev.sh` window for a crash, then run the script again |
 | macOS says Ian cannot be opened because the developer cannot be verified | You opened a copy of the app that was downloaded or moved. Open it with `scripts/dev.sh`, which builds it on your machine, so it carries no quarantine flag |
 
-## Switch to Lance dev
+## Switch to Ian dev
 
-The `lance-dev` profile reads the real Lance dev environment for the signed-in principal. It cannot work until Lance has done its part. Until then the app says so and nothing breaks, and the mock stays the default.
+The `ian-dev` profile reads the real dev environment behind Lance for the signed-in principal. It cannot work until Lance has done its part. Until then the app says so and nothing breaks, and the mock stays the default.
 
 ### What it needs
 
@@ -193,9 +193,9 @@ Then the build needs three values. They are build settings in `App/project.yml`,
 
 | Setting | Holds |
 |---|---|
-| `IAN_LANCE_TENANT_ID` | The tenant id. Already set |
-| `IAN_LANCE_CLIENT_ID` | The id of `Ian Desktop (dev)`. Empty until DL1 registers it |
-| `IAN_LANCE_SCOPE` | The api scope string DL1 records in Lance's Entra runbook. Empty until DL1 |
+| `IAN_DEV_TENANT_ID` | The tenant id. Already set |
+| `IAN_DEV_CLIENT_ID` | The id of `Ian Desktop (dev)`. Empty until DL1 registers it |
+| `IAN_DEV_SCOPE` | The api scope string DL1 records in Lance's Entra runbook. Empty until DL1 |
 
 Edit the empty values in `App/project.yml`, regenerate the project, then run a build:
 
@@ -221,22 +221,22 @@ az containerapp show -g rg-lance-dev -n ca-lance-api-dev --query properties.conf
 
 Either way, no rebuild is needed beyond the settings above.
 
-1. **From Settings.** Click the Orbit to open the panel, choose Settings in the sidebar, and use the Environment picker to choose "Lance dev". A confirmation asks "Switch environment?". Choose "Sign out and switch to Lance dev". Ian clears what it holds and starts again.
+1. **From Settings.** Click the Orbit to open the panel, choose Settings in the sidebar, and use the Environment picker to choose "Ian dev". A confirmation asks "Switch environment?". Choose "Sign out and switch to Ian dev". Ian clears what it holds and starts again.
 2. **From the launch argument.** Quit the app, then open it with the argument. This does not save the choice:
 
 ```
-open build/DerivedData/Build/Products/Debug/Ian.app --args -IanEnvironment lance-dev
+open build/DerivedData/Build/Products/Debug/Ian.app --args -IanEnvironment ian-dev
 ```
 
-The mock does not need to run for `lance-dev`. To go back, choose "Mock" in the same picker, or open the app with `--args -IanEnvironment mock`.
+An earlier build called this profile `lance-dev`. A saved choice or an argument of that name still opens `ian-dev`, and the saved choice is rewritten once. The mock does not need to run for `ian-dev`. To go back, choose "Mock" in the same picker, or open the app with `--args -IanEnvironment mock`.
 
 ### The browser sign-in
 
-With `lance-dev` active the panel shows "Sign in to see your day." and a Sign in button. Click it. Ian opens your default browser at the Microsoft sign-in page and listens on `http://localhost` on a random port for the redirect. Sign in with your Valliance account. When the browser says you can close the tab, return to Ian: the panel loads your own items, and the header shows "Lance dev". Ian keeps its tokens in the login Keychain, so a relaunch signs in silently.
+With `ian-dev` active the panel shows "Sign in to see your day." and a Sign in button. Click it. Ian opens your default browser at the Microsoft sign-in page and listens on `http://localhost` on a random port for the redirect. Sign in with your Valliance account. When the browser says you can close the tab, return to Ian: the panel loads your own items, and the header shows "Ian dev". Ian keeps its tokens in the login Keychain, so a relaunch signs in silently.
 
 ### What it shows until DL1 lands
 
-- With `IAN_LANCE_CLIENT_ID` or `IAN_LANCE_SCOPE` empty, the panel shows a sign-in banner that names the empty settings and says that Lance package DL1 adds them. No browser opens.
+- With `IAN_DEV_CLIENT_ID` or `IAN_DEV_SCOPE` empty, the panel shows a sign-in banner that names the empty settings and says that the server's package DL1 adds them. No browser opens.
 - If the settings are filled in but Entra does not offer the scope, sign-in fails with a message that names the scope and says DL1 grants it.
 - If sign-in works but DL2 to DL4 are not merged, the api has nothing to serve and the panel shows its offline or error state instead of data.
 
@@ -244,9 +244,9 @@ In every case, switch back to the mock with the picker or the launch argument.
 
 ### The data rule
 
-`lance-dev` reads real data: mail, tasks, commitments and meeting names. Therefore:
+`ian-dev` reads real data: mail, tasks, commitments and meeting names. Therefore:
 
-- Never record a snapshot, take a screenshot, save a trace or run `scripts/measure-cpu.sh` against `lance-dev`, and never paste its output into a pull request, an issue or a document.
-- Keep `lance-dev` out of every test.
+- Never record a snapshot, take a screenshot, save a trace or run `scripts/measure-cpu.sh` against `ian-dev`, and never paste its output into a pull request, an issue or a document.
+- Keep `ian-dev` out of every test.
 - The diagnostics report in Settings copies ids, versions and timings only, and is safe to share.
 - Keep the app on the mock when you demonstrate it to anyone. [docs/demo.md](demo.md) uses the mock for everything except its last section.

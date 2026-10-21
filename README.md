@@ -9,11 +9,11 @@ The repository is `ian-desktop`. A local checkout may sit in a folder called `de
 | [docs/spec.md](docs/spec.md) | The specification. Read it before writing code |
 | [AGENTS.md](AGENTS.md) | How to work here, for people and agents. `CLAUDE.md` imports it |
 | [docs/plans/work-packages.md](docs/plans/work-packages.md) | D1 to D9 in order, with a kick-off prompt for each |
-| [docs/run-local.md](docs/run-local.md) | A fresh clone to the `normal` scenario on screen, then the switch to `lance-dev` |
+| [docs/run-local.md](docs/run-local.md) | A fresh clone to the `normal` scenario on screen, then the switch to `ian-dev` |
 | [docs/demo.md](docs/demo.md) | A ten-minute demo script against the mock |
 | [docs/adr/README.md](docs/adr/README.md) | Architecture decisions |
 | [docs/design/README.md](docs/design/README.md) | The Orbit and Pillars encodings, taken from the design canvas |
-| [docs/companion/lance-track.md](docs/companion/lance-track.md) | What Lance must build (DL1 to DL6) before the `lance-dev` profile works |
+| [docs/companion/lance-track.md](docs/companion/lance-track.md) | What Lance must build (DL1 to DL6) before the `ian-dev` profile works |
 
 ## Running it
 

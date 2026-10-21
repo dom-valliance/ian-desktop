@@ -17,7 +17,7 @@ How to review changes in this repository. These rules apply to human reviewers a
 
 1. **Real data and secrets** (Blocking, P0 for automated review)
    - Anything taken from the principal's mail, calendar, meetings, transcripts, tasks or Slack, in any file: Swift, mock fixtures, snapshot images, tests, logs, screenshots, docs or the pull request text. A fixture or snapshot that names a real client, counterparty, person or meeting is a leak.
-   - Tokens, client secrets, signing material or notary keys anywhere. Version 0 has no secrets at all: the mock takes any `Bearer dev-...` token and the `lance-dev` client is public.
+   - Tokens, client secrets, signing material or notary keys anywhere. Version 0 has no secrets at all: the mock takes any `Bearer dev-...` token and the `ian-dev` client is public.
    - If found, say so plainly, and tell the author it must be removed from history, not only from the branch.
 2. **Non-negotiables** (Blocking). What lint and tests can miss, by rule in [AGENTS.md](AGENTS.md#non-negotiables):
    - **Thin client:** arithmetic or sorting on `dueAt`, `severity`, `pressure` or counts that decides what the user sees; a hard-coded action id or label; a view choosing which buttons an item offers.
