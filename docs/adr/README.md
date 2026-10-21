@@ -21,12 +21,13 @@ Numbers here are this repository's own. Lance's ADRs are cited as "Lance ADR NNN
 | 0014 | [System windows are swept](0014-system-windows-are-swept.md) | Accepted |
 | 0015 | [Features may import the generated contract types](0015-features-import-contract.md) | Accepted |
 | 0016 | [The field's angle and the pane sizes are saved](0016-field-angle-and-pane-sizes-are-saved.md) | Accepted |
-| 0017 | [The Orbit's motion runs in Core Animation](0017-orbit-motion-runs-in-core-animation.md) | Accepted |
+| 0017 | [The Orbit's motion runs in Core Animation](0017-orbit-motion-runs-in-core-animation.md) | Accepted, amended by 0024 |
 | 0018 | [The field draws with Core Graphics on a display link](0018-the-field-draws-with-core-graphics-on-a-display-link.md) | Accepted |
 | 0019 | [Notification levels, suppression toggles and the order of a new agent](0019-settings-levels-toggles-and-agent-order.md) | Accepted |
 | 0020 | [The attention ladder and local notifications](0020-the-attention-ladder-and-local-notifications.md) | Accepted |
 | 0021 | [The session heartbeat](0021-session-heartbeat.md) | Accepted |
 | 0022 | [How the keyboard reaches the expanded client](0022-keyboard-reach-and-pointer-only-conveniences.md) | Accepted |
 | 0023 | [Call it Ian everywhere](0023-call-it-ian-everywhere.md) | Accepted, amends 0003 |
+| 0024 | [The Orbit's core is the Valliance star](0024-the-orbits-core-is-the-valliance-star.md) | Accepted, amends 0017 |
 
 Later numbers go to deviations as they arise.

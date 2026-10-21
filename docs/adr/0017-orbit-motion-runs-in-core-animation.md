@@ -1,7 +1,7 @@
 # 0017. The Orbit's motion runs in Core Animation
 
 Date: 2026-10-19
-Status: Accepted
+Status: Accepted, amended by 0024
 
 ## Context
 
