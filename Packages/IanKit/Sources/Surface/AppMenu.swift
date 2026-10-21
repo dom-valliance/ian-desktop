@@ -9,11 +9,15 @@ public enum AppMenu {
     /// `isChecked` is nil for an entry that is not a toggle.
     case command(Command, title: String, isChecked: Bool?, shortcut: Character?)
     case separator
+    /// A line that is shown and cannot be chosen: why Ian is quiet.
+    case notice(String)
   }
 
-  /// "Settings" opens the expanded client on its Settings view.
-  public static func entries(isPaused: Bool) -> [Entry] {
-    [
+  /// "Settings" opens the expanded client on its Settings view. `quietLine` is the reason Ian is
+  /// quiet, shown first while suppression holds.
+  public static func entries(isPaused: Bool, quietLine: String? = nil) -> [Entry] {
+    let lead: [Entry] = quietLine.map { [.notice($0), .separator] } ?? []
+    return lead + [
       .command(.open, title: "Open", isChecked: nil, shortcut: nil),
       .command(.togglePause, title: "Pause me", isChecked: isPaused, shortcut: nil),
       .command(.openSettings, title: "Settings", isChecked: nil, shortcut: ","),

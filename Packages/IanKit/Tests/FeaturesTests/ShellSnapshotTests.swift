@@ -19,7 +19,7 @@ struct ShellSnapshotTests {
   private func header(
     environment: String? = nil, phase: IanStore.Phase = .running,
     connection: IanStore.Connection = .live, updatedSecondsAgo: TimeInterval? = nil,
-    isSigningIn: Bool = false
+    isSigningIn: Bool = false, quietLine: String? = nil
   ) -> some View {
     VStack(spacing: 0) {
       ClientHeaderBar(
@@ -27,20 +27,35 @@ struct ShellSnapshotTests {
           environmentName: environment, phase: phase, connection: connection,
           lastUpdatedAt: updatedSecondsAgo.map { Self.now.addingTimeInterval(-$0) },
           isSigningIn: isSigningIn, now: Self.now),
-        signIn: {}, close: {})
+        quietLine: quietLine, signIn: {}, close: {})
       Spacer(minLength: 0)
     }
   }
 
-  private func checkHeader(_ view: some View, named name: String) {
+  private func checkHeader(
+    _ view: some View, named name: String, size: CGSize? = nil
+  ) {
     SnapshotHarness.check(
-      SnapshotHarness.image(of: view, size: Self.headerSize), named: name, testName: "shell")
+      SnapshotHarness.image(of: view, size: size ?? Self.headerSize), named: name,
+      testName: "shell")
   }
 
   @Test("draws the header live with no banner, and with the environment named")
   func headerLive() {
     checkHeader(header(), named: "header-live")
     checkHeader(header(environment: "Ian dev"), named: "header-live-environment")
+  }
+
+  @Test("draws the quiet line in the header for one trigger, several, and beside the age")
+  func headerQuiet() {
+    checkHeader(header(quietLine: "Quiet while your camera is on"), named: "header-quiet-camera")
+    checkHeader(
+      header(quietLine: "Quiet while your camera is on and more"), named: "header-quiet-several")
+    checkHeader(
+      header(
+        environment: "Ian dev", connection: .offline, updatedSecondsAgo: 120,
+        quietLine: "Quiet during an external meeting and in your quiet hours"),
+      named: "header-quiet-offline", size: CGSize(width: 1_040, height: 100))
   }
 
   @Test("draws the header while connecting")

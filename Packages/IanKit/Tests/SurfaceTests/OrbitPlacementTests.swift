@@ -132,6 +132,17 @@ struct AppMenuTests {
     #expect(titles == ["Open", "Pause me", "Settings", "Quit Ian"])
   }
 
+  @Test("puts the quiet line first, then a separator, only while one is given")
+  func quietLine() {
+    let quiet = AppMenu.entries(isPaused: false, quietLine: "Quiet while your camera is on")
+    #expect(quiet.first == .notice("Quiet while your camera is on"))
+    #expect(quiet.dropFirst().first == .separator)
+    #expect(quiet.dropFirst(2) == AppMenu.entries(isPaused: false)[...])
+    for entry in AppMenu.entries(isPaused: false) {
+      if case .notice = entry { Issue.record("a notice appeared with no quiet line") }
+    }
+  }
+
   @Test("checks Pause me only while paused")
   func pauseCheckmark() {
     func state(_ paused: Bool) -> Bool? {

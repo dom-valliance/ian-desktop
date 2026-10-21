@@ -14,6 +14,8 @@ public struct MenuBarMenu: View {
       switch entry {
       case .separator:
         Divider()
+      case .notice(let line):
+        Button(line) {}.disabled(true)
       case .command(let command, let title, let isChecked, let shortcut):
         if let isChecked {
           Toggle(
