@@ -21,7 +21,8 @@ Each entry records:
 | D6 | Done, 20 October 2026 |
 | D7 | Done, 20 October 2026 |
 | D8 | Done, 20 October 2026 |
-| D9 | Not started |
+| D9 | Done, 21 October 2026 |
+| N1 | Not started |
 
 ## Entries
 
@@ -649,3 +650,115 @@ The last three were measured by the lead on the app's own process with `ps -o ti
   - Time-sensitive delivery for Stop needs an entitlement and stays in the fast follow (spec 12).
   - Focus is not a suppression trigger in version 0 (Q13).
   - Arbitration itself is Lance's (DL5), checked in spec 11 once DL5 is merged.
+
+### D9. Accessibility, performance, snapshots, run guide and demo
+
+- Date: 21 October 2026, built from 20 October
+- Branch: `feat/d9-hardening`, from `main` at `7b647f2`. Commits `28911d3..80b8048` (31 commits), plus this entry.
+- Built in parallel: snapshots, Reduce Motion, stream recovery and the accessibility fixes in `.worktrees/d9`; the run guide, the demo script and the measurement in `.worktrees/d9-docs`, cherry-picked onto the branch. An Opus audit of all of IanKit ran beside them.
+- Machine: MacBook Pro, Apple M4 Pro (Mac16,7), macOS 27.0.1, Xcode 27.1 (27A9275), with external displays.
+
+#### Commands and exit codes
+
+| Command | Exit |
+|---|---|
+| `swift format lint --recursive --strict Packages App scripts` | 0 |
+| `swift build --package-path Packages/IanKit --force-resolved-versions` | 0 |
+| `swift test --package-path Packages/IanKit --force-resolved-versions`, five runs | 0 each: 754 tests, the integration tests skipped |
+| `scripts/check-generated.sh` | 0 |
+| `xcodebuild ... -onlyUsePackageVersionsFromResolvedFile -derivedDataPath build/DerivedData build` | 0 |
+| `pnpm --dir contract install --frozen-lockfile && pnpm --dir contract lint` | 0 |
+| `pnpm --dir mock lint && pnpm --dir mock typecheck && pnpm --dir mock test` | 0 |
+| Integration suite against `scripts/dev.sh --mock-only`, run serially (`--no-parallel`) | 0: 19 tests |
+| Fresh clone of `main` at `7b647f2`, in a new folder: IanKit build, IanKit tests, `xcodebuild` build, the mock's install and tests | 0 each: 33 s, 29 s, 45 s, 9 s (warm caches) |
+| `scripts/measure-cpu.sh` | 0, every target met (below) |
+| `scripts/test-measure-lib.sh`, `bash -n scripts/measure-cpu.sh` | 0, 0 |
+
+#### Spec section 11
+
+| Criterion | Evidence | Status |
+|---|---|---|
+| The app runs locally with no Apple setup | A fresh clone built, tested and built the app with no signing and no Apple account (above). Launch to data on the unsigned Debug build that `dev.sh` makes: 1.00 s against a target of 10 s. Dom cloned the D9 branch into a new folder, ran `scripts/dev.sh`, and saw the `normal` scenario within about ten seconds of the app opening, on 21 October 2026 | Evidenced |
+| The contract is the single source | `scripts/check-generated.sh` regenerates the Swift types from `contract/ian-desktop.v1.yaml` and fails on drift (D1, every package since); the mock validates every response against the same file and its tests pass (D2, 144 tests); tags `contract-v1.0.0` to `contract-v1.1.1` | Evidenced here; "DL6 passes in Lance CI" waits on Lance DL6 |
+| The client holds no logic | An Opus audit of every source file in IanKit and the app found no pressure, horizon, grouping, Orbit selection, eligibility or policy computation, and every item button comes from `actions`; each client decision found is presentation an ADR or the spec allows | Evidenced |
+| All seven views work | Today (D5: models, Dom's passes; D9: snapshots of the lists in all four scenarios and the footer for an item, a week group, a later group and a removed item), the four item views (D6: models from every scenario, 14 snapshots, every mock action round-tripped against the mock), Agents and Settings (D7: round trips against the mock, 6 snapshots), and the header's banners and the sidebar (D9: 14 snapshots) | Evidenced |
+| Orbit and Pillars match the design | Orbit and Pillars snapshots for `quiet`, `normal`, `overloaded` and `incident` with motion on and off (D4, D5, P1) and turned angles (D5.1). D9 adds 11 Orbit states (a working core, the overflow chip at +1 and +128, an alert alone, one satellite of each kind, empty, load at and twice the median) and 14 Pillars states (selected, a selected alert, mid-sink, mid-growth, every kind at five pressures with working particles, empty, two units), each with motion on and off where motion changes the drawing. Every new reference renders the same with a US region, another time zone and Reduce Motion forced on | Evidenced |
+| The stream recovers | `StoreIntegrationTests+Recovery` against the mock: with the stream dropped (`offline`), events logged meanwhile are replayed in order from `Last-Event-ID` with no snapshot refetch; with the mock's clock moved past the 24-hour window, the reconnect answers `410` and the snapshot is refetched; while disconnected the data keeps its age and actions are off, which the header's stale banner shows (snapshots). Unit tests in ClientTests and SyncEngineTests (D3). The mock's replay log now ages events by their own time (fixed in D9) | Evidenced |
+| Suppression holds | D4's suppression tests and D8's notification tests (no item text while suppressed, a P0 still delivered). Dom checked on 21 October 2026: with Photo Booth's camera on, and again in `external-meeting`, the Orbit's hover showed no title, a P1 notified nothing, and a P0 read "Something needs you now." | Evidenced |
+| Windows stay out of screen captures | Every window from `WindowFactory` sets `sharingType = .none` and system windows are swept (ADR 0014). Dom recorded the whole screen with the system's tool on 21 October 2026, with the Orbit and the panel showing: no Ian window appears in the recording, which he then deleted | Evidenced |
+| The switch to Lance dev works | `docs/run-local.md` documents the switch | Waits on Lance DL1 to DL4 |
+| Arbitration works | The client reports heartbeats (D8, ADR 0021) | Waits on Lance DL5 |
+| The budget holds | `scripts/measure-cpu.sh` and two Time Profiler traces on the M4 Pro (below): every CPU and memory target met. No M1 was available, so the CPU targets are two thirds of spec 6.9's budgets (Dom's decision in D5) | Evidenced on an M4 Pro |
+| Accessibility holds | An Opus audit of every view found no Blocking issue and VoiceOver reaching every item and action through the lists; its findings are fixed (below). `ReduceMotionInventoryTests` lists every animation and fails on one not listed; each has a test showing Reduce Motion stops it or makes it a fade, and the Orbit's glide to a corner now honours it. Dom's passes on 21 October 2026: with Keyboard navigation off, Today's rows by the arrow keys, Return into the footer's actions, Left and Right between them and Escape back, and Command-1 to 3 on Commitments; with it on, Tab through every control, one prompt open at a time; VoiceOver reading each row's kind and rung, the labelled footer, the spoken whisper and confirmation question; Reduce Motion stopping the breath (the working ring showing) and the sway while a drag still turns the field, the panel fading in and the Orbit jumping to its corner. ADR 0022 records what needs Keyboard navigation | Evidenced |
+
+#### Measurements
+
+`scripts/measure-cpu.sh` on 20 October 2026, Release build against the mock, 30 seconds after a 10-second warm-up, the Mac left alone:
+
+| State | Ian CPU | Target | WindowServer | Average memory | Peak memory | Memory target |
+|---|---|---|---|---|---|---|
+| Orbit only, `quiet` | 0.13% | none | 5.88% | 97.1 MB | 100.9 MB | under 150 MB |
+| Orbit only, `normal` | 0.10% | under 0.7% | 20.55% | 97.9 MB | 98.5 MB | under 150 MB |
+| Orbit only, `incident` | 0.52% | under 0.7% | 17.29% | 93.8 MB | 102.0 MB | under 150 MB |
+| Panel open on Today, `normal` | 7.90% | under 10% | 21.23% | 100.5 MB | 101.2 MB | none |
+
+Launch to data, from process start to the mock reporting an open event stream (which follows the first snapshot): Release, Orbit only, cold 0.95 s; Release, panel open 0.39 s; Debug as `dev.sh` builds it 1.00 s; target 10 s.
+
+Time Profiler, 15 seconds each, Release against the mock:
+
+- Orbit only in `incident`: 24 samples, 0.16% of one core: stream reading, the store and the heartbeat, no drawing and nothing from notifications. The 0.52% above comes from `ps` at a 0.01-second resolution.
+- Panel open on Today in `normal`: 900 samples, 6.0% of one core, 52% of them painting the field (`PillarsPainter`, pixel fills), SwiftUI's view graph negligible, as in P1.
+
+The traces are kept in the lead's scratchpad, not in the repository.
+
+#### Reduce Motion inventory
+
+`ReduceMotionInventoryTests` counts every animation API in `Surface` and `Features` and fails when one appears that is not listed here.
+
+| Animation | Where | Under Reduce Motion | Test |
+|---|---|---|---|
+| The Orbit's core breath | `OrbitMotion` (Core Animation) | No layers; the still pose at the breath's midpoint, with a ring while working | `OrbitMotionTests`, `OrbitRendererTests` |
+| The alert rim's pulse | `OrbitMotion`, `OrbitRenderer` | No layers; the rim held full | `OrbitMotionTests`, `OrbitRendererTests` |
+| The field's sway | `PillarsRenderer` | None; the chosen angle held | `FieldTurnTests`, `PillarsRendererTests` |
+| The field's ripple | `PillarsRenderer` | None | `PillarsRendererTests` |
+| An alert's outline pulse in the field | `PillarsRenderer` | Held | `PillarsRendererTests` |
+| Working particles | `PillarsRenderer` | Held at one point | `PillarsRendererTests` |
+| A pillar growing | `PillarsRenderer` | A fade at full height | `PillarsRendererTests`, `pillars.growing-motion-off` |
+| A pillar sinking | `PillarsRenderer` | A fade at full height | `PillarsRendererTests`, `pillars.sinking-motion-off` |
+| The field's display link | `PillarsFieldNSView` | Ticks only through a growth or a sink, then pauses | `PillarsFieldViewTests` |
+| The principal's drag | `PillarsFieldNSView` | Still turns the field (AGENTS.md rule 7) | `PillarsFieldViewTests` |
+| The panel's entrance | `SurfaceController`, `ExpandedEntrance` | A fade, no rise | `ExpandedEntranceTests` |
+| The Orbit's glide to a corner | `SurfaceController` | Placed at once (fixed in D9) | `MotionPreferenceTests` |
+| The header's age | `ExpandedClientView` (`TimelineView`, every 15 seconds) | Moves nothing on screen | `ReduceMotionInventoryTests` |
+| The whisper, the hover label, list scrolling, selection | No animation | Not applicable | `ReduceMotionInventoryTests` |
+
+#### Choices recorded
+
+- **ADR 0022.** List rows move with the arrow keys with no system setting. Buttons and other controls are reached with Tab through macOS's Keyboard navigation setting, the platform's convention. The Commitments tabs also answer Command-1 to Command-3. Resizing the panes and turning the field are pointer-only conveniences that carry no information.
+- **Accessibility fixes from the audit.**
+  - Today's Now rows name their kind in the tag, and Later rows use a neutral swatch rather than a kind the server did not send.
+  - One prompt is open per window, so Return and Escape act only on it.
+  - Today's labels carry the rung, and the footer is a labelled container.
+  - A confirmation question and the whisper are announced to VoiceOver, the whisper never while suppressed.
+  - A working core shows a static ring when Reduce Motion stills it.
+
+  The design README records the differences from the canvas.
+- **Snapshot harness.** Views drawn with `List` render in a borderless window that is never ordered on screen, since a `List` draws nothing without one.
+- **Measurement.** `scripts/measure-cpu.sh` now also reports resident memory (failing at 150 MB for the Orbit-only states) and the time from launch to the stream opening after the first snapshot (failing at 10 seconds), with no change to the app.
+- **Docs.** `docs/run-local.md` takes a fresh clone to the `normal` scenario and describes the switch to `lance-dev`; `docs/demo.md` is a ten-minute demo against the mock.
+
+#### Reviews and what is left
+
+- **Audit and review.**
+  - An Opus audit of all of IanKit found no client-side logic and no Blocking accessibility issue.
+  - Its two Should fix findings (kind shown by colour alone on Today; Return and Escape reaching another card's prompt) and its eight suggestions are fixed.
+  - An Opus review of the branch then found 1 Blocking (this entry and the measurement), 6 Should fix and 4 Suggestions. Among them were launch to data timed to the first request rather than the stream, a fixed wait in the snapshot harness, Later rows dropping the server's colour, a weak Reduce Motion inventory, and ADR 0022 not naming its narrowing. All are fixed.
+- **Two timing flaws found in full runs.**
+  - The `List` snapshots could capture a scroll bar's gutter before SwiftUI hid the indicators. The harness now forces overlay scrollers with the bars hidden, and lays out again before capturing.
+  - A D3 store test checked the sign-out count before the store's sign-out task had run. It now waits for the call.
+
+  The final checks use five full test runs instead of three.
+- **Keyboard (ADR 0022).** Dom accepted on 20 October 2026 that controls follow macOS's Keyboard navigation setting, a narrowing of spec 6.2 and 6.8. Today's footer has a key path that needs no setting.
+- **Open: the field stopped once.** During the hand check the Today field stopped animating at some point, and only a relaunch restarted it. Toggling system Reduce Motion, "Pause me", the camera, locking the screen and a screen recording did not reproduce it. The field's clock and the panel's on-screen state now log each change, at a level the system keeps, with no item content, and `docs/run-local.md` says how to read them, so the next occurrence leaves evidence.
+- **Waiting on Lance.** The switch to Lance dev (DL1 to DL4) and arbitration (DL5), and the contract's single source in Lance CI (DL6). The demo against Lance dev waits on the same.
+- **Next.** N1, "Call it Ian everywhere", added to the plan at Dom's request on 21 October 2026.
