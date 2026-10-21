@@ -31,7 +31,7 @@ Dark ground throughout. Values are sRGB.
 | Proposal | `#F0B9E2` (240, 185, 226) | pink-200 |
 | Alert | `#D88C8C` (216, 140, 140), always with a light rim | |
 | Task | `#7FBFC1`, the AGENTS.md Q12 default; the canvas has no task colour | teal-100 |
-| Resting core | `#A19A9A` | grey-500 |
+| Resting core (the star) | `#F2EEEE` | off-white-50, the text colour |
 | Load arc | `#8D8989` | grey-600 |
 | Working (core, particles) | `#B0C1E3` | blue-200 |
 | Resolved status text | `#9EC2A1` | |
@@ -49,7 +49,7 @@ From Recommended. The avatar is drawn in a 100 by 100 unit box, rendered at 96 p
 | Track | Circle r 34, stroke `rgba(255,255,255,0.10)`, width 2.5 | Always drawn |
 | Load arc | Circle r 34, stroke `#8D8989`, width 2.5, round caps, from 12 o'clock clockwise | Length is `min(1, load / median)` of the circumference |
 | Over-median arc | Circle r 42, stroke `#F3A982`, width 2.5, round caps, from 12 o'clock | Length is `clamp(load / median - 1, 0, 1)` of the circumference |
-| Core | Circle at centre, r 6, `#A19A9A` | While any item is `working`: fill `#B0C1E3`, r `6 + b` with `b = 0.5 + 0.5 sin(1.5 t)` (a 4.2 second breath). The live breath and the alerts' rim pulse are Core Animation animations, eased between the same limits over the same periods (ADR 0017) |
+| Core | The Valliance star at centre, 18 units square (half side 9), `#F2EEEE`. `StarShape` draws it as a vector path: four quarter rings, one on each corner of the square, inner radius 0.412 of the side, which leaves four flat arms and a concave diamond hole in the middle. The source images are in `assets/` | While any item is `working`: fill `#B0C1E3`, half side `9 + 1.5 b` with `b = 0.5 + 0.5 sin(1.5 t)` (a 4.2 second breath, the same one in six the dot's radius grew). The live breath scales the star about its centre as a Core Animation animation, and the alerts' rim pulse is one too, both eased between the same limits over the same periods (ADR 0017). The still ring round a working core sits 3 units outside the arms at their longest (radius 13.5) |
 | Satellites | On r 34 at -90, -18, 54, 126 and 198 degrees, in the server's order | r 4.5 in the kind colour. Alerts r 6.5 with a rim of width 1.5 in `rgba(242,238,238, 0.5 + 0.5 p)`, `p = 0.5 + 0.5 sin(5 t)` |
 | Overflow chip | From Scale, whose 160 unit box maps to the 100 unit box at 100/160: pill 20 by 15, radius 7.5, fill `#2E2E2E`, stroke `rgba(255,255,255,0.3)` width 0.625, "+n" at 7.5 units in white | Shown when `overflow > 0`. Centred at -126 degrees on radius 40, between the first and last satellites. The Scale artboard's own position would overlap the 198 degree satellite on Recommended's layout |
 | Whisper | Pill, padding 4 by 10, fill `#2E2E2E`, border `rgba(216,140,140,0.5)`, white 12-point text, to the left of the avatar | Urgent rung only, eight seconds, never while suppressed |
@@ -115,4 +115,5 @@ The spec's table in 6.6 is authoritative. The Ladder artboard adds two columns t
 | Scale shows a variant grouped by unit of work | Not in version 0 |
 | The fifth column is always Other | Columns are drawn left to right in the order the server sends `field.units`; Other is last when the server sends it (ADR 0009, item 20) |
 | Reduce Motion holds a working core at its midpoint, marked by colour alone, and the still pose of a suppressed Orbit is the same | Whenever the Orbit draws its still pose (Reduce Motion, or suppressed or occluded with motion on), a working core carries a static ring round it, so working is not shown by colour alone (spec 6.8, D9) |
+| The core is a grey dot, r 6 | The core is the Valliance star, off-white at rest and blue while working, chosen by Dom on 21 October 2026. `assets/` holds the brand source PNGs, which are not bundled into the app |
 | Context cards mark an urgent item by its rim | An urgent or stop card also carries an URGENT or STOP badge beside its kicker, and VoiceOver reads the rung, both from the server's `attention`, so colour is never the only signal (spec 6.8, D6) |

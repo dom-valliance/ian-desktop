@@ -75,7 +75,7 @@ Ian is an accessory app. It has no Dock icon and no window until you open one.
 
 | What | Where | What you see |
 |---|---|---|
-| The Orbit | The bottom right corner of the main display, 16 points in from each edge | A small round avatar, 96 points across: a grey core, a thin ring that shows how loaded the day is, and up to five coloured dots (satellites) for what needs you now. In `normal` there is one dot for each of the first five items and a "+n" chip for the rest |
+| The Orbit | The bottom right corner of the main display, 16 points in from each edge | A small round avatar, 96 points across: an off-white star, a thin ring that shows how loaded the day is, and up to five coloured dots (satellites) for what needs you now. In `normal` there is one dot for each of the first five items and a "+n" chip for the rest |
 | The menu bar entry | The right side of the menu bar, on every display | The word "Ian", followed by a number when something needs you now, such as "Ian 5". Click it for Open, Pause me, Settings and Quit Ian |
 
 On a MacBook with a camera notch and many menu bar items, the entry can sit behind the notch, where nothing can click it. If you cannot see it, use the Orbit instead: click the Orbit to open the panel and right-click it for the same menu. You can also hold Command and drag menu bar items to the left to make room.
