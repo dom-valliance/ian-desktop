@@ -65,11 +65,15 @@ export class EventLog {
     };
   }
 
+  /** Ages out by each event's own time, since a clock set back leaves later events dated ahead. */
   private prune(): void {
     const cutoff = this.clock.now().getTime() - REPLAY_WINDOW_MS;
-    while (this.events[0] !== undefined && this.events[0].at.getTime() < cutoff) {
-      const [aged] = this.events.splice(0, 1);
-      if (aged) this.prunedThrough = aged.id;
+    for (let index = this.events.length - 1; index >= 0; index -= 1) {
+      const stored = this.events[index];
+      if (stored && stored.at.getTime() < cutoff) {
+        this.events.splice(index, 1);
+        this.prunedThrough = Math.max(this.prunedThrough, stored.id);
+      }
     }
   }
 

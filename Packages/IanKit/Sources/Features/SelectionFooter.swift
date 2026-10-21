@@ -23,6 +23,9 @@ struct FooterContent: Equatable {
   let meta: String
   let trailing: Trailing
 
+  /// What the footer is about, for the container VoiceOver enters from the list.
+  var accessibilityLabel: String { "Selected: \(title)" }
+
   /// - Returns: Nil when the selection names an item the store neither holds nor remembers.
   init?(selection: TodaySelection, state: StoreState, removals: [String: IanStore.Removal]) {
     switch selection {
@@ -80,6 +83,7 @@ struct SelectionFooter: View {
   let selection: TodaySelection?
   let onSelect: (TodaySelection) -> Void
   let onNavigate: (ClientSection) -> Void
+  let keys: FooterKeys
 
   var body: some View {
     if let selection,
@@ -107,6 +111,33 @@ struct SelectionFooter: View {
       }
       .padding(.horizontal, 20)
       .padding(.vertical, 14)
+      .accessibilityElement(children: .contain)
+      .accessibilityLabel(content.accessibilityLabel)
+      .onChange(of: content.trailing, initial: true) { _, trailing in
+        // An item's actions report their own count; a group's members or counts are counted here.
+        switch trailing {
+        case .actions: break
+        case .outcome: keys.setTargetCount(0)
+        case .members(let ids): keys.setTargetCount(ids.count)
+        case .counts(let counts): keys.setTargetCount(counts.count)
+        }
+      }
+      .onChange(of: keys.activations) { activate(content.trailing) }
+    }
+  }
+
+  /// Return in Today's action mode on a group: opens the highlighted member item, or the view
+  /// the highlighted count links to. An item's own actions are run by the action component.
+  private func activate(_ trailing: FooterContent.Trailing) {
+    switch trailing {
+    case .members(let ids):
+      if ids.indices.contains(keys.highlighted) { onSelect(.item(ids[keys.highlighted])) }
+      keys.exit()
+    case .counts(let counts):
+      if counts.indices.contains(keys.highlighted) { onNavigate(counts[keys.highlighted].section) }
+      keys.exit()
+    case .actions, .outcome:
+      break
     }
   }
 
@@ -116,7 +147,7 @@ struct SelectionFooter: View {
     switch trailing {
     case .actions:
       if case .item(let id) = selection, let item = store.state.items[id] {
-        ItemActionsView(store: store, item: item).id(item.id)
+        ItemActionsView(store: store, item: item, keys: keys).id(item.id)
       }
     case .outcome(let text):
       Text(text ?? "Closed")
@@ -128,7 +159,7 @@ struct SelectionFooter: View {
       let statuses = ItemStatuses(store: store)
       ScrollView {
         VStack(alignment: .leading, spacing: 2) {
-          ForEach(ids, id: \.self) { id in
+          ForEach(Array(ids.enumerated()), id: \.element) { index, id in
             if let item = store.state.items[id] {
               Button {
                 onSelect(.item(id))
@@ -142,18 +173,22 @@ struct SelectionFooter: View {
                 }
               }
               .buttonStyle(ListRowButtonStyle(isSelected: selection == .item(id)))
+              .keyboardHighlight(keys.isActive && keys.highlighted == index)
               .accessibilityLabel(
                 TodayListModel.itemLabel(
-                  item, horizon: "this week", status: statuses.description(of: id)))
+                  item, horizon: "this week", status: statuses.description(of: id),
+                  attention: ItemKindStyle.urgency(of: item)?.lowercased()))
             }
           }
         }
+        // Room for the keyboard highlight, which the scroll view would otherwise clip.
+        .padding(4)
       }
       .frame(width: 320)
       .frame(maxHeight: 110)
     case .counts(let counts):
       HStack(spacing: 6) {
-        ForEach(counts, id: \.kind) { count in
+        ForEach(Array(counts.enumerated()), id: \.element.kind) { index, count in
           Button {
             onNavigate(count.section)
           } label: {
@@ -162,6 +197,7 @@ struct SelectionFooter: View {
               .tracking(ClientPalette.labelTracking)
           }
           .buttonStyle(ActionButtonStyle(style: .secondary))
+          .keyboardHighlight(keys.isActive && keys.highlighted == index)
           .accessibilityLabel("\(count.phrase), open \(count.section.title)")
         }
       }

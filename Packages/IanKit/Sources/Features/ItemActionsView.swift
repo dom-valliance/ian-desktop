@@ -9,17 +9,21 @@ import SwiftUI
 struct ItemActionsView: View {
   private let store: IanStore
   private let item: Components.Schemas.Item
+  /// Today's footer passes its keyboard path, so Return can run the highlighted action here.
+  private let keys: FooterKeys?
   @State private var flow: ItemActionFlow
   @State private var until = Date().addingTimeInterval(3600)
   @State private var note = ""
   @FocusState private var focus: PromptFocus?
+  @Environment(\.promptOwner) private var promptOwner
 
   /// The control that takes focus when a prompt opens, so the keyboard can answer it at once.
   private enum PromptFocus: Hashable { case confirm, until, note }
 
-  init(store: IanStore, item: Components.Schemas.Item) {
+  init(store: IanStore, item: Components.Schemas.Item, keys: FooterKeys? = nil) {
     self.store = store
     self.item = item
+    self.keys = keys
     let itemID = item.id
     _flow = State(
       initialValue: ItemActionFlow { actionID, until, note in
@@ -34,6 +38,20 @@ struct ItemActionsView: View {
       isConnecting: store.connection == .connecting)
   }
 
+  /// Return in Today's action mode: runs the highlighted action as a click would, so its confirm,
+  /// time or note prompt opens and takes focus, then leaves the mode.
+  private func runHighlighted() {
+    guard let keys, keys.isActive else { return }
+    let buttons = model.buttons
+    if buttons.indices.contains(keys.highlighted), buttons[keys.highlighted].isEnabled {
+      let action = buttons[keys.highlighted].action
+      Task { await flow.choose(action) }
+    }
+    keys.exit()
+  }
+
+  private var promptKey: String { "action:\(item.id)" }
+
   private var canAct: Bool { store.actionsEnabled && store.pending[item.id] == nil }
 
   var body: some View {
@@ -43,17 +61,28 @@ struct ItemActionsView: View {
         promptView(prompt)
       } else {
         HStack(spacing: 8) {
-          ForEach(model.buttons) { button in
+          ForEach(Array(model.buttons.enumerated()), id: \.element.id) { index, button in
             Button(button.label) { Task { await flow.choose(button.action) } }
               .buttonStyle(ActionButtonStyle(style: button.style))
               .disabled(!button.isEnabled)
+              .keyboardHighlight(keys?.isActive == true && keys?.highlighted == index)
           }
         }
       }
       if let status = model.status { statusView(status) }
     }
     .onChange(of: item.actions) { _, actions in flow.cancelIfMissing(from: actions) }
-    .onChange(of: flow.prompt) { _, prompt in
+    .onDisappear { promptOwner?.closed(promptKey) }
+    .onChange(of: model.buttons.count, initial: true) { _, count in keys?.setTargetCount(count) }
+    .onChange(of: keys?.activations) { runHighlighted() }
+    .onChange(of: flow.prompt) { old, prompt in
+      keys?.isPromptOpen = prompt != nil
+      if prompt == nil {
+        promptOwner?.closed(promptKey)
+      } else if old == nil {
+        promptOwner?.opened(promptKey) { [flow] in flow.cancel() }
+      }
+      if let text = prompt?.announcement { AccessibilityNotification.Announcement(text).post() }
       switch prompt {
       case .confirm: focus = .confirm
       case .until:
@@ -172,5 +201,16 @@ struct ActionButtonStyle: ButtonStyle {
 
   private var stroke: Color {
     style == .secondary ? Color.white.opacity(0.2) : .clear
+  }
+}
+
+extension View {
+  /// The ring the keyboard path draws round the target Return would act on. It is visual only.
+  func keyboardHighlight(_ isOn: Bool) -> some View {
+    overlay {
+      if isOn {
+        RoundedRectangle(cornerRadius: 8).stroke(ClientPalette.text, lineWidth: 2).padding(-3)
+      }
+    }
   }
 }

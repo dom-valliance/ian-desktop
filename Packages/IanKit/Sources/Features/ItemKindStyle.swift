@@ -18,6 +18,16 @@ enum ItemKindStyle {
     }
   }
 
+  /// "Urgent" or "Stop" when the server's attention rung (ADR 0009) is one of those. It gives a
+  /// card its rim and its badge and a row its spoken label, so the cue is never colour alone.
+  static func urgency(of item: Components.Schemas.Item) -> String? {
+    switch item.attention {
+    case .urgent: "Urgent"
+    case .stop: "Stop"
+    case .ambient, .needsYou: nil
+    }
+  }
+
   /// "3 tasks", "1 proposal": a count and the kind it counts.
   static func phrase(_ kind: Kind, count: Int) -> String {
     let noun: String

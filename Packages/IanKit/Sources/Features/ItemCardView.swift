@@ -21,6 +21,7 @@ struct ItemCardView: View {
   @State private var isHandingOff = false
   @State private var instruction = ""
   @FocusState private var instructionFocused: Bool
+  @Environment(\.promptOwner) private var promptOwner
 
   private var model: ItemCardModel {
     ItemCardModel(
@@ -65,7 +66,17 @@ struct ItemCardView: View {
     )
     .accessibilityElement(children: .contain)
     .accessibilityLabel(model.accessibilityLabel)
+    .onDisappear { promptOwner?.closed(handoffKey) }
+    .onChange(of: isHandingOff) { _, isOpen in
+      if isOpen {
+        promptOwner?.opened(handoffKey) { closeHandoff() }
+      } else {
+        promptOwner?.closed(handoffKey)
+      }
+    }
   }
+
+  private var handoffKey: String { "handoff:\(item.id)" }
 
   private func header(_ model: ItemCardModel) -> some View {
     HStack(spacing: 8) {

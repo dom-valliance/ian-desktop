@@ -23,9 +23,12 @@ struct TodayListsView: View {
           Section {
             ForEach(list.now) { row in
               RowContent(
-                kind: row.kind, title: row.title, tag: "NOW", isSettled: row.isSettled
+                kind: row.kind, title: row.title, tag: ItemKindStyle.name(row.kind).uppercased(),
+                isSettled: row.isSettled
               )
+              .accessibilityElement(children: .ignore)
               .accessibilityLabel(row.accessibilityLabel)
+              .accessibilityHint("Its actions are in the footer below the list.")
               .tag(TodaySelection.item(row.id))
               .id(TodaySelection.item(row.id))
             }
@@ -40,6 +43,7 @@ struct TodayListsView: View {
                 kind: row.kind, title: row.unitName, tag: String(row.itemIDs.count),
                 isSettled: false
               )
+              .accessibilityElement(children: .ignore)
               .accessibilityLabel(row.accessibilityLabel)
               .tag(TodaySelection.week(unitID: row.unitID))
               .id(TodaySelection.week(unitID: row.unitID))
@@ -52,6 +56,7 @@ struct TodayListsView: View {
           Section {
             ForEach(list.later) { row in
               RowContent(kind: row.kind, title: row.unitName, tag: nil, isSettled: false)
+                .accessibilityElement(children: .ignore)
                 .accessibilityLabel(row.accessibilityLabel)
                 .tag(TodaySelection.later(unitID: row.unitID))
                 .id(TodaySelection.later(unitID: row.unitID))
@@ -91,8 +96,10 @@ struct TodayListsView: View {
   }
 }
 
-/// A kind swatch, the title at 13 points truncated, and a monospaced 11-point tag. A settled row
-/// dims until it leaves.
+/// A kind swatch, the title at 13 points truncated, and a monospaced 11-point tag. A Now row's
+/// tag names its kind and a week row's counts its items, so colour is never the only signal.
+/// A Later row takes the kind of the field's later cell, and is neutral when the server sent
+/// none. A settled row dims until it leaves.
 private struct RowContent: View {
   let kind: Components.Schemas.ItemKind?
   let title: String

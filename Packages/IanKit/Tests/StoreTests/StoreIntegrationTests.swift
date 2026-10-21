@@ -19,7 +19,7 @@ struct MockServer {
     origin = url
   }
 
-  func post(_ path: String, _ body: [String: String]) async throws -> [String: Any] {
+  func post(_ path: String, _ body: [String: Any]) async throws -> [String: Any] {
     var request = URLRequest(url: origin.appending(path: path))
     request.httpMethod = "POST"
     request.setValue("application/json", forHTTPHeaderField: "Content-Type")
@@ -27,6 +27,16 @@ struct MockServer {
     let (data, response) = try await URLSession(configuration: .ephemeral).data(for: request)
     let status = (response as? HTTPURLResponse)?.statusCode ?? 0
     try #require((200..<300).contains(status), "POST \(path) answered \(status)")
+    return (try JSONSerialization.jsonObject(with: data) as? [String: Any]) ?? [:]
+  }
+
+  /// A read of `path` with the development token, as the app's own requests carry it.
+  func get(_ path: String) async throws -> [String: Any] {
+    var request = URLRequest(url: origin.appending(path: path))
+    request.setValue("Bearer \(DevTokenProvider.bearerToken)", forHTTPHeaderField: "Authorization")
+    let (data, response) = try await URLSession(configuration: .ephemeral).data(for: request)
+    let status = (response as? HTTPURLResponse)?.statusCode ?? 0
+    try #require((200..<300).contains(status), "GET \(path) answered \(status)")
     return (try JSONSerialization.jsonObject(with: data) as? [String: Any]) ?? [:]
   }
 
@@ -60,7 +70,8 @@ func settles(
 }
 
 /// Serialised because every test drives the one shared mock, and switching it to `offline` in one
-/// test would cut another's stream.
+/// test would cut another's stream. The other integration suite is in another test target, which
+/// SwiftPM runs in its own process after this one; run both with `swift test --no-parallel`.
 @Suite("Mock integration", .serialized, .enabled(if: mockOrigin != nil))
 @MainActor
 struct StoreIntegrationTests {

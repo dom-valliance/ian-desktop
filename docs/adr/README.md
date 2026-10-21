@@ -26,5 +26,6 @@ Numbers here are this repository's own. Lance's ADRs are cited as "Lance ADR NNN
 | 0019 | [Notification levels, suppression toggles and the order of a new agent](0019-settings-levels-toggles-and-agent-order.md) | Accepted |
 | 0020 | [The attention ladder and local notifications](0020-the-attention-ladder-and-local-notifications.md) | Accepted |
 | 0021 | [The session heartbeat](0021-session-heartbeat.md) | Accepted |
+| 0022 | [How the keyboard reaches the expanded client](0022-keyboard-reach-and-pointer-only-conveniences.md) | Accepted |
 
 Later numbers go to deviations as they arise.

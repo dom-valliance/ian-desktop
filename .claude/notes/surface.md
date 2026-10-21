@@ -29,3 +29,10 @@ Append-only. Lessons about the window model, SwiftUI hosting in AppKit panels, p
 **Correction**: Dom's pull request failed CI. The motion row's text follows the system's Reduce Motion, which is on in the runner, and wraps to a second line; the native time pickers follow the region, US English there, and read 7:00 PM. Forcing both locally reproduced CI's numbers exactly.
 **Rule**: A snapshot must not depend on the machine's accessibility settings, region or time zone. Pin `en_GB` on any native control that formats a date or number, give any view that reads a system accessibility setting a seam the snapshot holds fixed, and before recording, render once with a US locale and with Reduce Motion forced on to prove the image does not change.
 **Applies to**: Features and Surface snapshot tests
+
+### [2026-10-21] A state bug that a relaunch clears needs evidence the system keeps
+
+**Context**: During D9's hand check the Today field stopped animating, and only a relaunch restarted it. Ian logged nothing at a level the unified log keeps, so `log show` held nothing to read, and the first suspect (the system Reduce Motion read) did not reproduce it, nor did "Pause me", the camera, a lock or a screen recording.
+**Correction**: Dom reported the stall and that none of the suspected triggers reproduced it.
+**Rule**: State that decides whether something moves or shows (the field's clock, the panel's on-screen state, suppression) logs each change at `.notice` with its inputs as public booleans and no item content, so a stall leaves evidence. When a field or the Orbit stops moving, read `log show --predicate 'subsystem == "ai.valliance.ian.desktop" AND category == "motion"'` before guessing at a cause.
+**Applies to**: Surface, Features

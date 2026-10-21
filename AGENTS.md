@@ -41,7 +41,7 @@ Enforced in code and tested. From ADRs 0001 to 0006 and the spec.
 5. **Nothing on disk but two things.** Tokens in the Keychain, and in `UserDefaults` the client settings in spec 6.4 plus the field's angle and the pane sizes (ADR 0016). No response caches (use an ephemeral `URLSession` configuration), no item content in logs (log ids only, through `os.Logger` with private interpolation), no crash reports or diagnostics carrying titles.
 6. **Off screen captures.** Every window and panel sets `sharingType = .none`. Settings cannot switch it off. Suppression hides all item text on the Orbit and in notifications; P0 still notifies.
 7. **Rendering costs nothing when unseen.** Animation stops when the expanded client is hidden, occluded or suppressed. Reduce Motion stops the ripple, the sway and the breathing; the principal's own drag still turns the field (ADR 0016).
-8. **The list is the accessible path.** Every item and action in the Pillars field is reachable from a list row with VoiceOver and the keyboard. The field is never the only way to an item.
+8. **The list is the accessible path.** Every item and action in the Pillars field is reachable from a list row with VoiceOver and the keyboard. The field is never the only way to an item. Buttons and other controls are reached with Tab through macOS's Keyboard navigation setting; Today's footer also answers Return and the arrow keys without it (ADR 0022, which Dom accepted as a narrowing of spec 6.2 and 6.8).
 
 ## How to use the spec
 
@@ -92,7 +92,7 @@ pnpm --dir mock lint && pnpm --dir mock typecheck && pnpm --dir mock test
 pnpm --dir contract install --frozen-lockfile && pnpm --dir contract lint
 ```
 
-`scripts/dev.sh` starts the mock on port 4317 (`MOCK_PORT` and `MOCK_HOST` change it), waits until it answers, then builds the app and opens it against the mock (`--mock-only` stops after the mock); `mock/README.md` lists the scenarios and the `pnpm --dir mock mock` commands for emitting events, moving the clock and switching capabilities. The Swift integration tests run only against a live mock: `scripts/dev.sh --mock-only`, then `IAN_MOCK_URL=http://localhost:4317 swift test --package-path Packages/IanKit --force-resolved-versions --filter Integration`; without the variable they are skipped. Read the workflows in `.github/workflows/` rather than this list when they differ; the workflows win.
+`scripts/dev.sh` starts the mock on port 4317 (`MOCK_PORT` and `MOCK_HOST` change it), waits until it answers, then builds the app and opens it against the mock (`--mock-only` stops after the mock); `mock/README.md` lists the scenarios and the `pnpm --dir mock mock` commands for emitting events, moving the clock and switching capabilities. The Swift integration tests run only against a live mock: `scripts/dev.sh --mock-only`, then `IAN_MOCK_URL=http://localhost:4317 swift test --package-path Packages/IanKit --force-resolved-versions --no-parallel --filter Integration`; without the variable they are skipped. They share one mock, and the recovery tests take it offline and move its clock, so they run one at a time. Read the workflows in `.github/workflows/` rather than this list when they differ; the workflows win.
 
 The app chooses its environment from the launch argument `-IanEnvironment mock|lance-dev`, then the saved setting, then `mock`. The `lance-dev` tenant id, desktop client id and api scope are the build settings `IAN_LANCE_TENANT_ID`, `IAN_LANCE_CLIENT_ID` and `IAN_LANCE_SCOPE` in `App/project.yml`, carried into the app through `App/Info.plist`. The last two stay empty until Lance DL1 registers them, and sign-in says so.
 
@@ -129,6 +129,7 @@ Promoted here when the same lesson appears more than twice in `.claude/notes/`. 
 - On a wide-colour display the system gives a layer a half-float backing store, and Core Graphics fills into it cost several times more. A view painted every frame asks for `.RGBA8Uint`.
 - `UserDefaults.removePersistentDomain` leaves an empty plist in `~/Library/Preferences`. Tests that write settings use a scratch suite (`withScratchDefaults`) that deletes the file too.
 - The scenario fixtures in `Packages/IanKit/Tests/TestSupport/Fixtures` are exported from the mock by `scripts/export-scenario-fixtures.sh` with a fixed clock. Re-run it, and re-record the Orbit, Pillars and view snapshots, when the mock's scenarios or the contract change.
+- A step Dom runs names its directory, branch and exact commands, says where on screen the result appears, and gives the full worktree path (`~/workspace/desktop-ian/.worktrees/<name>/...`) of any file not yet merged: Dom's editor shows the main checkout on `main`.
 - The `lance-dev` profile reads Dom's real dev data. Keep it out of every test, snapshot and recording.
 
 ## Review guidelines

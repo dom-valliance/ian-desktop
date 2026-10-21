@@ -46,6 +46,8 @@ struct TodayListModel: Equatable {
     var id: String { unitID }
     let unitID: String
     let unitName: String
+    /// The kind the server put on the field's `later` cell for this unit, which colours the
+    /// row. Nil when the field has no such cell: nothing is borrowed from the counts (Q16).
     let kind: Kind?
     let counts: [LaterCount]
     let accessibilityLabel: String
@@ -76,7 +78,8 @@ struct TodayListModel: Equatable {
       return NowRow(
         id: id, title: item.title, kind: item.kind, isSettled: removal != nil,
         accessibilityLabel: Self.itemLabel(
-          item, horizon: "now", status: removal != nil ? "settled" : statuses.description(of: id)))
+          item, horizon: "now", status: removal != nil ? "settled" : statuses.description(of: id),
+          attention: ItemKindStyle.urgency(of: item)?.lowercased()))
     }
     week = today.lists.week.map { group in
       let name = unitNames[group.unitId] ?? group.unitId
@@ -90,8 +93,8 @@ struct TodayListModel: Equatable {
       let name = unitNames[group.unitId] ?? group.unitId
       let counts = group.counts.map(LaterCount.init)
       return LaterRow(
-        unitID: group.unitId, unitName: name,
-        kind: kind(of: group.unitId, .later) ?? group.counts.first?.kind, counts: counts,
+        unitID: group.unitId, unitName: name, kind: kind(of: group.unitId, .later),
+        counts: counts,
         accessibilityLabel: Self.label(["Later", name] + counts.map(\.phrase), status: nil))
     }
   }

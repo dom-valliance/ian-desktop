@@ -85,3 +85,10 @@ Append-only. Lessons from corrections during the Ian desktop build. The first en
 **Correction**: Dom sent a screenshot of "Harness quit unexpectedly" and asked "Is this you?". Each crash put a macOS dialog in front of his work.
 **Rule**: Any app Claude or its agents launch shows windows and crash dialogs on Dom's screen. Say so before running one. After every run, check its exit status and the newest report in `~/Library/Logs/DiagnosticReports`, and never relaunch after a crash without a fix and a test that reproduces it. This is the second lesson about Claude's processes affecting Dom's machine (see the `yes` entry above); a third promotes it to the AGENTS.md Gotchas.
 **Applies to**: global
+
+### [2026-10-21] Give a file's full path when it lives on an unmerged branch
+
+**Context**: D9's hand check said "walk through `docs/demo.md` once", but the file existed only on `feat/d9-hardening`, in `.worktrees/d9`.
+**Correction**: "There doesn't seem to be a docs/demo.md". Dom's editor shows the main checkout, which is on `main`.
+**Rule**: A step that names a file from work not yet merged gives its full path in the worktree (`~/workspace/desktop-ian/.worktrees/<name>/...`), as well as the directory, branch and commands. Third occurrence of the 2026-09-25 lesson "Say where and how to run a step", so it is promoted to the AGENTS.md Gotchas.
+**Applies to**: global

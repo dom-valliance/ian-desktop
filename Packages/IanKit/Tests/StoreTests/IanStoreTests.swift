@@ -503,9 +503,10 @@ private func opensSignInOnce() async {
   #expect(await waitUntil("first sign-in") { service.signIns == 1 })
   #expect(await waitUntil("second 401") { service.streamCalls.count == 2 })
   #expect(await waitUntil("signed out again") { store.phase == .signInRequired(message: nil) })
+  // The store shows the phase first and signs out in a task after it, so wait for that call.
+  #expect(await waitUntil("second sign-out") { service.signOuts == 2 })
 
   #expect(service.signIns == 1)
-  #expect(service.signOuts == 2)
 }
 
 @MainActor

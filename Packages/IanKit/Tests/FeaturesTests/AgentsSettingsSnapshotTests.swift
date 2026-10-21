@@ -56,27 +56,11 @@ struct AgentsSettingsSnapshotTests {
   }
 
   private func image(of view: some View, size: CGSize = Self.size) -> NSImage {
-    let hosting = NSHostingView(
-      rootView: view.frame(width: size.width, height: size.height)
-        .background(ClientPalette.ground).foregroundStyle(ClientPalette.text)
-        .environment(\.colorScheme, .dark)
-        .environment(\.reduceMotionReading, false))
-    hosting.appearance = NSAppearance(named: .darkAqua)
-    hosting.frame = CGRect(origin: .zero, size: size)
-    hosting.layoutSubtreeIfNeeded()
-    guard let rep = hosting.bitmapImageRepForCachingDisplay(in: hosting.bounds) else {
-      preconditionFailure("The view did not produce a bitmap.")
-    }
-    hosting.cacheDisplay(in: hosting.bounds, to: rep)
-    let image = NSImage(size: size)
-    image.addRepresentation(rep)
-    return image
+    SnapshotHarness.image(of: view, size: size)
   }
 
-  private func check(_ image: NSImage, named name: String) {
-    assertSnapshot(
-      of: image, as: .image(precision: 0.998, perceptualPrecision: 0.98), named: name,
-      testName: "agents-settings")
+  private func check(_ image: NSImage, named name: String, file: StaticString = #filePath) {
+    SnapshotHarness.check(image, named: name, testName: "agents-settings", file: file)
   }
 
   /// Settings with a controller that never shows a window, scratch defaults and stubs for the

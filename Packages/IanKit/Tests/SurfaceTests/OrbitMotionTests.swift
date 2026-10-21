@@ -167,6 +167,17 @@ struct OrbitMotionTests {
     #expect(running.layer?.sublayers?.first?.sublayers?.isEmpty ?? true)
   }
 
+  @Test("shows a working core's ring in the still pose of a suppressed Orbit with motion on")
+  func ringWhileNotAnimatingWithMotionOn() {
+    let working = OrbitModel(working: true)
+    // Motion is allowed but the Orbit is suppressed or occluded, so no layer runs and the view
+    // draws the still pose, which carries the ring.
+    #expect(motion(working, reducedMotion: false, isAnimating: false).isStill)
+    #expect(OrbitRenderer.drawing(for: working, time: 0, reducedMotion: true).core.ring != nil)
+    // While animating with motion on, a layer breathes the core and the ring is not drawn.
+    #expect(motion(working, reducedMotion: false, isAnimating: true).core != nil)
+  }
+
   @Test("adds the animations again when motion is allowed again")
   func addedAgain() throws {
     let model = model("normal")

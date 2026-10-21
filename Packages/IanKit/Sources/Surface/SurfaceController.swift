@@ -3,6 +3,7 @@ import Attention
 import Observation
 import Store
 import SwiftUI
+import os
 
 /// Owns the app's windows and everything that reacts to the pointer: the Orbit, its hover label
 /// and the expanded client (ADR 0005). Nothing here decides what an item is; it draws the
@@ -104,6 +105,12 @@ public final class SurfaceController {
   /// The spec 6.4 motion setting. The system's Reduce Motion forces reduced regardless, which
   /// the views that read the environment apply.
   public var reducedMotionSetting: Bool { settings.reducedMotion }
+
+  private var reducesMotion: Bool {
+    MotionPreference.reduces(
+      setting: reducedMotionSetting,
+      system: NSWorkspace.shared.accessibilityDisplayShouldReduceMotion)
+  }
 
   public var suppression: Suppression {
     let context = store.state.today?.context
@@ -215,15 +222,14 @@ public final class SurfaceController {
     repositionExpanded()
     let entrance = ExpandedEntrance(
       endFrame: expandedPanel.frame,
-      reducedMotion: reducedMotionSetting
-        || NSWorkspace.shared.accessibilityDisplayShouldReduceMotion)
+      reducedMotion: reducesMotion)
     if isOpening {
       expandedPanel.alphaValue = 0
       expandedPanel.setFrame(entrance.startFrame, display: false)
     }
     NSApplication.shared.activate()
     expandedPanel.makeKeyAndOrderFront(nil)
-    isExpandedOnScreen = true
+    setExpandedOnScreen(true, path: "showExpanded")
     if isOpening { animate(entrance) }
   }
 
@@ -245,7 +251,7 @@ public final class SurfaceController {
   public func hideExpanded() {
     expandedPanel.orderOut(nil)
     expandedPanel.alphaValue = 1
-    isExpandedOnScreen = false
+    setExpandedOnScreen(false, path: "hideExpanded")
     NSApplication.shared.deactivate()
   }
 
@@ -288,7 +294,8 @@ public final class SurfaceController {
     corner = OrbitPlacement.nearestCorner(to: orbitPanel.frame, in: area)
     cornerSetting.corner = corner
     orbitPanel.setFrame(
-      OrbitPlacement.orbitFrame(corner: corner, in: area), display: true, animate: true)
+      OrbitPlacement.orbitFrame(corner: corner, in: area), display: true,
+      animate: MotionPreference.glidesToCorner(reducedMotion: reducesMotion))
     if expandedPanel.isVisible { repositionExpanded() }
     updatePointer()
     syncHoverPanel()
@@ -390,7 +397,17 @@ public final class SurfaceController {
   /// it, so the panel's own occlusion state decides whether it is on screen.
   private func syncExpandedOnScreen() {
     let onScreen = expandedPanel.isVisible && expandedPanel.occlusionState.contains(.visible)
-    if onScreen != isExpandedOnScreen { isExpandedOnScreen = onScreen }
+    setExpandedOnScreen(onScreen, path: "syncExpandedOnScreen")
+  }
+
+  private static let motionLog = Logger(subsystem: "ai.valliance.ian.desktop", category: "motion")
+
+  /// Sets `isExpandedOnScreen` and leaves a line in the unified log when the value changes.
+  private func setExpandedOnScreen(_ value: Bool, path: StaticString) {
+    guard value != isExpandedOnScreen else { return }
+    isExpandedOnScreen = value
+    Self.motionLog.notice(
+      "expanded on screen \(value, privacy: .public), set by \(path, privacy: .public)")
   }
 
   // MARK: System

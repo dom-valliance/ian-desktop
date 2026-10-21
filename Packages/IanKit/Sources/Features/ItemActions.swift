@@ -72,6 +72,14 @@ final class ItemActionFlow {
       case .confirm(let action), .until(let action), .note(let action): action
       }
     }
+
+    /// What VoiceOver is told when the prompt replaces the buttons: the `confirm` question, so
+    /// the cursor is never left on a button that has gone. A time or note field takes focus
+    /// and names itself.
+    var announcement: String? {
+      guard case .confirm(let action) = self else { return nil }
+      return action.confirm
+    }
   }
 
   private(set) var prompt: Prompt?

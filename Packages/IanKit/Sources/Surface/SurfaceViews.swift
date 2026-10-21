@@ -21,7 +21,8 @@ struct OrbitRootView: View {
     let presentation = controller.presentation
     OrbitView(
       model: presentation.model,
-      reducedMotion: controller.reducedMotionSetting || systemReducesMotion,
+      reducedMotion: MotionPreference.reduces(
+        setting: controller.reducedMotionSetting, system: systemReducesMotion),
       isAnimating: controller.isOrbitAnimating
     )
     .frame(width: OrbitPlacement.avatarSize, height: OrbitPlacement.avatarSize)
