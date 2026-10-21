@@ -27,5 +27,6 @@ Numbers here are this repository's own. Lance's ADRs are cited as "Lance ADR NNN
 | 0020 | [The attention ladder and local notifications](0020-the-attention-ladder-and-local-notifications.md) | Accepted |
 | 0021 | [The session heartbeat](0021-session-heartbeat.md) | Accepted |
 | 0022 | [How the keyboard reaches the expanded client](0022-keyboard-reach-and-pointer-only-conveniences.md) | Accepted |
+| 0023 | [Call it Ian everywhere](0023-call-it-ian-everywhere.md) | Accepted |
 
 Later numbers go to deviations as they arise.
