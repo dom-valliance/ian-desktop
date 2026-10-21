@@ -24,7 +24,7 @@
   "id" : "task_notion_0000000000000000000000000001",
   "kind" : "task",
   "links" : {
-    "lance" : "https://lance.example.invalid/tasks/task_notion_0000000000000000000000000001",
+    "lance" : "https://ian.example.invalid/tasks/task_notion_0000000000000000000000000001",
     "source" : "https://notion.example.invalid/0000000000000000000000000001"
   },
   "meta" : "Notion, no due date",

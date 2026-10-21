@@ -11,7 +11,7 @@ import type {
 
 export const OTHER_UNIT: Unit = { id: 'other', name: 'Other' };
 
-const LANCE_BASE = 'https://lance.example.invalid';
+const LANCE_BASE = 'https://ian.example.invalid';
 
 const action = (
   id: string,

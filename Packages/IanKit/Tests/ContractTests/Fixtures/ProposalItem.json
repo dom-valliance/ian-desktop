@@ -36,7 +36,7 @@
   "id" : "prop_01JAXQ4Z7C5W6N0R2T8V9Y3K1M",
   "kind" : "proposal",
   "links" : {
-    "lance" : "https://lance.example.invalid/proposals/prop_01JAXQ4Z7C5W6N0R2T8V9Y3K1M",
+    "lance" : "https://ian.example.invalid/proposals/prop_01JAXQ4Z7C5W6N0R2T8V9Y3K1M",
     "source" : null
   },
   "meta" : "[CLIENT], draft email, expires at 11:30",

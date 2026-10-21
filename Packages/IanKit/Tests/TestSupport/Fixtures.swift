@@ -63,7 +63,7 @@ public enum Fixtures {
       "unit":{"id":"other","name":"Other"},"horizon":"now","pressure":0.4,"attention":"\(attention)",\
       "dueAt":"2026-10-16T17:00:00.000Z",\(alert ? "\"severity\":\"P1\"," : "")\
       "working":\(working),"version":\(version),"actions":[\(actionList)],"detail":\(detail),\
-      "links":{"lance":"https://lance.example.invalid/items/\(id)","source":null}}
+      "links":{"lance":"https://ian.example.invalid/items/\(id)","source":null}}
       """
   }
 

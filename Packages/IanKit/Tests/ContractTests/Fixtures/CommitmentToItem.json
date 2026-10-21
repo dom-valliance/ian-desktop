@@ -44,7 +44,7 @@
   "id" : "cmt_01JAXQ6C3E8G0J2L4N6Q8S0U2W",
   "kind" : "commitment_to",
   "links" : {
-    "lance" : "https://lance.example.invalid/commitments/cmt_01JAXQ6C3E8G0J2L4N6Q8S0U2W",
+    "lance" : "https://ian.example.invalid/commitments/cmt_01JAXQ6C3E8G0J2L4N6Q8S0U2W",
     "source" : null
   },
   "meta" : "[PERSON] at [CLIENT], due Tuesday",

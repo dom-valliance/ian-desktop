@@ -32,7 +32,7 @@
   "id" : "alrt_01JAXQ7D4F9H1K3M5P7R9T1V3X",
   "kind" : "alert",
   "links" : {
-    "lance" : "https://lance.example.invalid/alerts/alrt_01JAXQ7D4F9H1K3M5P7R9T1V3X",
+    "lance" : "https://ian.example.invalid/alerts/alrt_01JAXQ7D4F9H1K3M5P7R9T1V3X",
     "source" : null
   },
   "meta" : "P1, raised at 08:12",

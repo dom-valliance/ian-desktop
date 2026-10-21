@@ -195,7 +195,7 @@
         "toConfirm": false
       },
       "links": {
-        "lance": "https://lance.example.invalid/commitments/cmt_01MOCK000000000001",
+        "lance": "https://ian.example.invalid/commitments/cmt_01MOCK000000000001",
         "source": null
       }
     },
@@ -242,7 +242,7 @@
         "expiresAt": "2026-10-19T14:30:00.000Z"
       },
       "links": {
-        "lance": "https://lance.example.invalid/proposals/prop_01MOCK000000000004",
+        "lance": "https://ian.example.invalid/proposals/prop_01MOCK000000000004",
         "source": null
       }
     },
@@ -281,7 +281,7 @@
         "project": "Pilot"
       },
       "links": {
-        "lance": "https://lance.example.invalid/tasks/task_jamie_01MOCK000000000003",
+        "lance": "https://ian.example.invalid/tasks/task_jamie_01MOCK000000000003",
         "source": "https://jamie.example.invalid/task_jamie_01MOCK000000000003"
       }
     }
@@ -293,7 +293,7 @@
     "mode": "dry_run",
     "timeZone": "Europe/London",
     "minClientVersion": "0.1.0",
-    "contractVersion": "1.1.1",
+    "contractVersion": "1.1.2",
     "capabilities": {
       "handoff": true
     },
