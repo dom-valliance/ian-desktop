@@ -1,4 +1,5 @@
 import AppKit
+import os
 
 /// Whether the field's display link should be ticking. Pure, so each reason to stop is tested.
 enum FieldClock {
@@ -53,6 +54,7 @@ final class PillarsFieldNSView: NSView {
   /// clears `needsDisplay`, so tests count requests instead.
   private(set) var repaintRequests = 0
   private var link: CADisplayLink?
+  private static let log = Logger(subsystem: "ai.valliance.ian.desktop", category: "motion")
   /// What the last frame showed. A tick repaints only if the new drawing differs visibly.
   private var shown: PillarsDrawing?
   private let labels = PillarsLabels()
@@ -130,6 +132,7 @@ final class PillarsFieldNSView: NSView {
     // `.common` keeps frames coming while a drag or a divider holds the run loop in tracking.
     link.add(to: .main, forMode: .common)
     self.link = link
+    Self.log.notice("field window attached, display link created")
     updateClock()
   }
 
@@ -144,6 +147,9 @@ final class PillarsFieldNSView: NSView {
   }
 
   @objc private func visibilityChanged(_ note: Notification) {
+    Self.log.notice(
+      "field window occlusion changed, visible: \(self.window?.occlusionState.contains(.visible) ?? false, privacy: .public)"
+    )
     updateClock()
     redrawNow()
   }
@@ -156,6 +162,9 @@ final class PillarsFieldNSView: NSView {
       hasTransition: clock() < scene.transitionEnd)
     guard link.isPaused == run else { return }
     link.isPaused = !run
+    Self.log.notice(
+      "field clock \(run ? "started" : "paused", privacy: .public), animating: \(self.isAnimating, privacy: .public), on screen: \(self.isOnScreen(), privacy: .public), reduced motion: \(self.reducedMotion, privacy: .public), transition running: \(self.clock() < self.scene.transitionEnd, privacy: .public)"
+    )
     if !run { redrawNow() }
   }
 

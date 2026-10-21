@@ -170,6 +170,7 @@ Without `IAN_MOCK_URL` they are skipped. Run them against a mock you started for
 | The app opens but shows an old layout, or a build error that a recent pull should have fixed | A stale build. Delete the build folder and run again: `rm -rf build/DerivedData`. The next build takes the full several minutes |
 | No Orbit anywhere | Check that the app runs with `pgrep -x Ian`. If it runs, the Orbit may be on another display or hidden behind a full-screen app. The Orbit sits on the main display, the one that holds the menu bar when "Displays have separate Spaces" is on |
 | The Orbit is there but shows no dots | The mock may be in a scenario with no items, or stopped. Check the Terminal window that runs `scripts/dev.sh`, then run `pnpm --dir mock mock state` |
+| The Today field stops moving until a relaunch | Run `log show --last 2h --style compact --predicate 'subsystem == "ai.valliance.ian.desktop" AND category == "motion"'` and send the lines. They hold the clock's state changes and no item content |
 | The panel header says the data is old | The stream to the mock has dropped. Look in the `scripts/dev.sh` window for a crash, then run the script again |
 | macOS says Ian cannot be opened because the developer cannot be verified | You opened a copy of the app that was downloaded or moved. Open it with `scripts/dev.sh`, which builds it on your machine, so it carries no quarantine flag |
 

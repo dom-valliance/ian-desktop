@@ -3,6 +3,7 @@ import Attention
 import Observation
 import Store
 import SwiftUI
+import os
 
 /// Owns the app's windows and everything that reacts to the pointer: the Orbit, its hover label
 /// and the expanded client (ADR 0005). Nothing here decides what an item is; it draws the
@@ -228,7 +229,7 @@ public final class SurfaceController {
     }
     NSApplication.shared.activate()
     expandedPanel.makeKeyAndOrderFront(nil)
-    isExpandedOnScreen = true
+    setExpandedOnScreen(true, path: "showExpanded")
     if isOpening { animate(entrance) }
   }
 
@@ -250,7 +251,7 @@ public final class SurfaceController {
   public func hideExpanded() {
     expandedPanel.orderOut(nil)
     expandedPanel.alphaValue = 1
-    isExpandedOnScreen = false
+    setExpandedOnScreen(false, path: "hideExpanded")
     NSApplication.shared.deactivate()
   }
 
@@ -396,7 +397,17 @@ public final class SurfaceController {
   /// it, so the panel's own occlusion state decides whether it is on screen.
   private func syncExpandedOnScreen() {
     let onScreen = expandedPanel.isVisible && expandedPanel.occlusionState.contains(.visible)
-    if onScreen != isExpandedOnScreen { isExpandedOnScreen = onScreen }
+    setExpandedOnScreen(onScreen, path: "syncExpandedOnScreen")
+  }
+
+  private static let motionLog = Logger(subsystem: "ai.valliance.ian.desktop", category: "motion")
+
+  /// Sets `isExpandedOnScreen` and leaves a line in the unified log when the value changes.
+  private func setExpandedOnScreen(_ value: Bool, path: StaticString) {
+    guard value != isExpandedOnScreen else { return }
+    isExpandedOnScreen = value
+    Self.motionLog.notice(
+      "expanded on screen \(value, privacy: .public), set by \(path, privacy: .public)")
   }
 
   // MARK: System
