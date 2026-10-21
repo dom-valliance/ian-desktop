@@ -4,11 +4,11 @@ D1 to D9 from spec section 10, expanded into what to build and how to prove it. 
 
 ```
 D1 ─┬─ D2 ────────────────────────────────────────┐
-    └─ D3 ── D4 ── D5 ── D5.1 ── P1 ─┬─ D6 ── D8 ──┼── D9
+    └─ D3 ── D4 ── D5 ── D5.1 ── P1 ─┬─ D6 ── D8 ──┼── D9 ── N1
                                      └─ D7 ────────┘
 ```
 
-D2 and D3 can run in parallel after D1, as can D6 and D7 after P1. D5.1 and P1 were added on 19 October 2026: D5.1 at Dom's request, P1 when D4 and D5 measured the cost of drawing in SwiftUI. For parallel sessions, create each git worktree by hand from the working branch, tell Dom the paths, and pin each session to its path (a Lance lesson: tool-made worktrees started from a stale `main`).
+D2 and D3 can run in parallel after D1, as can D6 and D7 after P1. D5.1 and P1 were added on 19 October 2026: D5.1 at Dom's request, P1 when D4 and D5 measured the cost of drawing in SwiftUI. N1 was added on 21 October 2026, at Dom's request during D9's hand check. For parallel sessions, create each git worktree by hand from the working branch, tell Dom the paths, and pin each session to its path (a Lance lesson: tool-made worktrees started from a stale `main`).
 
 Every package is done only when all of these pass by exit code, in addition to its own list:
 
@@ -259,3 +259,27 @@ Build and check:
 - The demo against the mock, then against Lance dev once DL1 to DL4 are merged.
 
 Done when every row of spec section 11 has its evidence in the phase log, or a named reason it waits on Lance.
+
+## N1. Call it Ian everywhere
+
+Branch `refactor/ian-naming`. Depends on D9. About half a day.
+
+Dom decided on 21 October 2026, during D9's hand check, that what the principal and the developer see should say Ian, identifiers included. The server stays Lance wherever a document describes the server.
+
+Read: AGENTS.md (the naming table, B1, errata E2 and E3, the toolchain section on the environment and the `IAN_LANCE_*` build settings); ADRs 0001, 0003 and 0019; `docs/run-local.md` and `docs/demo.md`; `docs/companion/lance-track.md`.
+
+Build:
+
+- **What the principal sees.** The environment reads "Ian dev" in Settings, the header and the diagnostics report; the card link reads "Open in Ian"; any other copy that says Lance says Ian.
+- **Identifiers.**
+  - The environment profile id `lance-dev` becomes `ian-dev`, in `EnvironmentProfile`, the launch argument (`-IanEnvironment ian-dev`) and the saved `IanEnvironment` value. A saved `lance-dev` from an earlier build is read as `ian-dev` and rewritten once, so nobody falls back to the mock silently.
+  - The build settings `IAN_LANCE_TENANT_ID`, `IAN_LANCE_CLIENT_ID` and `IAN_LANCE_SCOPE` become `IAN_DEV_TENANT_ID`, `IAN_DEV_CLIENT_ID` and `IAN_DEV_SCOPE`, through `App/project.yml`, `App/Info.plist` and the regenerated project.
+  - Scripts, the run guide, the demo, the README and AGENTS.md follow.
+- **What stays Lance**, recorded in an ADR with the reason for each: the contract's `links.lance` field (renaming it breaks contract v1); the server's own names (the Lance repository, packages DL1 to DL6, the `Lance.User` app role, the `Lance (Valliance)` registration, the api host); docs and comments that describe the server; the phase log and earlier ADRs, which are records.
+- **Tests and snapshots.** Strings and fixtures follow; re-record the snapshots whose text changes, rendering once with a US locale and Reduce Motion forced on, as AGENTS.md's snapshot rule asks.
+
+Done when:
+
+- A search of `Packages`, `App`, `scripts` and the current docs finds "Lance" only where the ADR allows it.
+- A test shows a saved `lance-dev` choice opens as `ian-dev`, with scratch defaults.
+- Every check passes by exit code, and Dom has looked at Settings, a card and the header against the mock.
