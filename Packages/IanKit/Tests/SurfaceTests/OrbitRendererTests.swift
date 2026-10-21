@@ -164,8 +164,10 @@ struct OrbitRendererTests {
     let longest = OrbitRenderer.restingCoreHalfSide + OrbitRenderer.breathRange
     let ring = OrbitRenderer.workingRingRadius
     #expect(ring - longest == 3)
-    // An arm's end is 0.176 of the star's side wide, so its corner is a little farther out.
-    let corner = hypot(longest, 0.088 * 2 * longest)
+    // An arm's end is `1 - 2 f` of the star's side wide, with `f` the inner radius's fraction, so
+    // its corner is a little farther out.
+    let armEnd = (1 - 2 * StarShape.innerRadiusFraction) * longest * 2
+    let corner = hypot(longest, armEnd / 2)
     #expect(ring - corner > 2.8)
     #expect(ring - OrbitRenderer.workingRingWidth / 2 > corner)
   }

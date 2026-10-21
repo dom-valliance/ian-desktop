@@ -68,6 +68,24 @@ struct OrbitMotionTests {
     #expect(view.coreLayer?.fillColor == core.colour.cgColor)
   }
 
+  @Test("breathes the star about its own centre, which is the Orbit's centre")
+  func breathPivot() throws {
+    let view = motionView(showing: motion(model("normal")), side: 96)
+    let layer = try #require(view.coreLayer)
+    #expect(layer.anchorPoint == CGPoint(x: 0.5, y: 0.5))
+    #expect(layer.position == OrbitRenderer.centre)
+
+    // At the top of the breath the star, seen in the box, is still centred and 21 units across.
+    layer.transform = CATransform3DMakeScale(
+      OrbitMotionView.largestBreathScale, OrbitMotionView.largestBreathScale, 1)
+    let box = try #require(view.layer?.sublayers?.first)
+    let star = box.convert(try bounds(of: layer.path), from: layer)
+    #expect(abs(star.midX - OrbitRenderer.centre.x) < 1e-6)
+    #expect(abs(star.midY - OrbitRenderer.centre.y) < 1e-6)
+    #expect(abs(star.width - 21) < 1e-6)
+    #expect(abs(star.height - 21) < 1e-6)
+  }
+
   @Test("breathes nothing when the core is not working")
   func noBreathWhenIdle() {
     let view = motionView(showing: motion(model("incident")))
