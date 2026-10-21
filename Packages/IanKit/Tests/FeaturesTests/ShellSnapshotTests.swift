@@ -40,7 +40,7 @@ struct ShellSnapshotTests {
   @Test("draws the header live with no banner, and with the environment named")
   func headerLive() {
     checkHeader(header(), named: "header-live")
-    checkHeader(header(environment: "Lance dev"), named: "header-live-environment")
+    checkHeader(header(environment: "Ian dev"), named: "header-live-environment")
   }
 
   @Test("draws the header while connecting")
@@ -53,7 +53,7 @@ struct ShellSnapshotTests {
     checkHeader(
       header(connection: .offline, updatedSecondsAgo: 120), named: "header-offline-stale")
     checkHeader(
-      header(environment: "Lance dev", connection: .offline, updatedSecondsAgo: 7_500),
+      header(environment: "Ian dev", connection: .offline, updatedSecondsAgo: 7_500),
       named: "header-offline-stale-hours")
   }
 

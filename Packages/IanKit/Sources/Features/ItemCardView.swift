@@ -134,7 +134,7 @@ struct ItemCardView: View {
   private func links(_ model: ItemCardModel) -> some View {
     HStack(spacing: 4) {
       if let url = model.lanceURL {
-        Button("Open in Lance") { openURL(url) }
+        Button("Open in Ian") { openURL(url) }
           .buttonStyle(ActionButtonStyle(style: .quiet))
       }
       if let url = model.sourceURL {
