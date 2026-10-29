@@ -49,6 +49,9 @@ public final class SurfaceController {
   @ObservationIgnored private var isHovering = false
   @ObservationIgnored private var whisperObservation: Int?
   @ObservationIgnored private var whisperObservations = 0
+  @ObservationIgnored private let suppressionLog: SuppressionChangeLog
+  @ObservationIgnored private var suppressionObservation: Int?
+  @ObservationIgnored private var suppressionObservations = 0
   @ObservationIgnored private var monitors: [Any] = []
   @ObservationIgnored private var observers: [any NSObjectProtocol] = []
 
@@ -64,8 +67,10 @@ public final class SurfaceController {
         ?? CGRect(x: 0, y: 0, width: 1440, height: 900)
     },
     quit: @escaping @MainActor () -> Void = { NSApplication.shared.terminate(nil) },
-    whisper: Whisper = Whisper()
+    whisper: Whisper = Whisper(),
+    suppressionLog: SuppressionChangeLog = SuppressionChangeLog()
   ) {
+    self.suppressionLog = suppressionLog
     self.whisper = whisper
     self.store = store
     self.signals = signals
@@ -130,7 +135,12 @@ public final class SurfaceController {
     OrbitPresentation(state: store.state, suppression: suppression)
   }
 
-  public var menuEntries: [AppMenu.Entry] { AppMenu.entries(isPaused: signals.isPaused) }
+  /// Why Ian is quiet, or nil when nothing suppresses. The panel's header and the menu show it.
+  public var quietLine: String? { suppression.quietLine }
+
+  public var menuEntries: [AppMenu.Entry] {
+    AppMenu.entries(isPaused: signals.isPaused, quietLine: quietLine)
+  }
 
   public var menuBarTitle: String {
     AppMenu.barTitle(nowCount: store.state.today?.orbit.nowCount ?? 0)
@@ -153,6 +163,11 @@ public final class SurfaceController {
       whisperObservation = whisperObservations
       observeWhisper(token: whisperObservations)
     }
+    if suppressionObservation == nil {
+      suppressionObservations += 1
+      suppressionObservation = suppressionObservations
+      observeSuppression(token: suppressionObservations)
+    }
     observeSystem()
     secureSystemWindows()
   }
@@ -164,6 +179,7 @@ public final class SurfaceController {
     for observer in observers { NotificationCenter.default.removeObserver(observer) }
     observers = []
     whisperObservation = nil
+    suppressionObservation = nil
     whisper.hide()
     stopArming.disarm()
     signals.stop()
@@ -362,6 +378,19 @@ public final class SurfaceController {
     hoverPanel.orderFrontRegardless()
   }
 
+  /// Records the current suppression, then again each time one of its inputs changes: the camera,
+  /// the pause, the server's context flags or the toggles. `suppression` is computed on demand, so
+  /// this is the one place that notices a change, for the log.
+  private func observeSuppression(token: Int) {
+    guard suppressionObservation == token else { return }
+    let current = withObservationTracking {
+      suppression
+    } onChange: { [weak self] in
+      Task { @MainActor in self?.observeSuppression(token: token) }
+    }
+    suppressionLog.record(current)
+  }
+
   /// Shows and hides the hover panel as the whisper starts and ends.
   private func observeWhisper(token: Int) {
     guard whisperObservation == token else { return }
@@ -382,6 +411,10 @@ public final class SurfaceController {
       switch entry {
       case .separator:
         menu.addItem(.separator())
+      case .notice(let line):
+        let item = NSMenuItem(title: line, action: nil, keyEquivalent: "")
+        item.isEnabled = false
+        menu.addItem(item)
       case .command(let command, let title, let isChecked, let shortcut):
         let item = ClosureMenuItem(title: title, keyEquivalent: shortcut.map(String.init) ?? "") {
           [weak self] in self?.perform(command)

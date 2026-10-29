@@ -18,7 +18,7 @@ The full briefings live in the claude.ai project "Lance Personal Assistant" (`pl
 | C1 | One work item entity for tasks and commitments, superseding Lance ADR 0009's "no native tasks table" | Not built | The `Item` envelope abstracts over today's proposals, commitments, tasks and alerts, so the client does not change when `work_items` lands |
 | C2 | Build `work_items` and migrate commitments | Not built | As C1 |
 | C3 | Units of work: a principal's own groups of work items, lighter than a project, with the agent suggesting groups | Not built; the first candidate to drop to Should | Until it lands, Lance groups the field by project (`ABOUT` edge), then counterparty organisation, then Other (spec 5.4) |
-| F1 | An orchestrator replaces the linear job runner; jobs become skills it invokes | Not built | `POST /handoff` stays unimplemented in Lance until F1 and F2 land; `capabilities.handoff` is false in `lance-dev` |
+| F1 | An orchestrator replaces the linear job runner; jobs become skills it invokes | Not built | `POST /handoff` stays unimplemented in Lance until F1 and F2 land; `capabilities.handoff` is false in `ian-dev` |
 | F2 | Triggered execution is first class: one trigger routes to every job that applies | Not built | As F1 |
 | G2 | Show every agent action, live and after the fact, for the person and the team | Not built | The Agents view shows runs, watchers, breakers and cost from `GET /agents`; a live action trail is G2's, not this client's |
 | G3 | A sentence typed on a card fires the agent | Not built | "Hand to Ian" with an optional instruction is the desktop form of G3 |

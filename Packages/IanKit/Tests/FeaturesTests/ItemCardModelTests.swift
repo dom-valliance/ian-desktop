@@ -24,7 +24,7 @@ private func item(
     "dueAt":\(dueAt.map { "\"\($0)\"" } ?? "null"),\
     \(severity.map { "\"severity\":\"\($0)\"," } ?? "")\
     "working":false,"version":2,"actions":\(actions),"detail":\(detail),\
-    "links":{"lance":"https://lance.example.invalid/items/\(id)","source":\(source)}}
+    "links":{"lance":"https://ian.example.invalid/items/\(id)","source":\(source)}}
     """)
 }
 
@@ -127,7 +127,7 @@ struct ItemCardModelTests {
 
     #expect(model.badge == "Jamie")
     #expect(model.sourceURL?.absoluteString == "https://notion.example.invalid/page")
-    #expect(model.lanceURL?.absoluteString == "https://lance.example.invalid/items/task_1")
+    #expect(model.lanceURL?.absoluteString == "https://ian.example.invalid/items/task_1")
     #expect(
       model.lines.map(\.text).prefix(3) == [
         "Assignee: [PERSON] (you)", "Status: In Progress", "Project: [PROJECT]",

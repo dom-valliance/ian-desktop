@@ -75,8 +75,8 @@ Ian is an accessory app. It has no Dock icon and no window until you open one.
 
 | What | Where | What you see |
 |---|---|---|
-| The Orbit | The bottom right corner of the main display, 16 points in from each edge | A small round avatar, 96 points across: a grey core, a thin ring that shows how loaded the day is, and up to five coloured dots (satellites) for what needs you now. In `normal` there is one dot for each of the first five items and a "+n" chip for the rest |
-| The menu bar entry | The right side of the menu bar, on every display | The word "Ian", followed by a number when something needs you now, such as "Ian 5". Click it for Open, Pause me, Settings and Quit Ian |
+| The Orbit | The bottom right corner of the main display, 16 points in from each edge | A small round avatar, 96 points across: an off-white star, a thin ring that shows how loaded the day is, and up to five coloured dots (satellites) for what needs you now. In `normal` there is one dot for each of the first five items and a "+n" chip for the rest |
+| The menu bar entry | The right side of the menu bar, on every display | The word "Ian", followed by a number when something needs you now, such as "Ian 5". Click it for Open, Pause me, Settings and Quit Ian, under a greyed line saying why Ian is quiet while it is |
 
 On a MacBook with a camera notch and many menu bar items, the entry can sit behind the notch, where nothing can click it. If you cannot see it, use the Orbit instead: click the Orbit to open the panel and right-click it for the same menu. You can also hold Command and drag menu bar items to the left to make room.
 
@@ -170,13 +170,15 @@ Without `IAN_MOCK_URL` they are skipped. Run them against a mock you started for
 | The app opens but shows an old layout, or a build error that a recent pull should have fixed | A stale build. Delete the build folder and run again: `rm -rf build/DerivedData`. The next build takes the full several minutes |
 | No Orbit anywhere | Check that the app runs with `pgrep -x Ian`. If it runs, the Orbit may be on another display or hidden behind a full-screen app. The Orbit sits on the main display, the one that holds the menu bar when "Displays have separate Spaces" is on |
 | The Orbit is there but shows no dots | The mock may be in a scenario with no items, or stopped. Check the Terminal window that runs `scripts/dev.sh`, then run `pnpm --dir mock mock state` |
-| The Today field stops moving until a relaunch | Run `log show --last 2h --style compact --predicate 'subsystem == "ai.valliance.ian.desktop" AND category == "motion"'` and send the lines. They hold the clock's state changes and no item content |
+| The Orbit and the Today field stop moving | Look for the quiet line first: "Quiet while your camera is on" (any app that has the camera, such as a video call), "Quiet during an external meeting", "Quiet in your quiet hours" or "Quiet while paused". It sits in the panel header beside "Ian" and at the top of the menu bar menu. Ian holds still while any of those applies, and moves again when it ends. Settings can switch off the camera and external meeting triggers; choose Pause me again to resume |
+| The Today field stops moving until a relaunch, with no quiet line | Run `/usr/bin/log show --last 2h --style compact --predicate 'subsystem == "ai.valliance.ian.desktop" AND category == "motion"'` and send the lines. They hold the clock's state changes and each change in suppression, and no item content |
 | The panel header says the data is old | The stream to the mock has dropped. Look in the `scripts/dev.sh` window for a crash, then run the script again |
 | macOS says Ian cannot be opened because the developer cannot be verified | You opened a copy of the app that was downloaded or moved. Open it with `scripts/dev.sh`, which builds it on your machine, so it carries no quarantine flag |
+| An old Keychain item from a build that called the profile `lance-dev` | Only a developer who filled in both sign-in build settings and signed in has one. Nothing reads it any more. Delete it with `security delete-generic-password -s ai.valliance.ian.desktop.dev.lance-dev -a tokens` |
 
-## Switch to Lance dev
+## Switch to Ian dev
 
-The `lance-dev` profile reads the real Lance dev environment for the signed-in principal. It cannot work until Lance has done its part. Until then the app says so and nothing breaks, and the mock stays the default.
+The `ian-dev` profile reads the real dev environment behind Lance for the signed-in principal. It cannot work until Lance has done its part. Until then the app says so and nothing breaks, and the mock stays the default.
 
 ### What it needs
 
@@ -193,9 +195,9 @@ Then the build needs three values. They are build settings in `App/project.yml`,
 
 | Setting | Holds |
 |---|---|
-| `IAN_LANCE_TENANT_ID` | The tenant id. Already set |
-| `IAN_LANCE_CLIENT_ID` | The id of `Ian Desktop (dev)`. Empty until DL1 registers it |
-| `IAN_LANCE_SCOPE` | The api scope string DL1 records in Lance's Entra runbook. Empty until DL1 |
+| `IAN_DEV_TENANT_ID` | The tenant id. Already set |
+| `IAN_DEV_CLIENT_ID` | The id of `Ian Desktop (dev)`. Empty until DL1 registers it |
+| `IAN_DEV_SCOPE` | The api scope string DL1 records in Lance's Entra runbook. Empty until DL1 |
 
 Edit the empty values in `App/project.yml`, regenerate the project, then run a build:
 
@@ -221,22 +223,22 @@ az containerapp show -g rg-lance-dev -n ca-lance-api-dev --query properties.conf
 
 Either way, no rebuild is needed beyond the settings above.
 
-1. **From Settings.** Click the Orbit to open the panel, choose Settings in the sidebar, and use the Environment picker to choose "Lance dev". A confirmation asks "Switch environment?". Choose "Sign out and switch to Lance dev". Ian clears what it holds and starts again.
+1. **From Settings.** Click the Orbit to open the panel, choose Settings in the sidebar, and use the Environment picker to choose "Ian dev". A confirmation asks "Switch environment?". Choose "Sign out and switch to Ian dev". Ian clears what it holds and starts again.
 2. **From the launch argument.** Quit the app, then open it with the argument. This does not save the choice:
 
 ```
-open build/DerivedData/Build/Products/Debug/Ian.app --args -IanEnvironment lance-dev
+open build/DerivedData/Build/Products/Debug/Ian.app --args -IanEnvironment ian-dev
 ```
 
-The mock does not need to run for `lance-dev`. To go back, choose "Mock" in the same picker, or open the app with `--args -IanEnvironment mock`.
+An earlier build called this profile `lance-dev`. A saved choice or an argument of that name still opens `ian-dev`, and the saved choice is rewritten once. The mock does not need to run for `ian-dev`. To go back, choose "Mock" in the same picker, or open the app with `--args -IanEnvironment mock`.
 
 ### The browser sign-in
 
-With `lance-dev` active the panel shows "Sign in to see your day." and a Sign in button. Click it. Ian opens your default browser at the Microsoft sign-in page and listens on `http://localhost` on a random port for the redirect. Sign in with your Valliance account. When the browser says you can close the tab, return to Ian: the panel loads your own items, and the header shows "Lance dev". Ian keeps its tokens in the login Keychain, so a relaunch signs in silently.
+With `ian-dev` active the panel shows "Sign in to see your day." and a Sign in button. Click it. Ian opens your default browser at the Microsoft sign-in page and listens on `http://localhost` on a random port for the redirect. Sign in with your Valliance account. When the browser says you can close the tab, return to Ian: the panel loads your own items, and the header shows "Ian dev". Ian keeps its tokens in the login Keychain, so a relaunch signs in silently.
 
 ### What it shows until DL1 lands
 
-- With `IAN_LANCE_CLIENT_ID` or `IAN_LANCE_SCOPE` empty, the panel shows a sign-in banner that names the empty settings and says that Lance package DL1 adds them. No browser opens.
+- With `IAN_DEV_CLIENT_ID` or `IAN_DEV_SCOPE` empty, the panel shows a sign-in banner that names the empty settings and says that the server's package DL1 adds them. No browser opens.
 - If the settings are filled in but Entra does not offer the scope, sign-in fails with a message that names the scope and says DL1 grants it.
 - If sign-in works but DL2 to DL4 are not merged, the api has nothing to serve and the panel shows its offline or error state instead of data.
 
@@ -244,9 +246,9 @@ In every case, switch back to the mock with the picker or the launch argument.
 
 ### The data rule
 
-`lance-dev` reads real data: mail, tasks, commitments and meeting names. Therefore:
+`ian-dev` reads real data: mail, tasks, commitments and meeting names. Therefore:
 
-- Never record a snapshot, take a screenshot, save a trace or run `scripts/measure-cpu.sh` against `lance-dev`, and never paste its output into a pull request, an issue or a document.
-- Keep `lance-dev` out of every test.
+- Never record a snapshot, take a screenshot, save a trace or run `scripts/measure-cpu.sh` against `ian-dev`, and never paste its output into a pull request, an issue or a document.
+- Keep `ian-dev` out of every test.
 - The diagnostics report in Settings copies ids, versions and timings only, and is safe to share.
 - Keep the app on the mock when you demonstrate it to anyone. [docs/demo.md](demo.md) uses the mock for everything except its last section.

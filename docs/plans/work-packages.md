@@ -276,6 +276,7 @@ Build:
   - The build settings `IAN_LANCE_TENANT_ID`, `IAN_LANCE_CLIENT_ID` and `IAN_LANCE_SCOPE` become `IAN_DEV_TENANT_ID`, `IAN_DEV_CLIENT_ID` and `IAN_DEV_SCOPE`, through `App/project.yml`, `App/Info.plist` and the regenerated project.
   - Scripts, the run guide, the demo, the README and AGENTS.md follow.
 - **What stays Lance**, recorded in an ADR with the reason for each: the contract's `links.lance` field (renaming it breaks contract v1); the server's own names (the Lance repository, packages DL1 to DL6, the `Lance.User` app role, the `Lance (Valliance)` registration, the api host); docs and comments that describe the server; the phase log and earlier ADRs, which are records.
+- **The Valliance star.** Added on 21 October 2026, at Dom's request during N1: the Orbit's core dot becomes the Valliance star, drawn as a vector from the symbol PNGs in `assets/`, about 17 points across, off-white at rest and the working blue while an item is working, breathing as the dot did. The design README records the difference from the canvas, and `scripts/measure-cpu.sh` runs again because the drawing changed.
 - **Tests and snapshots.** Strings and fixtures follow; re-record the snapshots whose text changes, rendering once with a US locale and Reduce Motion forced on, as AGENTS.md's snapshot rule asks.
 
 Done when:
@@ -283,3 +284,5 @@ Done when:
 - A search of `Packages`, `App`, `scripts` and the current docs finds "Lance" only where the ADR allows it.
 - A test shows a saved `lance-dev` choice opens as `ian-dev`, with scratch defaults.
 - Every check passes by exit code, and Dom has looked at Settings, a card and the header against the mock.
+- `scripts/measure-cpu.sh` passes after the star's drawing change, with its figures in the phase log.
+- Dom has looked at the star against the mock: off-white at rest, breathing blue in `normal`, with its ring under Reduce Motion, and legible over a white window.

@@ -24,10 +24,16 @@ final class OrbitMotionView: NSView {
   static let breathKey = "breath"
   static let pulseKey = "pulse"
 
+  /// The star's scale at the top of its breath, from its resting half side.
+  static let largestBreathScale =
+    (OrbitRenderer.restingCoreHalfSide + OrbitRenderer.breathRange)
+    / OrbitRenderer.restingCoreHalfSide
+
   private let box = CALayer()
   private var applied = OrbitMotion.still
 
-  private(set) var coreLayer: CAShapeLayer?
+  /// The core's container, which carries the breath: the star's keyline stroke under its fill.
+  private(set) var coreLayer: CALayer?
   private(set) var rimLayers: [CAShapeLayer] = []
 
   override init(frame: NSRect) {
@@ -83,19 +89,35 @@ final class OrbitMotionView: NSView {
     applied = motion
   }
 
-  private func makeCoreLayer(_ core: OrbitDrawing.Core) -> CAShapeLayer {
-    let layer = CAShapeLayer()
-    layer.frame = box.bounds
-    layer.path = Self.circle(at: OrbitRenderer.centre, radius: core.radius)
-    layer.fillColor = core.colour.cgColor
-    let breath = CABasicAnimation(keyPath: "path")
-    breath.fromValue = Self.circle(
-      at: OrbitRenderer.centre, radius: OrbitRenderer.restingCoreRadius)
-    breath.toValue = Self.circle(
-      at: OrbitRenderer.centre,
-      radius: OrbitRenderer.restingCoreRadius + OrbitRenderer.breathRange)
-    layer.add(Self.loop(breath, rate: OrbitRenderer.breathRate), forKey: Self.breathKey)
-    return layer
+  var coreFillLayer: CAShapeLayer? { coreLayer?.sublayers?.last as? CAShapeLayer }
+  var coreKeylineLayer: CAShapeLayer? { coreLayer?.sublayers?.first as? CAShapeLayer }
+
+  /// The star's fill over its keyline, in a container the size of the box. The container's anchor
+  /// is the box's middle, which is the renderer's centre, so a scale breathes the star about its
+  /// own centre, and the keyline breathes with it.
+  private func makeCoreLayer(_ core: OrbitDrawing.Core) -> CALayer {
+    let path = StarShape.path(
+      centre: OrbitRenderer.centre, halfSide: OrbitRenderer.restingCoreHalfSide)
+    let keyline = CAShapeLayer()
+    keyline.frame = box.bounds
+    keyline.path = path
+    keyline.fillColor = nil
+    keyline.strokeColor = core.keyline.colour.cgColor
+    keyline.lineWidth = core.keyline.width
+    keyline.lineJoin = .round
+    let fill = CAShapeLayer()
+    fill.frame = box.bounds
+    fill.path = path
+    fill.fillColor = core.colour.cgColor
+    let container = CALayer()
+    container.frame = box.bounds
+    container.addSublayer(keyline)
+    container.addSublayer(fill)
+    let breath = CABasicAnimation(keyPath: "transform.scale")
+    breath.fromValue = 1.0
+    breath.toValue = Self.largestBreathScale
+    container.add(Self.loop(breath, rate: OrbitRenderer.breathRate), forKey: Self.breathKey)
+    return container
   }
 
   private func makeRimLayer(_ satellite: OrbitDrawing.Satellite) -> CAShapeLayer? {

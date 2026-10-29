@@ -2,7 +2,7 @@ import Foundation
 
 /// A sign-in problem. Every message says what the principal or a developer does next.
 public enum AuthError: Error, Equatable, Sendable {
-  /// A setting the `lance-dev` sign-in needs is empty.
+  /// A setting the `ian-dev` sign-in needs is empty.
   case notConfigured(missing: [Setting])
   /// No usable token is stored, or the refresh token was refused.
   case signInRequired
@@ -21,11 +21,11 @@ public enum AuthError: Error, Equatable, Sendable {
   /// The Keychain refused a read or write, with the `OSStatus`.
   case keychain(Int32)
 
-  /// A build setting the `lance-dev` profile reads.
+  /// A build setting the `ian-dev` profile reads.
   public enum Setting: String, Equatable, Sendable {
-    case tenantID = "IAN_LANCE_TENANT_ID"
-    case clientID = "IAN_LANCE_CLIENT_ID"
-    case scope = "IAN_LANCE_SCOPE"
+    case tenantID = "IAN_DEV_TENANT_ID"
+    case clientID = "IAN_DEV_CLIENT_ID"
+    case scope = "IAN_DEV_SCOPE"
   }
 }
 
@@ -36,18 +36,18 @@ extension AuthError: LocalizedError {
       let names = missing.map(\.rawValue).joined(separator: ", ")
       let scopeNote =
         missing.contains(.scope)
-        ? " Lance has not exposed an api scope yet; Lance package DL1 adds it and registers "
-          + "the Ian Desktop (dev) client (docs/companion/lance-track.md)."
+        ? " The dev server's sign-in is not registered yet; server package DL1 adds the api scope "
+          + "and registers the Ian Desktop (dev) client (see docs/companion)."
         : ""
       let verb = missing.count == 1 ? "is" : "are"
-      return "Sign-in to Lance dev is not set up: \(names) \(verb) empty in App/project.yml."
+      return "Sign-in to Ian dev is not set up: \(names) \(verb) empty in App/project.yml."
         + scopeNote + " Use the mock profile with -IanEnvironment mock until then."
     case .signInRequired:
       return "Sign in to continue."
     case .scopeRejected(let scope):
       return "Entra does not offer the scope \"\(scope)\" for Ian Desktop (dev). "
-        + "Lance package DL1 adds the Lance api scope and grants it to the client; "
-        + "until it lands the lance-dev profile cannot sign in. "
+        + "The dev server's sign-in is not registered yet: server package DL1 adds the api scope "
+        + "and grants it to the client, and until it lands the ian-dev profile cannot sign in. "
         + "Use the mock profile with -IanEnvironment mock."
     case .stateMismatch:
       return "The sign-in response did not match the request, so it was discarded. "

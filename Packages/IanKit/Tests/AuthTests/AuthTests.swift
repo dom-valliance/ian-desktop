@@ -122,7 +122,7 @@ private func devProviderSendsDevLocal() async throws {
   #expect(try await DevTokenProvider().token() == "dev-local")
 }
 
-@Test("names the empty scope and Lance DL1 when the scope is not configured")
+@Test("names the empty scope and package DL1 when the scope is not configured")
 private func namesMissingScope() {
   let unconfigured = EntraConfiguration(tenantID: "tenant-1", clientID: "", scope: "")
 
@@ -130,8 +130,8 @@ private func namesMissingScope() {
 
   #expect(error == .notConfigured(missing: [.clientID, .scope]))
   let message = error?.errorDescription ?? ""
-  #expect(message.contains("IAN_LANCE_SCOPE"))
-  #expect(message.contains("IAN_LANCE_CLIENT_ID, IAN_LANCE_SCOPE are empty"))
+  #expect(message.contains("IAN_DEV_SCOPE"))
+  #expect(message.contains("IAN_DEV_CLIENT_ID, IAN_DEV_SCOPE are empty"))
   #expect(message.contains("DL1"))
 }
 
@@ -381,7 +381,7 @@ private final class RequestLog: @unchecked Sendable {
 private func agreesVerbWithCount() {
   #expect(
     AuthError.notConfigured(missing: [.scope]).errorDescription?.contains(
-      "IAN_LANCE_SCOPE is empty")
+      "IAN_DEV_SCOPE is empty")
       == true)
   #expect(
     AuthError.notConfigured(missing: [.clientID, .scope]).errorDescription?.contains("are empty")

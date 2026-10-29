@@ -16,8 +16,8 @@ Each step says what to do, where, and what the audience sees. Commands run in a 
 
 Where: the bottom right corner of the main display.
 
-- **Say.** Ian is a client for Lance, the personal operating agent. At rest it is only this avatar.
-- **Point at.** The grey core, which breathes blue only while Ian is working on something. The thin ring, which fills as the day's load approaches its usual size. In `normal` the ring is full and a short peach arc outside it shows load above the median. The coloured dots on the ring, called satellites, which are what needs you now: pink for proposals, peach and blue for commitments you owe and are owed, teal for tasks, red with a pulsing rim for alerts. A "+n" chip counts the items that do not fit.
+- **Say.** Ian is the personal operating agent you see on your screen. At rest it is only this avatar.
+- **Point at.** The off-white star at the centre, which breathes blue only while Ian is working on something. The thin ring, which fills as the day's load approaches its usual size. In `normal` the ring is full and a short peach arc outside it shows load above the median. The coloured dots on the ring, called satellites, which are what needs you now: pink for proposals, peach and blue for commitments you owe and are owed, teal for tasks, red with a pulsing rim for alerts. A "+n" chip counts the items that do not fit.
 - **Hover.** Move the pointer over the Orbit. A label beside it shows the top item's title, for example "Send the revised scope to [CLIENT A]".
 - **Menu bar.** Show "Ian" followed by a number at the right of the menu bar, or the Orbit's right-click menu if the entry hides behind the camera notch. Say that both give the same menu: Open, Pause me, Settings and Quit Ian.
 
@@ -94,7 +94,7 @@ pnpm --dir mock mock emit alert --severity P0
 - **Do.** In Mode, click "Go live".
 - **Audience sees.** A confirmation, "Go live?". The button is enabled because `quiet` is the one scenario where the server reports that the principal is eligible. Switch the scenario back to `normal` and the button is disabled. Say: eligibility is the server's decision, the client only reflects it.
 - **Do.** Click Cancel, unless you want to change the mock's state.
-- **Point at.** The Environment picker, which names Mock and Lance dev. Do not switch it here.
+- **Point at.** The Environment picker, which names Mock and Ian dev. Do not switch it here.
 
 ## 8. Hand to Ian (1 minute)
 
@@ -115,13 +115,13 @@ pgrep -x Ian
 
 Both must print nothing.
 
-## Against Lance dev
+## Against Ian dev
 
-This part waits on Lance packages DL1 to DL4 ([docs/companion/lance-track.md](companion/lance-track.md)). Until they are merged, `lance-dev` cannot sign in, and nothing here can be shown. Do not show it on a shared screen: it reads real data (the data rule in [run-local.md](run-local.md)).
+This part waits on Lance packages DL1 to DL4 ([docs/companion/lance-track.md](companion/lance-track.md)). Until they are merged, `ian-dev` cannot sign in, and nothing here can be shown. Do not show it on a shared screen: it reads real data (the data rule in [run-local.md](run-local.md)).
 
-Prepare once DL1 to DL4 are merged: fill `IAN_LANCE_CLIENT_ID` and `IAN_LANCE_SCOPE` in `App/project.yml`, run `scripts/generate-project.sh`, and build with `scripts/dev.sh`. Then, per spec section 11:
+Prepare once DL1 to DL4 are merged: fill `IAN_DEV_CLIENT_ID` and `IAN_DEV_SCOPE` in `App/project.yml`, run `scripts/generate-project.sh`, and build with `scripts/dev.sh`. Then, per spec section 11:
 
-1. **Switch.** In Settings, choose "Lance dev" in the Environment picker and confirm. The header shows "Lance dev".
+1. **Switch.** In Settings, choose "Ian dev" in the Environment picker and confirm. The header shows "Ian dev".
 2. **Sign in through the browser.** Click Sign in. The default browser opens the Microsoft page. After signing in, the panel loads.
 3. **See the principal's own items.** Today, Proposals, Commitments, Tasks and Alerts hold the signed-in principal's own items, with the same shapes as the mock.
 4. **Settle a commitment.** Settle one of your own commitments. The card shows pending, then the server's event removes it, as in the mock.

@@ -15,7 +15,7 @@ How to work in this repository, for AI agents and people. `CLAUDE.md` imports th
 
 ## Naming
 
-The user-facing name is Ian. The server and the API keep Lance identifiers (B1).
+The user-facing name is Ian, and so are this repository's identifiers, including the environment profile `ian-dev` (ADR 0023). The server and the API keep Lance identifiers (B1); so do the contract's `links.lance` field and the documents that describe the server.
 
 | Where | Value |
 |---|---|
@@ -27,6 +27,8 @@ The user-facing name is Ian. The server and the API keep Lance identifiers (B1).
 | Entra public client (dev) | `Ian Desktop (dev)` |
 | App role checked by the api | `Lance.User` |
 | Ledger payload marker | `surface: 'desktop'` |
+| Dev environment profile | `ian-dev` (earlier builds called it `lance-dev`; both are read as `ian-dev`) |
+| Dev sign-in build settings | `IAN_DEV_TENANT_ID`, `IAN_DEV_CLIENT_ID`, `IAN_DEV_SCOPE` |
 
 UI copy says Ian. Code and docs that describe the server say Lance. New identifiers name the role, `principal`, never a person.
 
@@ -37,7 +39,7 @@ Enforced in code and tested. From ADRs 0001 to 0006 and the spec.
 1. **Thin client.** IanKit computes no pressure, horizon, unit grouping, Orbit selection, eligibility or policy outcome. It renders what the server sends. Buttons come only from an item's `actions`, in the order sent, and the client sends the action id back.
 2. **The server settles state.** An action marks its item pending. Only the server's event moves the item. No optimistic completion, no offline action queue; actions are disabled while offline.
 3. **The contract is the source.** Swift types are generated from `contract/ian-desktop.v1.yaml`; generated code is never edited by hand. The mock validates every response against the same file. A breaking change is `v2`, never an edit to `v1`.
-4. **Mock by default, invented data only.** The app starts against the mock unless a profile says otherwise. Debug builds carry `mock` and `lance-dev` only; no production profile exists in version 0.
+4. **Mock by default, invented data only.** The app starts against the mock unless a profile says otherwise. Debug builds carry `mock` and `ian-dev` only; no production profile exists in version 0.
 5. **Nothing on disk but two things.** Tokens in the Keychain, and in `UserDefaults` the client settings in spec 6.4 plus the field's angle and the pane sizes (ADR 0016). No response caches (use an ephemeral `URLSession` configuration), no item content in logs (log ids only, through `os.Logger` with private interpolation), no crash reports or diagnostics carrying titles.
 6. **Off screen captures.** Every window and panel sets `sharingType = .none`. Settings cannot switch it off. Suppression hides all item text on the Orbit and in notifications; P0 still notifies.
 7. **Rendering costs nothing when unseen.** Animation stops when the expanded client is hidden, occluded or suppressed. Reduce Motion stops the ripple, the sway and the breathing; the principal's own drag still turns the field (ADR 0016).
@@ -59,11 +61,12 @@ Checked against the Lance repository on 17 October 2026. The spec text is unchan
 | # | Spec | Fact | Do |
 |---|---|---|---|
 | E1 | 1 and 5.3: confidence source "per ADR 0037" | Lance's ADR 0037 is "Inbound commitments need a definite recipient". The confidence-source rule is ADR 0037 in the Lev briefing, not yet written, and it will take a new number | Use the enum `lev_trusted`, `lev_untrusted`, `self_report`. Cite it as the Lev confidence-source rule |
-| E2 | 8: "delegated access to the Lance api scope" | The `Lance (Valliance)` registration exposes no API scope. The api accepts bearer tokens whose audience is the Lance client id (`apps/api/src/auth/entra.ts`) | Lance package DL1 adds the scope and accepts its audience. Until then `lance-dev` fails at sign-in with a clear message. The scope string lives in the profile configuration |
+| E2 | 8: "delegated access to the Lance api scope" | The `Lance (Valliance)` registration exposes no API scope. The api accepts bearer tokens whose audience is the Lance client id (`apps/api/src/auth/entra.ts`) | Lance package DL1 adds the scope and accepts its audience. Until then `ian-dev` fails at sign-in with a clear message. The scope string lives in the profile configuration |
 | E3 | 8: dev api host "from the Lance runbook's known-values table" | That table lists no hostname. The dev api host is `ca-lance-api-dev.graygrass-c682ce2c.uksouth.azurecontainerapps.io`, recorded in Lance's `docs/runbooks/entra-setup.md` | Base URL `https://ca-lance-api-dev.graygrass-c682ce2c.uksouth.azurecontainerapps.io/desktop/v1`. Re-read it with `az containerapp show -g rg-lance-dev -n ca-lance-api-dev --query properties.configuration.ingress.fqdn -o tsv` |
 | E4 | 6.3: "colour is kind" | The design canvas colours commitments, proposals and alerts; `task` has no colour | Q12 |
 | E5 | 6.5: suppression list | The Ladder artboard also holds notifications for Focus and screen sharing | The spec wins. Focus is Q13. Screen sharing has no public signal; `sharingType` is the defence |
 | E6 | 12: Intune "Required for `Lance Users`"; Conditional Access | Lance ADR 0020: the tenant has no Entra ID P1, so the `Lance Users` group was never created, and Conditional Access needs P1 | Fast-follow prerequisite, recorded in [docs/companion/lance-track.md](docs/companion/lance-track.md). No effect on version 0 |
+| E7 | The profile is `lance-dev` (sections 3, 8 to 10, 13 and 14), shown as "Lance dev" (0, 2, 8 and 11), and the card link reads "Open in Lance" (1 and 13) | Dom decided on 21 October 2026 that identifiers and visible names say Ian. N1 renamed the profile, its launch argument value and, in D3's build settings, `IAN_LANCE_*` | Use `ian-dev`, and `IAN_DEV_TENANT_ID`, `IAN_DEV_CLIENT_ID` and `IAN_DEV_SCOPE`. The environment shows as "Ian dev" (spec 8, line 337) and the card link reads "Open in Ian" (spec 1 and Q4); "the spec wins" does not restore the old words. Cite ADR 0023 |
 
 ## Open questions beyond the spec
 
@@ -94,7 +97,7 @@ pnpm --dir contract install --frozen-lockfile && pnpm --dir contract lint
 
 `scripts/dev.sh` starts the mock on port 4317 (`MOCK_PORT` and `MOCK_HOST` change it), waits until it answers, then builds the app and opens it against the mock (`--mock-only` stops after the mock); `mock/README.md` lists the scenarios and the `pnpm --dir mock mock` commands for emitting events, moving the clock and switching capabilities. The Swift integration tests run only against a live mock: `scripts/dev.sh --mock-only`, then `IAN_MOCK_URL=http://localhost:4317 swift test --package-path Packages/IanKit --force-resolved-versions --no-parallel --filter Integration`; without the variable they are skipped. They share one mock, and the recovery tests take it offline and move its clock, so they run one at a time. Read the workflows in `.github/workflows/` rather than this list when they differ; the workflows win.
 
-The app chooses its environment from the launch argument `-IanEnvironment mock|lance-dev`, then the saved setting, then `mock`. The `lance-dev` tenant id, desktop client id and api scope are the build settings `IAN_LANCE_TENANT_ID`, `IAN_LANCE_CLIENT_ID` and `IAN_LANCE_SCOPE` in `App/project.yml`, carried into the app through `App/Info.plist`. The last two stay empty until Lance DL1 registers them, and sign-in says so.
+The app chooses its environment from the launch argument `-IanEnvironment mock|ian-dev`, then the saved setting, then `mock`. A `lance-dev` from an earlier build, in either place, is read as `ian-dev`, and a saved one is rewritten once. The `ian-dev` tenant id, desktop client id and api scope are the build settings `IAN_DEV_TENANT_ID`, `IAN_DEV_CLIENT_ID` and `IAN_DEV_SCOPE` in `App/project.yml`, carried into the app through `App/Info.plist`. The last two stay empty until Lance DL1 registers them, and sign-in says so.
 
 ## Git and GitHub
 
@@ -109,7 +112,7 @@ GitHub is Dom's: he creates the remote, opens pull requests and merges. Use plai
 ## Data
 
 - No real data in this repository: no mail, transcripts, task titles, meeting names, client or counterparty names, in fixtures, snapshots, tests, screenshots, docs or pull request text. Mock fixtures use `[CLIENT]` and `[PERSON]` placeholders.
-- Snapshot tests render mock fixtures only. Never record a snapshot, screenshot or trace against `lance-dev`.
+- Snapshot tests render mock fixtures only. Never record a snapshot, screenshot or trace against `ian-dev`.
 - The diagnostics report copies ids, versions and timings only.
 
 ## Gotchas
@@ -130,7 +133,7 @@ Promoted here when the same lesson appears more than twice in `.claude/notes/`. 
 - `UserDefaults.removePersistentDomain` leaves an empty plist in `~/Library/Preferences`. Tests that write settings use a scratch suite (`withScratchDefaults`) that deletes the file too.
 - The scenario fixtures in `Packages/IanKit/Tests/TestSupport/Fixtures` are exported from the mock by `scripts/export-scenario-fixtures.sh` with a fixed clock. Re-run it, and re-record the Orbit, Pillars and view snapshots, when the mock's scenarios or the contract change.
 - A step Dom runs names its directory, branch and exact commands, says where on screen the result appears, and gives the full worktree path (`~/workspace/desktop-ian/.worktrees/<name>/...`) of any file not yet merged: Dom's editor shows the main checkout on `main`.
-- The `lance-dev` profile reads Dom's real dev data. Keep it out of every test, snapshot and recording.
+- The `ian-dev` profile reads Dom's real dev data. Keep it out of every test, snapshot and recording.
 
 ## Review guidelines
 

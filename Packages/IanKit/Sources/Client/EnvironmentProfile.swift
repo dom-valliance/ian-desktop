@@ -6,13 +6,13 @@ import Foundation
 public struct EnvironmentProfile: Equatable, Sendable {
   public enum Name: String, CaseIterable, Sendable {
     case mock
-    case lanceDev = "lance-dev"
+    case ianDev = "ian-dev"
 
     /// What the header and the Settings picker call the profile.
     public var displayName: String {
       switch self {
       case .mock: "Mock"
-      case .lanceDev: "Lance dev"
+      case .ianDev: "Ian dev"
       }
     }
   }
@@ -37,9 +37,9 @@ public struct EnvironmentProfile: Equatable, Sendable {
     baseURL: URL(string: "http://localhost:4317/desktop/v1")!, signIn: .devToken)
 
   /// The dev api host is erratum E3. The Entra settings come from build settings.
-  public static func lanceDev(entra: EntraConfiguration) -> EnvironmentProfile {
+  public static func ianDev(entra: EntraConfiguration) -> EnvironmentProfile {
     EnvironmentProfile(
-      name: .lanceDev, displayName: Name.lanceDev.displayName,
+      name: .ianDev, displayName: Name.ianDev.displayName,
       baseURL: URL(
         string:
           "https://ca-lance-api-dev.graygrass-c682ce2c.uksouth.azurecontainerapps.io/desktop/v1")!,
@@ -87,16 +87,42 @@ extension EnvironmentProfile {
     }
   }
 
-  /// Chooses the profile: the launch argument, else the saved setting, else `mock`.
-  /// - Parameter info: The app's Info.plist, which carries the `lance-dev` sign-in settings.
-  public static func resolve(
+  /// What earlier builds called the `ian-dev` profile (ADR 0023). It is still read as `ian-dev`.
+  static let legacyIanDevName = "lance-dev"
+
+  /// The requested profile name: the launch argument, else the saved setting. A saved
+  /// `lance-dev` from an earlier build is rewritten to `ian-dev` once, so nobody falls back to
+  /// the mock silently. A launch argument is read the same way and never saved.
+  /// - Parameter arguments: The launch arguments' domain, which `defaults` reads before the saved
+  ///   setting.
+  public static func requestedName(
     defaults: UserDefaults = .standard,
-    info: [String: Any] = Bundle.main.infoDictionary ?? [:]
-  ) throws -> EnvironmentProfile {
-    try resolve(requested: defaults.string(forKey: defaultsKey), info: info)
+    arguments: [String: Any] = UserDefaults.standard.volatileDomain(
+      forName: UserDefaults.argumentDomain)
+  ) -> String? {
+    if let argument = arguments[defaultsKey] as? String {
+      return argument == legacyIanDevName ? Name.ianDev.rawValue : argument
+    }
+    let saved = defaults.string(forKey: defaultsKey)
+    guard saved == legacyIanDevName else { return saved }
+    defaults.set(Name.ianDev.rawValue, forKey: defaultsKey)
+    return Name.ianDev.rawValue
   }
 
-  /// - Parameter requested: The profile name, or nil or empty for `mock`.
+  /// Chooses the profile: the launch argument, else the saved setting, else `mock`.
+  /// - Parameter info: The app's Info.plist, which carries the `ian-dev` sign-in settings.
+  public static func resolve(
+    defaults: UserDefaults = .standard,
+    info: [String: Any] = Bundle.main.infoDictionary ?? [:],
+    arguments: [String: Any] = UserDefaults.standard.volatileDomain(
+      forName: UserDefaults.argumentDomain)
+  ) throws -> EnvironmentProfile {
+    try resolve(
+      requested: requestedName(defaults: defaults, arguments: arguments), info: info)
+  }
+
+  /// - Parameter requested: The profile name, or nil or empty for `mock`. The legacy name is
+  ///   mapped by `requestedName`, so the profile switcher never accepts or saves it.
   public static func resolve(
     requested: String?, info: [String: Any]
   ) throws -> EnvironmentProfile {
@@ -107,8 +133,8 @@ extension EnvironmentProfile {
     switch name {
     case .mock:
       return .mock
-    case .lanceDev:
-      return .lanceDev(entra: entraConfiguration(from: info))
+    case .ianDev:
+      return .ianDev(entra: entraConfiguration(from: info))
     }
   }
 
@@ -117,7 +143,7 @@ extension EnvironmentProfile {
       (info[key] as? String)?.trimmingCharacters(in: .whitespaces) ?? ""
     }
     return EntraConfiguration(
-      tenantID: value("IanLanceTenantID"), clientID: value("IanLanceClientID"),
-      scope: value("IanLanceScope"))
+      tenantID: value("IanDevTenantID"), clientID: value("IanDevClientID"),
+      scope: value("IanDevScope"))
   }
 }

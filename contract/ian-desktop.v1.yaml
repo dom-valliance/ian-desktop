@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: Ian desktop api
-  version: 1.1.1
+  version: 1.1.2
   summary: The contract between the Ian desktop client and Lance's /desktop/v1 façade.
   description: |
     Version 1 of the contract between the Ian desktop client and Lance (ADR 0002). This
@@ -1832,7 +1832,7 @@ components:
             source: self_report
           expiresAt: '2026-10-16T10:30:00.000Z'
         links:
-          lance: https://lance.example.invalid/proposals/prop_01JAXQ4Z7C5W6N0R2T8V9Y3K1M
+          lance: https://ian.example.invalid/proposals/prop_01JAXQ4Z7C5W6N0R2T8V9Y3K1M
           source: null
     CommitmentByItem:
       summary: A commitment the principal owes, due today
@@ -1880,7 +1880,7 @@ components:
             nextChaseAt: null
           toConfirm: false
         links:
-          lance: https://lance.example.invalid/commitments/cmt_01JAXQ5B2D7F9H1K3M5P7R9T1V
+          lance: https://ian.example.invalid/commitments/cmt_01JAXQ5B2D7F9H1K3M5P7R9T1V
           source: null
     CommitmentToItem:
       summary: A commitment owed to the principal, waiting for confirmation
@@ -1928,7 +1928,7 @@ components:
             nextChaseAt: '2026-10-22T08:00:00.000Z'
           toConfirm: true
         links:
-          lance: https://lance.example.invalid/commitments/cmt_01JAXQ6C3E8G0J2L4N6Q8S0U2W
+          lance: https://ian.example.invalid/commitments/cmt_01JAXQ6C3E8G0J2L4N6Q8S0U2W
           source: null
     TaskItem:
       summary: A task from Notion that an agent is working on
@@ -1961,7 +1961,7 @@ components:
           status: In Progress
           project: null
         links:
-          lance: https://lance.example.invalid/tasks/task_notion_0000000000000000000000000001
+          lance: https://ian.example.invalid/tasks/task_notion_0000000000000000000000000001
           source: https://notion.example.invalid/0000000000000000000000000001
     AlertItem:
       summary: A P1 alert
@@ -2000,5 +2000,5 @@ components:
           relatedItemIds: []
           explanation: The mail watcher has failed three times in a row; its breaker is open.
         links:
-          lance: https://lance.example.invalid/alerts/alrt_01JAXQ7D4F9H1K3M5P7R9T1V3X
+          lance: https://ian.example.invalid/alerts/alrt_01JAXQ7D4F9H1K3M5P7R9T1V3X
           source: null

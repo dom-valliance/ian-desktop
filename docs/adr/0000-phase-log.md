@@ -22,7 +22,7 @@ Each entry records:
 | D7 | Done, 20 October 2026 |
 | D8 | Done, 20 October 2026 |
 | D9 | Done, 21 October 2026 |
-| N1 | Not started |
+| N1 | Done, 29 October 2026 |
 
 ## Entries
 
@@ -762,3 +762,110 @@ The traces are kept in the lead's scratchpad, not in the repository.
 - **Open: the field stopped once.** During the hand check the Today field stopped animating at some point, and only a relaunch restarted it. Toggling system Reduce Motion, "Pause me", the camera, locking the screen and a screen recording did not reproduce it. The field's clock and the panel's on-screen state now log each change, at a level the system keeps, with no item content, and `docs/run-local.md` says how to read them, so the next occurrence leaves evidence.
 - **Waiting on Lance.** The switch to Lance dev (DL1 to DL4) and arbitration (DL5), and the contract's single source in Lance CI (DL6). The demo against Lance dev waits on the same.
 - **Next.** N1, "Call it Ian everywhere", added to the plan at Dom's request on 21 October 2026.
+
+### N1. Call it Ian everywhere
+
+- Date: 29 October 2026, built from 21 October
+- Branch: `refactor/ian-naming`, from `main` at `af0ab89`. Commits `5f39aa4..6596aea`, plus this entry.
+- Machine: MacBook Pro, Apple M4 Pro (Mac16,7), macOS 27.0.1, Xcode 27.1 (27A9275).
+- Dom decided on 21 October 2026, during D9's hand check, that what the principal and the developer see says Ian, identifiers included, as its own package after D9. During N1 he also asked for:
+  - the Orbit's core dot to become the Valliance star;
+  - a cue that says why Ian is quiet;
+  - the mock's links to say Ian.
+- The star was built in `.worktrees/star` on `feat/valliance-star` and fast-forwarded onto this branch.
+
+#### Commands and exit codes
+
+| Command | Exit |
+|---|---|
+| `swift format lint --recursive --strict Packages App scripts` | 0 |
+| `swift build --package-path Packages/IanKit --force-resolved-versions` | 0 |
+| `swift test --package-path Packages/IanKit --force-resolved-versions`, five runs | 0 each: 786 tests, the integration tests skipped |
+| `scripts/check-generated.sh` | 0 |
+| `xcodebuild ... -onlyUsePackageVersionsFromResolvedFile -derivedDataPath build/DerivedData build` | 0 |
+| `pnpm --dir contract install --frozen-lockfile && pnpm --dir contract lint` | 0 |
+| `pnpm --dir mock lint && pnpm --dir mock typecheck && pnpm --dir mock test` | 0 |
+| Integration suite against `scripts/dev.sh --mock-only`, run serially | 0: 19 tests |
+| `scripts/measure-cpu.sh`, on 29 October 2026 with the camera free | 0, every target met (below) |
+
+#### Done when
+
+1. **"Lance" remains only where ADR 0023 allows it.** A case-insensitive search of `Packages` (without the generated contract code), `App`, `scripts`, `mock`, `.github`, the READMEs, AGENTS.md, REVIEW.md, `docs/run-local.md` and `docs/demo.md` finds Lance only as:
+   - the server's own names (the Lance repository, DL1 to DL6, `Lance.User`, the `Lance (Valliance)` registration, the api host and resource group, Lance ADR citations);
+   - the contract's `links.lance` field;
+   - the mock's model of the server;
+   - comments and docs that describe the server;
+   - the old profile name kept as an alias for the migration.
+2. **A saved `lance-dev` opens as `ian-dev`.** `ClientTests`, with scratch defaults, check that:
+   - a saved `lance-dev` opens `ian-dev` and is rewritten once;
+   - the launch argument `-IanEnvironment lance-dev` opens `ian-dev` and is never saved;
+   - the profile switcher refuses `lance-dev`;
+   - `mock`, `ian-dev` and an empty setting are left alone.
+3. **Every check passes** (above).
+4. **`scripts/measure-cpu.sh` passes after the star's drawing change.** Release build against the mock, 30 seconds after a 10-second warm-up, the Mac left alone and its camera free:
+
+   | State | Ian CPU | Target | WindowServer | Average memory | Peak memory | Memory target |
+   |---|---|---|---|---|---|---|
+   | Orbit only, `quiet` | 0.10% | none | 6.58% | 106.2 MB | 106.7 MB | under 150 MB |
+   | Orbit only, `normal` (the star breathing) | 0.13% | under 0.7% | 15.23% | 107.0 MB | 107.3 MB | under 150 MB |
+   | Orbit only, `incident` | 0.10% | under 0.7% | 16.69% | 106.3 MB | 107.3 MB | under 150 MB |
+   | Panel open on Today, `normal` | 7.58% | under 10% | 19.44% | 111.3 MB | 111.8 MB | none |
+
+   Launch to data: Release cold 1.04 s, Release with the panel open 0.37 s, and the Debug build as `dev.sh` makes it 0.54 s, against a target of 10 s. The star's three layers cost nothing measurable beside D9's dot.
+5. **Hand check.** Dom checked against the mock and reported it good, on 21 and 29 October 2026:
+   - the cards read "Open in Ian";
+   - Settings offers "Mock" and "Ian dev";
+   - the header names IAN DEV;
+   - sign-in's message names no Lance;
+   - the star shows off-white at rest and breathing blue in `normal`, with its ring under Reduced motion, and stays legible over a white window.
+
+   The first look found all motion gone: Microsoft Teams held the camera, which suppresses Ian (below).
+
+#### Choices recorded
+
+- **ADR 0023, Ian everywhere.**
+  - **Renamed:**
+    - the profile, now `ian-dev`, shown as "Ian dev";
+    - the build settings, now `IAN_DEV_TENANT_ID`, `IAN_DEV_CLIENT_ID` and `IAN_DEV_SCOPE`;
+    - the Info.plist keys, now `IanDevTenantID`, `IanDevClientID` and `IanDevScope`;
+    - the card link, now "Open in Ian".
+
+    Sign-in messages no longer name Lance.
+  - **Stays Lance:**
+    - the contract's `links.lance` field, because renaming it breaks v1;
+    - the server's own names;
+    - the mock's model of the server;
+    - the docs about the server;
+    - the records: the spec (corrected by erratum E7), the phase log, the plan's earlier entries, ADRs 0001 to 0022 and the design canvas.
+
+    ADR 0023 amends ADR 0003.
+  - **Keychain:** a `lance-dev` token item exists only if a developer filled both sign-in settings and signed in. `docs/run-local.md` gives the command that removes it.
+- **ADR 0024, the Valliance star.**
+  - **Shape:** the Orbit's core is the Valliance star. It is drawn as a vector, four quarter-rings fitted to the symbol PNGs in `assets/` at an intersection over union of 0.995, and it is 18 units across.
+  - **Colour:** off-white at rest, and the working blue while an item is working.
+  - **Breath:** it breathes by `transform.scale` about its centre, still in Core Animation.
+  - **Keyline:** a thin dark keyline keeps it legible over a white window.
+  - **Ring:** under Reduce Motion it sits inside a ring at 13.5 units.
+
+  ADR 0024 amends ADR 0017. The PNGs are kept as the brand source and are not bundled.
+- **The quiet cue.**
+  - **What happened:** during the hand check all motion stopped. The motion log showed the field's clock never starting, and the system's camera log showed Microsoft Teams streaming camera frames. A live camera suppresses Ian (spec 6.5), and suppression stops motion (AGENTS.md rule 7), so this was working as specified, with nothing on screen to say so.
+  - **D9's stall:** the stall D9 recorded was very probably the same thing.
+  - **What changed:** the panel's header and the menu now name the reason ("Quiet while your camera is on", and so on). Each change in suppression is logged with its trigger names. `docs/run-local.md` uses `/usr/bin/log`, because in zsh `log` is a shell builtin.
+- **Contract 1.1.2.** Only the examples change: the placeholder link host is now `ian.example.invalid` in the contract's examples and the mock. The field keeps its name `links.lance`. Dom tags `contract-v1.1.2`.
+- **Erratum E7.** The spec names `lance-dev`, "Lance dev" and "Open in Lance"; the client uses `ian-dev`, "Ian dev" and "Open in Ian". The spec text is unchanged.
+
+#### Reviews and what is left
+
+- **Reviews.**
+  - **Rename review:** an Opus review of the rename found 1 Blocking (this entry), 4 Should fix and 4 Suggestions. Among them were the launch argument untested, a path that could still save `lance-dev`, erratum E7's sections, ADR 0003 not marked amended, and an overstated Keychain claim. All are fixed.
+  - **A badge the tolerance hid:** the same review found that `views.alerts-incident.png` on `main` had lacked the STOP badge since D6, within the 0.998 tolerance. The re-recorded image has it, and the lesson is in `.claude/notes/surface.md`.
+  - **Star review:** an Opus review of the star found 1 Blocking (ADR 0017 out of date, now amended by ADR 0024), 2 Should fix (the breath's pivot untested; this package's done-when) and 2 Suggestions (legibility over white, now the keyline; a hard-coded test constant). All are fixed.
+- **Lessons** in `.claude/notes/surface.md`:
+  - a passing snapshot does not prove a small element is drawn;
+  - a motion stall is suppression until shown otherwise;
+  - read the unified log with `/usr/bin/log`.
+- **Left for a follow-up: the fixtures script is not reproducible.**
+  - `scripts/export-scenario-fixtures.sh` switches the scenario before it sets the clock, and the scenarios seed from the real date. A re-export on another day therefore moves due dates, pressures and horizons, and breaks the Pillars snapshots.
+  - N1 changed the fixtures' host and contract version by text substitution instead.
+  - The script should fix the date before the scenario loads. Until it does, the AGENTS.md gotcha about re-running it is not safe to follow.

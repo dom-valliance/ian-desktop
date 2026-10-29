@@ -345,11 +345,11 @@ struct ProfileSwitchTests {
     ProfileSwitcher(
       choices: [
         ProfileChoice(id: "mock", displayName: "Mock"),
-        ProfileChoice(id: "lance-dev", displayName: "Lance dev"),
+        ProfileChoice(id: "ian-dev", displayName: "Ian dev"),
       ],
       build: { id in
-        id == "lance-dev"
-          ? (.lanceDev(entra: .init(tenantID: "t", clientID: "c", scope: "s")), next) : nil
+        id == "ian-dev"
+          ? (.ianDev(entra: .init(tenantID: "t", clientID: "c", scope: "s")), next) : nil
       },
       remember: { remembered.value = $0 })
   }
@@ -372,12 +372,12 @@ struct ProfileSwitchTests {
     #expect(await waitUntil("first profile live") { store.connection == .live })
     #expect(store.state.items["task_1"] != nil)
 
-    let switched = await store.switchProfile(to: "lance-dev")
+    let switched = await store.switchProfile(to: "ian-dev")
 
     #expect(switched)
     #expect(first.signOuts == 1)
-    #expect(store.profileID == "lance-dev")
-    #expect(remembered.value == "lance-dev")
+    #expect(store.profileID == "ian-dev")
+    #expect(remembered.value == "ian-dev")
     #expect(await waitUntil("second profile live") { store.connection == .live })
     #expect(store.state.items["task_1"] == nil)
     #expect(store.state.items["task_9"] != nil)
@@ -462,20 +462,20 @@ struct StaleCallTests {
       service: first, profile: .mock, appVersion: SemanticVersion("0.1.0")!, clock: ManualClock(),
       jitter: { 1 }, now: { serverNow },
       profileSwitcher: ProfileSwitcher(
-        choices: [ProfileChoice(id: "lance-dev", displayName: "Lance dev")],
+        choices: [ProfileChoice(id: "ian-dev", displayName: "Ian dev")],
         build: { _ in
-          (.lanceDev(entra: .init(tenantID: "t", clientID: "c", scope: "s")), second)
+          (.ianDev(entra: .init(tenantID: "t", clientID: "c", scope: "s")), second)
         },
         remember: { _ in }))
 
     let signIn = Task { await store.signIn() }
     #expect(await waitUntil("the sign-in is open") { first.signIns == 1 })
-    await store.switchProfile(to: "lance-dev")
+    await store.switchProfile(to: "ian-dev")
     await gate.open()
     await signIn.value
 
     #expect(store.phase == .running)
-    #expect(store.profileID == "lance-dev")
+    #expect(store.profileID == "ian-dev")
   }
 
   @Test("drops an agent command's failure after a sign-out, with no notice and no sign-in")
@@ -535,9 +535,9 @@ struct StaleCallTests {
       service: first, profile: .mock, appVersion: SemanticVersion("0.1.0")!, clock: ManualClock(),
       jitter: { 1 }, now: { serverNow },
       profileSwitcher: ProfileSwitcher(
-        choices: [ProfileChoice(id: "lance-dev", displayName: "Lance dev")],
+        choices: [ProfileChoice(id: "ian-dev", displayName: "Ian dev")],
         build: { _ in
-          (.lanceDev(entra: .init(tenantID: "t", clientID: "c", scope: "s")), second)
+          (.ianDev(entra: .init(tenantID: "t", clientID: "c", scope: "s")), second)
         },
         remember: { _ in }))
     store.start()
@@ -546,7 +546,7 @@ struct StaleCallTests {
 
     let handOff = Task { await store.handOff(itemID: "task_1") }
     #expect(await waitUntil("the call is out") { first.handoffCalls.count == 1 })
-    await store.switchProfile(to: "lance-dev")
+    await store.switchProfile(to: "ian-dev")
     await gate.open()
     await handOff.value
 
@@ -568,20 +568,20 @@ struct StaleCallTests {
       service: first, profile: .mock, appVersion: SemanticVersion("0.1.0")!, clock: ManualClock(),
       jitter: { 1 }, now: { serverNow },
       profileSwitcher: ProfileSwitcher(
-        choices: [ProfileChoice(id: "lance-dev", displayName: "Lance dev")],
+        choices: [ProfileChoice(id: "ian-dev", displayName: "Ian dev")],
         build: { _ in
-          (.lanceDev(entra: .init(tenantID: "t", clientID: "c", scope: "s")), second)
+          (.ianDev(entra: .init(tenantID: "t", clientID: "c", scope: "s")), second)
         },
         remember: { _ in }))
 
     let signIn = Task { await store.signIn() }
     #expect(await waitUntil("the sign-in is open") { first.signIns == 1 && store.isSigningIn })
-    await store.switchProfile(to: "lance-dev")
+    await store.switchProfile(to: "ian-dev")
 
     #expect(await waitUntil("the sign-in ends") { !store.isSigningIn })
     await signIn.value
     #expect(await cancelled.value)
-    #expect(store.profileID == "lance-dev")
+    #expect(store.profileID == "ian-dev")
     #expect(store.phase == .running)
     store.stop()
   }
@@ -617,20 +617,21 @@ struct ProfileSwitcherFactoryTests {
   func offersTheProfiles() {
     withScratchDefaults { defaults in
       let switcher = switcher(defaults)
-      #expect(switcher.choices.map(\.id) == ["mock", "lance-dev"])
-      #expect(switcher.build("lance-dev")?.0.name == .lanceDev)
+      #expect(switcher.choices.map(\.id) == ["mock", "ian-dev"])
+      #expect(switcher.build("ian-dev")?.0.name == .ianDev)
       #expect(switcher.build("production") == nil)
+      #expect(switcher.build("lance-dev") == nil)
     }
   }
 
   @Test("saves the choice under IanEnvironment, and a fresh read returns it")
   func choiceSurvivesARelaunch() throws {
     try withScratchDefaults { defaults in
-      switcher(defaults).remember("lance-dev")
+      switcher(defaults).remember("ian-dev")
 
-      #expect(defaults.string(forKey: "IanEnvironment") == "lance-dev")
+      #expect(defaults.string(forKey: "IanEnvironment") == "ian-dev")
       let profile = try EnvironmentProfile.resolve(defaults: defaults, info: [:])
-      #expect(profile.name == .lanceDev)
+      #expect(profile.name == .ianDev)
     }
   }
 }

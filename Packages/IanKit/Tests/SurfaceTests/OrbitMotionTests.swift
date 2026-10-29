@@ -29,7 +29,7 @@ struct OrbitMotionTests {
     return view
   }
 
-  private func animation(of layer: CAShapeLayer?, key: String) throws -> CABasicAnimation {
+  private func animation(of layer: CALayer?, key: String) throws -> CABasicAnimation {
     try #require(layer?.animation(forKey: key) as? CABasicAnimation)
   }
 
@@ -40,29 +40,67 @@ struct OrbitMotionTests {
 
   // MARK: Breath
 
-  @Test("breathes the core between radius 6 and 7 over half the sine's period while working")
+  @Test("breathes the star from 18 to 21 units across over half the sine period")
   func breath() throws {
     let view = motionView(showing: motion(model("normal")))
     let breath = try animation(of: view.coreLayer, key: OrbitMotionView.breathKey)
-    #expect(breath.keyPath == "path")
+    #expect(breath.keyPath == "transform.scale")
     #expect(abs(breath.duration - Double.pi / 1.5) < 1e-9)
     #expect(breath.autoreverses)
     #expect(breath.repeatCount == .infinity)
     #expect(breath.timingFunction == CAMediaTimingFunction(name: .easeInEaseOut))
-    #expect(abs(try bounds(of: breath.fromValue).width - 12) < 1e-6)
-    #expect(abs(try bounds(of: breath.toValue).width - 14) < 1e-6)
+    #expect(breath.fromValue as? Double == 1)
+    let largest = try #require(breath.toValue as? Double)
+    #expect(abs(largest * 18 - 21) < 1e-9)
+    #expect(view.coreFillLayer?.fillColor == OrbitPalette.workingCore.cgColor)
   }
 
-  @Test("draws the core's layer at the renderer's centre and radius")
+  @Test("draws the core's layer as the star at the renderer's centre, 18 units across at rest")
   func coreGeometry() throws {
     let model = model("normal")
     let core = OrbitRenderer.drawing(for: model, time: 0, reducedMotion: true).core
     let view = motionView(showing: motion(model))
-    let box = try bounds(of: try #require(view.coreLayer).path)
+    let box = try bounds(of: try #require(view.coreFillLayer).path)
     #expect(box.midX == OrbitRenderer.centre.x)
     #expect(box.midY == OrbitRenderer.centre.y)
-    #expect(abs(box.width - core.radius * 2) < 1e-6)
-    #expect(view.coreLayer?.fillColor == core.colour.cgColor)
+    #expect(abs(box.width - OrbitRenderer.restingCoreHalfSide * 2) < 1e-6)
+    #expect(abs(box.height - OrbitRenderer.restingCoreHalfSide * 2) < 1e-6)
+    #expect(view.coreFillLayer?.fillColor == core.colour.cgColor)
+  }
+
+  @Test("breathes the star about its own centre, which is the Orbit's centre")
+  func breathPivot() throws {
+    let view = motionView(showing: motion(model("normal")), side: 96)
+    let layer = try #require(view.coreLayer)
+    #expect(layer.anchorPoint == CGPoint(x: 0.5, y: 0.5))
+    #expect(layer.position == OrbitRenderer.centre)
+
+    // At the top of the breath the star, seen in the box, is still centred and 21 units across.
+    layer.transform = CATransform3DMakeScale(
+      OrbitMotionView.largestBreathScale, OrbitMotionView.largestBreathScale, 1)
+    let box = try #require(view.layer?.sublayers?.first)
+    let fill = try #require(view.coreFillLayer)
+    let star = box.convert(try bounds(of: fill.path), from: fill)
+    #expect(abs(star.midX - OrbitRenderer.centre.x) < 1e-6)
+    #expect(abs(star.midY - OrbitRenderer.centre.y) < 1e-6)
+    #expect(abs(star.width - 21) < 1e-6)
+    #expect(abs(star.height - 21) < 1e-6)
+  }
+
+  @Test("strokes the star's keyline beneath its fill in the breathing layer, in the ground colour")
+  func layerKeyline() throws {
+    let view = motionView(showing: motion(model("normal")))
+    let keyline = try #require(view.coreKeylineLayer)
+    let fill = try #require(view.coreFillLayer)
+    #expect(view.coreLayer?.sublayers == [keyline, fill])
+    #expect(keyline.strokeColor == OrbitPalette.ground.cgColor)
+    #expect(keyline.lineWidth == 1.0)
+    #expect(keyline.lineJoin == .round)
+    #expect(keyline.fillColor == nil)
+    #expect(keyline.path == fill.path)
+    // The container breathes, so the keyline and the fill scale together.
+    #expect(keyline.animation(forKey: OrbitMotionView.breathKey) == nil)
+    #expect(view.coreLayer?.animation(forKey: OrbitMotionView.breathKey) != nil)
   }
 
   @Test("breathes nothing when the core is not working")
@@ -228,13 +266,15 @@ struct OrbitMotionTests {
   // MARK: The still pose
 
   /// The Orbit's still pose in a bitmap, with the layered parts left out as `layered` says.
-  private func pixels(of model: OrbitModel, layered: OrbitMotion) throws -> NSBitmapImageRep {
+  private func pixels(
+    of model: OrbitModel, layered: OrbitMotion, backdrop: Color = OrbitPalette.ground.color
+  ) throws -> NSBitmapImageRep {
     let side: CGFloat = 400
     let view = OrbitDrawingView(
       drawing: OrbitRenderer.drawing(for: model, time: 0, reducedMotion: true), layered: layered
     )
     .frame(width: side, height: side)
-    .background(OrbitPalette.ground.color)
+    .background(backdrop)
     let renderer = ImageRenderer(content: view)
     renderer.scale = 1
     let image = try #require(renderer.cgImage)
@@ -255,9 +295,28 @@ struct OrbitMotionTests {
   @Test("leaves the working core out of the still pose only when a layer draws it")
   func stillPoseLeavesLayeredCore() throws {
     let model = model("normal")
-    let core = OrbitRenderer.centre
-    #expect(try !isGround(pixels(of: model, layered: .still), at: core))
-    #expect(try isGround(pixels(of: model, layered: motion(model)), at: core))
+    // The star's centre is a hole, so the point is on its top arm.
+    let arm = CGPoint(x: OrbitRenderer.centre.x, y: OrbitRenderer.centre.y - 6)
+    #expect(try !isGround(pixels(of: model, layered: .still), at: arm))
+    #expect(try isGround(pixels(of: model, layered: motion(model)), at: arm))
+  }
+
+  @Test("outlines the star in the still pose, over a white backdrop, and nothing farther out")
+  func stillPoseKeyline() throws {
+    let model = OrbitModel(working: false)
+    let bitmap = try pixels(of: model, layered: .still, backdrop: .white)
+    let top = OrbitRenderer.centre.y - OrbitRenderer.restingCoreHalfSide
+    func luminance(at y: Double) throws -> Double {
+      let scale = Double(bitmap.pixelsWide) / OrbitRenderer.boxSize
+      let pixel = try #require(
+        bitmap.colorAt(x: Int(OrbitRenderer.centre.x * scale), y: Int(y * scale)))
+      return pixel.brightnessComponent
+    }
+    // The arm's end is at `top`: the fill is within it, the keyline a quarter unit above it, and
+    // the backdrop a unit above it.
+    #expect(try luminance(at: top + 1) > 0.9)
+    #expect(try luminance(at: top - 0.25) < 0.4)
+    #expect(try luminance(at: top - 1) > 0.99)
   }
 
   @Test("leaves each alert's rim out of the still pose only when a layer draws it")

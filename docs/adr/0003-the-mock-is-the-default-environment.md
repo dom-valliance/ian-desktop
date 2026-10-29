@@ -1,7 +1,7 @@
 # 0003. The mock server is the default environment
 
 Date: 2026-10-17
-Status: Accepted
+Status: Accepted, amended by 0023
 
 ## Context
 

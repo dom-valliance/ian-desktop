@@ -55,7 +55,7 @@ struct ClientStatusTests {
 
   @Test("names the environment when the profile is not the mock")
   func namesEnvironment() {
-    #expect(status(environment: "Lance dev").environment == "Lance dev")
+    #expect(status(environment: "Ian dev").environment == "Ian dev")
   }
 
   @Test("shows no age while the connection is live")
@@ -114,7 +114,7 @@ struct ClientStatusTests {
   func noItemText() {
     let titles = TodayScenario.items.flatMap { [$0.title, $0.meta] }
     let lines = [
-      status(environment: "Lance dev", connection: .offline, at: now.addingTimeInterval(90))
+      status(environment: "Ian dev", connection: .offline, at: now.addingTimeInterval(90))
         .dataAge ?? "",
       ClientStatus.Banner.offline.message, ClientStatus.Banner.connecting.message,
     ]

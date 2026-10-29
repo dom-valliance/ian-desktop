@@ -23,6 +23,7 @@ public struct ExpandedClientView: View {
     VStack(spacing: 0) {
       ClientHeader(
         store: store, isTicking: controller?.isExpandedOnScreen ?? false,
+        quietLine: controller?.quietLine,
         close: { controller?.hideExpanded() })
       Divider().overlay(ClientPalette.line)
       GeometryReader { geometry in
@@ -83,12 +84,13 @@ private struct SidebarPane: View {
   }
 }
 
-/// "Ian", the environment when it is not `mock`, the data's age when the connection is not live,
-/// and the banner for offline, sign-in and upgrade states (spec 6.2 and 6.7).
+/// "Ian", the quiet line while suppression holds, the environment when it is not `mock`, the
+/// data's age when the connection is not live, and the banner for offline, sign-in and upgrade states (spec 6.2 and 6.7).
 private struct ClientHeader: View {
   let store: IanStore
   /// The age text changes with time, so it refreshes only while the panel is on screen.
   let isTicking: Bool
+  let quietLine: String?
   let close: () -> Void
 
   var body: some View {
@@ -98,7 +100,7 @@ private struct ClientHeader: View {
           environmentName: store.profile.isMock ? nil : store.profile.displayName,
           phase: store.phase, connection: store.connection, lastUpdatedAt: store.lastUpdatedAt,
           isSigningIn: store.isSigningIn, now: timeline.date),
-        signIn: { Task { await store.signIn() } }, close: close)
+        quietLine: quietLine, signIn: { Task { await store.signIn() } }, close: close)
     }
   }
 }
@@ -107,6 +109,8 @@ private struct ClientHeader: View {
 /// no clock, so a snapshot draws it from a status built at a fixed time.
 struct ClientHeaderBar: View {
   let status: ClientStatus
+  /// Why Ian is quiet while suppression holds. It names the reason and never an item.
+  var quietLine: String?
   let signIn: () -> Void
   let close: () -> Void
 
@@ -115,6 +119,13 @@ struct ClientHeaderBar: View {
       HStack(spacing: 16) {
         Text("Ian")
           .font(.system(size: 18, weight: .medium))
+        if let quietLine {
+          Text(quietLine)
+            .font(.system(size: 13))
+            .foregroundStyle(ClientPalette.secondary())
+            .lineLimit(1)
+            .layoutPriority(1)
+        }
         Spacer()
         if let environment = status.environment {
           Text(environment.uppercased())

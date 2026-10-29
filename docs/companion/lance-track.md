@@ -1,6 +1,6 @@
 # Companion track in Lance
 
-What Lance must build before the `lance-dev` profile works, from spec section 9, with the gaps found while preparing this repository. This work runs in a Lance session, on a Lance branch, under Lance's `AGENTS.md`; nothing here is changed from this repository. Lance's pointer back to this file is `docs/plans/desktop.md` in Lance.
+What Lance must build before the `ian-dev` profile works, from spec section 9, with the gaps found while preparing this repository. This work runs in a Lance session, on a Lance branch, under Lance's `AGENTS.md`; nothing here is changed from this repository. Lance's pointer back to this file is `docs/plans/desktop.md` in Lance.
 
 Every package lands behind `FF_DESKTOP_API`, default off.
 
@@ -15,7 +15,7 @@ Every package lands behind `FF_DESKTOP_API`, default off.
 
 ## Gaps to close in DL1
 
-**The Lance api exposes no scope.** The `Lance (Valliance)` registration has web redirect URIs and Graph permissions only, and the api accepts bearer tokens whose audience is the Lance client id (`apps/api/src/auth/entra.ts`). The desktop client needs a delegated scope to request. DL1 adds one under Expose an API, then checks `requestedAccessTokenVersion` in the registration's manifest: at 2, a token for the new scope carries the Lance client id as its audience and the existing check accepts it; at 1 or unset, it carries the Application ID URI, and the api must accept that audience and the matching issuer as well. Record the scope string in Lance's Entra runbook and in this repository's `lance-dev` profile configuration.
+**The Lance api exposes no scope.** The `Lance (Valliance)` registration has web redirect URIs and Graph permissions only, and the api accepts bearer tokens whose audience is the Lance client id (`apps/api/src/auth/entra.ts`). The desktop client needs a delegated scope to request. DL1 adds one under Expose an API, then checks `requestedAccessTokenVersion` in the registration's manifest: at 2, a token for the new scope carries the Lance client id as its audience and the existing check accepts it; at 1 or unset, it carries the Application ID URI, and the api must accept that audience and the matching issuer as well. Record the scope string in Lance's Entra runbook and in this repository's `ian-dev` profile configuration.
 
 **The public client does not exist.** Register `Ian Desktop (dev)`: single tenant, platform "Mobile and desktop applications", redirect `http://localhost` (Entra matches loopback redirects on any port for public clients), "Allow public client flows" off because device code is not used, delegated permission on the new Lance scope with admin consent. Users still need the `Lance.User` role on the Lance enterprise application, which the api already checks. Add both to Lance's `docs/runbooks/entra-setup.md` and its known-values table, and read the ids from the CLI rather than asking Dom (a Lance lesson).
 

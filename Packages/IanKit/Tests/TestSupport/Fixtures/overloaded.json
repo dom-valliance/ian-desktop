@@ -550,7 +550,7 @@
         "toConfirm": false
       },
       "links": {
-        "lance": "https://lance.example.invalid/commitments/cmt_01MOCK000000000007",
+        "lance": "https://ian.example.invalid/commitments/cmt_01MOCK000000000007",
         "source": null
       }
     },
@@ -616,7 +616,7 @@
         "toConfirm": false
       },
       "links": {
-        "lance": "https://lance.example.invalid/commitments/cmt_01MOCK000000000106",
+        "lance": "https://ian.example.invalid/commitments/cmt_01MOCK000000000106",
         "source": null
       }
     },
@@ -667,7 +667,7 @@
         }
       },
       "links": {
-        "lance": "https://lance.example.invalid/proposals/prop_01MOCK000000000001",
+        "lance": "https://ian.example.invalid/proposals/prop_01MOCK000000000001",
         "source": null
       }
     },
@@ -718,7 +718,7 @@
         }
       },
       "links": {
-        "lance": "https://lance.example.invalid/proposals/prop_01MOCK000000000002",
+        "lance": "https://ian.example.invalid/proposals/prop_01MOCK000000000002",
         "source": null
       }
     },
@@ -769,7 +769,7 @@
         }
       },
       "links": {
-        "lance": "https://lance.example.invalid/proposals/prop_01MOCK000000000003",
+        "lance": "https://ian.example.invalid/proposals/prop_01MOCK000000000003",
         "source": null
       }
     },
@@ -835,7 +835,7 @@
         "toConfirm": false
       },
       "links": {
-        "lance": "https://lance.example.invalid/commitments/cmt_01MOCK000000000001",
+        "lance": "https://ian.example.invalid/commitments/cmt_01MOCK000000000001",
         "source": null
       }
     },
@@ -901,7 +901,7 @@
         "toConfirm": false
       },
       "links": {
-        "lance": "https://lance.example.invalid/commitments/cmt_01MOCK000000000102",
+        "lance": "https://ian.example.invalid/commitments/cmt_01MOCK000000000102",
         "source": null
       }
     },
@@ -948,7 +948,7 @@
         "expiresAt": "2026-10-16T14:30:00.000Z"
       },
       "links": {
-        "lance": "https://lance.example.invalid/proposals/prop_01MOCK000000000004",
+        "lance": "https://ian.example.invalid/proposals/prop_01MOCK000000000004",
         "source": null
       }
     },
@@ -1014,7 +1014,7 @@
         "toConfirm": false
       },
       "links": {
-        "lance": "https://lance.example.invalid/commitments/cmt_01MOCK000000000002",
+        "lance": "https://ian.example.invalid/commitments/cmt_01MOCK000000000002",
         "source": null
       }
     },
@@ -1053,7 +1053,7 @@
         "project": "Steering group"
       },
       "links": {
-        "lance": "https://lance.example.invalid/tasks/task_notion_01MOCK000000000001",
+        "lance": "https://ian.example.invalid/tasks/task_notion_01MOCK000000000001",
         "source": "https://notion.example.invalid/task_notion_01MOCK000000000001"
       }
     },
@@ -1104,7 +1104,7 @@
         }
       },
       "links": {
-        "lance": "https://lance.example.invalid/proposals/prop_01MOCK000000000005",
+        "lance": "https://ian.example.invalid/proposals/prop_01MOCK000000000005",
         "source": null
       }
     },
@@ -1149,7 +1149,7 @@
         "explanation": "The mail watcher took three times its usual time on the last run."
       },
       "links": {
-        "lance": "https://lance.example.invalid/alerts/alrt_01MOCK000000000001",
+        "lance": "https://ian.example.invalid/alerts/alrt_01MOCK000000000001",
         "source": null
       },
       "severity": "P2"
@@ -1195,7 +1195,7 @@
         "explanation": "Agents have used most of the daily ceiling before midday."
       },
       "links": {
-        "lance": "https://lance.example.invalid/alerts/alrt_01MOCK000000000003",
+        "lance": "https://ian.example.invalid/alerts/alrt_01MOCK000000000003",
         "source": null
       },
       "severity": "P2"
@@ -1235,7 +1235,7 @@
         "project": null
       },
       "links": {
-        "lance": "https://lance.example.invalid/tasks/task_notion_01MOCK000000000002",
+        "lance": "https://ian.example.invalid/tasks/task_notion_01MOCK000000000002",
         "source": "https://notion.example.invalid/task_notion_01MOCK000000000002"
       }
     },
@@ -1282,7 +1282,7 @@
         "expiresAt": "2026-10-17T11:30:00.000Z"
       },
       "links": {
-        "lance": "https://lance.example.invalid/proposals/prop_01MOCK000000000006",
+        "lance": "https://ian.example.invalid/proposals/prop_01MOCK000000000006",
         "source": null
       }
     },
@@ -1348,7 +1348,7 @@
         "toConfirm": false
       },
       "links": {
-        "lance": "https://lance.example.invalid/commitments/cmt_01MOCK000000000103",
+        "lance": "https://ian.example.invalid/commitments/cmt_01MOCK000000000103",
         "source": null
       }
     },
@@ -1387,7 +1387,7 @@
         "project": "Pilot"
       },
       "links": {
-        "lance": "https://lance.example.invalid/tasks/task_notion_01MOCK000000000011",
+        "lance": "https://ian.example.invalid/tasks/task_notion_01MOCK000000000011",
         "source": "https://notion.example.invalid/task_notion_01MOCK000000000011"
       }
     },
@@ -1453,7 +1453,7 @@
         "toConfirm": false
       },
       "links": {
-        "lance": "https://lance.example.invalid/commitments/cmt_01MOCK000000000003",
+        "lance": "https://ian.example.invalid/commitments/cmt_01MOCK000000000003",
         "source": null
       }
     },
@@ -1504,7 +1504,7 @@
         }
       },
       "links": {
-        "lance": "https://lance.example.invalid/proposals/prop_01MOCK000000000007",
+        "lance": "https://ian.example.invalid/proposals/prop_01MOCK000000000007",
         "source": null
       }
     },
@@ -1551,7 +1551,7 @@
         "expiresAt": "2026-10-18T09:30:00.000Z"
       },
       "links": {
-        "lance": "https://lance.example.invalid/proposals/prop_01MOCK000000000008",
+        "lance": "https://ian.example.invalid/proposals/prop_01MOCK000000000008",
         "source": null
       }
     },
@@ -1590,7 +1590,7 @@
         "project": null
       },
       "links": {
-        "lance": "https://lance.example.invalid/tasks/task_notion_01MOCK000000000004",
+        "lance": "https://ian.example.invalid/tasks/task_notion_01MOCK000000000004",
         "source": "https://notion.example.invalid/task_notion_01MOCK000000000004"
       }
     },
@@ -1656,7 +1656,7 @@
         "toConfirm": false
       },
       "links": {
-        "lance": "https://lance.example.invalid/commitments/cmt_01MOCK000000000004",
+        "lance": "https://ian.example.invalid/commitments/cmt_01MOCK000000000004",
         "source": null
       }
     },
@@ -1715,7 +1715,7 @@
         "toConfirm": true
       },
       "links": {
-        "lance": "https://lance.example.invalid/commitments/cmt_01MOCK000000000201",
+        "lance": "https://ian.example.invalid/commitments/cmt_01MOCK000000000201",
         "source": null
       }
     },
@@ -1760,7 +1760,7 @@
         "explanation": "The calendar connector will need a new token before Thursday."
       },
       "links": {
-        "lance": "https://lance.example.invalid/alerts/alrt_01MOCK000000000002",
+        "lance": "https://ian.example.invalid/alerts/alrt_01MOCK000000000002",
         "source": null
       },
       "severity": "P3"
@@ -1806,7 +1806,7 @@
         "explanation": "The calendar sync caught up without losing any events."
       },
       "links": {
-        "lance": "https://lance.example.invalid/alerts/alrt_01MOCK000000000004",
+        "lance": "https://ian.example.invalid/alerts/alrt_01MOCK000000000004",
         "source": null
       },
       "severity": "P3"
@@ -1873,7 +1873,7 @@
         "toConfirm": false
       },
       "links": {
-        "lance": "https://lance.example.invalid/commitments/cmt_01MOCK000000000101",
+        "lance": "https://ian.example.invalid/commitments/cmt_01MOCK000000000101",
         "source": null
       }
     },
@@ -1924,7 +1924,7 @@
         }
       },
       "links": {
-        "lance": "https://lance.example.invalid/proposals/prop_01MOCK000000000009",
+        "lance": "https://ian.example.invalid/proposals/prop_01MOCK000000000009",
         "source": null
       }
     },
@@ -1990,7 +1990,7 @@
         "toConfirm": false
       },
       "links": {
-        "lance": "https://lance.example.invalid/commitments/cmt_01MOCK000000000005",
+        "lance": "https://ian.example.invalid/commitments/cmt_01MOCK000000000005",
         "source": null
       }
     },
@@ -2049,7 +2049,7 @@
         "toConfirm": true
       },
       "links": {
-        "lance": "https://lance.example.invalid/commitments/cmt_01MOCK000000000203",
+        "lance": "https://ian.example.invalid/commitments/cmt_01MOCK000000000203",
         "source": null
       }
     },
@@ -2088,7 +2088,7 @@
         "project": "Training"
       },
       "links": {
-        "lance": "https://lance.example.invalid/tasks/task_notion_01MOCK000000000014",
+        "lance": "https://ian.example.invalid/tasks/task_notion_01MOCK000000000014",
         "source": "https://notion.example.invalid/task_notion_01MOCK000000000014"
       }
     },
@@ -2154,7 +2154,7 @@
         "toConfirm": false
       },
       "links": {
-        "lance": "https://lance.example.invalid/commitments/cmt_01MOCK000000000104",
+        "lance": "https://ian.example.invalid/commitments/cmt_01MOCK000000000104",
         "source": null
       }
     },
@@ -2193,7 +2193,7 @@
         "project": "Workshop"
       },
       "links": {
-        "lance": "https://lance.example.invalid/tasks/task_jamie_01MOCK000000000005",
+        "lance": "https://ian.example.invalid/tasks/task_jamie_01MOCK000000000005",
         "source": "https://jamie.example.invalid/task_jamie_01MOCK000000000005"
       }
     },
@@ -2259,7 +2259,7 @@
         "toConfirm": false
       },
       "links": {
-        "lance": "https://lance.example.invalid/commitments/cmt_01MOCK000000000006",
+        "lance": "https://ian.example.invalid/commitments/cmt_01MOCK000000000006",
         "source": null
       }
     },
@@ -2298,7 +2298,7 @@
         "project": null
       },
       "links": {
-        "lance": "https://lance.example.invalid/tasks/task_notion_01MOCK000000000006",
+        "lance": "https://ian.example.invalid/tasks/task_notion_01MOCK000000000006",
         "source": "https://notion.example.invalid/task_notion_01MOCK000000000006"
       }
     },
@@ -2364,7 +2364,7 @@
         "toConfirm": false
       },
       "links": {
-        "lance": "https://lance.example.invalid/commitments/cmt_01MOCK000000000105",
+        "lance": "https://ian.example.invalid/commitments/cmt_01MOCK000000000105",
         "source": null
       }
     },
@@ -2403,7 +2403,7 @@
         "project": "Hiring"
       },
       "links": {
-        "lance": "https://lance.example.invalid/tasks/task_notion_01MOCK000000000008",
+        "lance": "https://ian.example.invalid/tasks/task_notion_01MOCK000000000008",
         "source": "https://notion.example.invalid/task_notion_01MOCK000000000008"
       }
     },
@@ -2469,7 +2469,7 @@
         "toConfirm": false
       },
       "links": {
-        "lance": "https://lance.example.invalid/commitments/cmt_01MOCK000000000008",
+        "lance": "https://ian.example.invalid/commitments/cmt_01MOCK000000000008",
         "source": null
       }
     },
@@ -2528,7 +2528,7 @@
         "toConfirm": true
       },
       "links": {
-        "lance": "https://lance.example.invalid/commitments/cmt_01MOCK000000000202",
+        "lance": "https://ian.example.invalid/commitments/cmt_01MOCK000000000202",
         "source": null
       }
     },
@@ -2567,7 +2567,7 @@
         "project": "Pilot"
       },
       "links": {
-        "lance": "https://lance.example.invalid/tasks/task_jamie_01MOCK000000000003",
+        "lance": "https://ian.example.invalid/tasks/task_jamie_01MOCK000000000003",
         "source": "https://jamie.example.invalid/task_jamie_01MOCK000000000003"
       }
     },
@@ -2606,7 +2606,7 @@
         "project": null
       },
       "links": {
-        "lance": "https://lance.example.invalid/tasks/task_notion_01MOCK000000000007",
+        "lance": "https://ian.example.invalid/tasks/task_notion_01MOCK000000000007",
         "source": "https://notion.example.invalid/task_notion_01MOCK000000000007"
       }
     },
@@ -2645,7 +2645,7 @@
         "project": null
       },
       "links": {
-        "lance": "https://lance.example.invalid/tasks/task_notion_01MOCK000000000009",
+        "lance": "https://ian.example.invalid/tasks/task_notion_01MOCK000000000009",
         "source": "https://notion.example.invalid/task_notion_01MOCK000000000009"
       }
     },
@@ -2684,7 +2684,7 @@
         "project": null
       },
       "links": {
-        "lance": "https://lance.example.invalid/tasks/task_notion_01MOCK000000000013",
+        "lance": "https://ian.example.invalid/tasks/task_notion_01MOCK000000000013",
         "source": "https://notion.example.invalid/task_notion_01MOCK000000000013"
       }
     },
@@ -2723,7 +2723,7 @@
         "project": "Quarterly review"
       },
       "links": {
-        "lance": "https://lance.example.invalid/tasks/task_jamie_01MOCK000000000010",
+        "lance": "https://ian.example.invalid/tasks/task_jamie_01MOCK000000000010",
         "source": "https://jamie.example.invalid/task_jamie_01MOCK000000000010"
       }
     },
@@ -2789,7 +2789,7 @@
         "toConfirm": false
       },
       "links": {
-        "lance": "https://lance.example.invalid/commitments/cmt_01MOCK000000000107",
+        "lance": "https://ian.example.invalid/commitments/cmt_01MOCK000000000107",
         "source": null
       }
     },
@@ -2828,7 +2828,7 @@
         "project": null
       },
       "links": {
-        "lance": "https://lance.example.invalid/tasks/task_jamie_01MOCK000000000012",
+        "lance": "https://ian.example.invalid/tasks/task_jamie_01MOCK000000000012",
         "source": "https://jamie.example.invalid/task_jamie_01MOCK000000000012"
       }
     }
@@ -2840,7 +2840,7 @@
     "mode": "dry_run",
     "timeZone": "Europe/London",
     "minClientVersion": "0.1.0",
-    "contractVersion": "1.1.1",
+    "contractVersion": "1.1.2",
     "capabilities": {
       "handoff": true
     },

@@ -82,6 +82,17 @@ struct OrbitStateSnapshotTests {
     check(state.model, reducedMotion: true, named: state.rawValue)
   }
 
+  /// The Orbit has no backdrop of its own, so the resting star's keyline (ADR 0024) is what keeps
+  /// it legible over a white window.
+  @Test("matches the reference over a white backdrop")
+  func overWhite() {
+    assertSnapshot(
+      of: OrbitImage.of(
+        Still.loadAtMedian.model, time: Self.time, reducedMotion: true, backdrop: .white),
+      as: .image(precision: 0.9995, perceptualPrecision: 0.98), named: "star-on-white",
+      testName: "orbit")
+  }
+
   @Test("draws a state with nothing moving identically with motion on and off")
   func stillIsIndependentOfMotion() {
     for state in Still.allCases {

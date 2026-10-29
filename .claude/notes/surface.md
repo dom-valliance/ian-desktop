@@ -36,3 +36,17 @@ Append-only. Lessons about the window model, SwiftUI hosting in AppKit panels, p
 **Correction**: Dom reported the stall and that none of the suspected triggers reproduced it.
 **Rule**: State that decides whether something moves or shows (the field's clock, the panel's on-screen state, suppression) logs each change at `.notice` with its inputs as public booleans and no item content, so a stall leaves evidence. When a field or the Orbit stops moving, read `log show --predicate 'subsystem == "ai.valliance.ian.desktop" AND category == "motion"'` before guessing at a cause.
 **Applies to**: Surface, Features
+
+### [2026-10-21] A passing snapshot does not prove a small element is drawn
+
+**Context**: D6 added an URGENT or STOP badge beside a card's kicker and re-recorded only the Proposals snapshot. `views.alerts-incident.png` kept no STOP badge on its P0 card and still passed for two packages, until N1 re-recorded it for a text change.
+**Correction**: N1's review diffed the old and new images and found the badge, 842 pixels, inside the tolerance: `precision: 0.998` on 640 by 720 points allows about 900 differing pixels.
+**Rule**: When a change adds, removes or restyles a small element (a badge, a ring, a tag), re-record every snapshot that shows it and look at each image; never take a passing snapshot as proof that a small element is drawn. Say in the commit which elements changed besides text.
+**Applies to**: Features and Surface snapshot tests
+
+### [2026-10-21] A motion stall is suppression until shown otherwise
+
+**Context**: Dom found all motion gone, the Orbit and the field, across relaunches, Reduce Motion and "Pause me". The motion log showed the panel on screen and visible but the field's clock never starting, and the system's camera log showed Microsoft Teams streaming camera frames: a live camera is a suppression trigger, and rule 7 stops motion while suppressed. Nothing on screen said Ian was quiet, and nothing logged the suppression, so it looked like a rendering bug.
+**Correction**: Dom reported the loss of motion; the cause was Teams holding the camera, not the drawing.
+**Rule**: When motion stops, first check suppression (a camera in use by any app, `today.context`, quiet hours, "Pause me") before suspecting rendering; Ian names the reason in the panel's header and the menu and logs each change in suppression. Read the log with `/usr/bin/log show`, never a bare `log`: in zsh `log` is a shell builtin that prints nothing.
+**Applies to**: Surface, Features, Attention, and any diagnosis from the unified log

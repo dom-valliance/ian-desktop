@@ -10,12 +10,22 @@ public struct OrbitDrawing: Equatable, Sendable {
   }
 
   public struct Core: Equatable, Sendable {
-    public let radius: Double
+    /// Half the star's side: the distance from the centre to the end of each arm (`StarShape`).
+    public let halfSide: Double
     public let colour: OrbitColour
+    /// The dark outline round the star's edge and its hole, stroked beneath the fill (ADR 0024).
+    public let keyline: Keyline
     /// The radius of a still ring round a working core, drawn whenever the breath is held still:
     /// under Reduce Motion, and for the still pose an Orbit shows while it is suppressed or
     /// occluded with motion on. A working core is then not marked by colour alone (spec 6.8).
     public let ring: Double?
+  }
+
+  public struct Keyline: Equatable, Sendable {
+    /// The stroke's width, centred on the star's edge. Half of it lies under the fill, so half
+    /// of it shows.
+    public let width: Double
+    public let colour: OrbitColour
   }
 
   public struct Rim: Equatable, Sendable {
@@ -59,13 +69,23 @@ public enum OrbitRenderer {
   /// radians a second. Core Animation reads the same rates for the live layers (ADR 0017).
   static let breathRate = 1.5
   static let pulseRate = 5.0
-  /// The breath adds up to this much to the core's radius.
-  static let breathRange = 1.0
+  /// The breath adds up to this much to the star's half side: a sixth of its resting size, the
+  /// proportion the circle it replaced grew by (1 in 6).
+  static let breathRange = 1.5
   /// The rim's opacity runs from this to 1 as the pulse runs from 0 to 1.
   static let rimMinimumAlpha = 0.5
-  static let restingCoreRadius = 6.0
-  /// The still ring round a working core, a little outside the breath's largest radius.
-  static let workingRingRadius = 10.0
+  /// How much of the star's keyline shows outside its edge, in units of the 100 unit box: about
+  /// half a point at 96 points (ADR 0024).
+  static let keylineVisibleWidth = 0.5
+  /// The keyline is stroked at twice the width that shows, beneath the fill, so the star's shape
+  /// and size are unchanged.
+  static let keylineStrokeWidth = 2 * keylineVisibleWidth
+  /// The star is 18 units square at rest, 1.5 times the 12 unit dot it replaced.
+  static let restingCoreHalfSide = 9.0
+  /// The clear gap between the end of a star's arm, at the breath's largest, and the still ring.
+  static let workingRingGap = 3.0
+  /// The still ring round a working core, `workingRingGap` outside the arms at their longest.
+  static let workingRingRadius = restingCoreHalfSide + breathRange + workingRingGap
   static let workingRingWidth = 1.5
   static let satelliteRadius = 4.5
   static let alertRadius = 6.5
@@ -108,12 +128,15 @@ public enum OrbitRenderer {
     let inner = loadFraction(load: model.load, median: model.median)
     let outer = overMedianFraction(load: model.load, median: model.median)
 
+    let keyline = OrbitDrawing.Keyline(width: keylineStrokeWidth, colour: OrbitPalette.keyline)
     let core =
       model.working
       ? OrbitDrawing.Core(
-        radius: restingCoreRadius + breathRange * breath, colour: OrbitPalette.workingCore,
-        ring: reducedMotion ? workingRingRadius : nil)
-      : OrbitDrawing.Core(radius: restingCoreRadius, colour: OrbitPalette.restingCore, ring: nil)
+        halfSide: restingCoreHalfSide + breathRange * breath, colour: OrbitPalette.workingCore,
+        keyline: keyline, ring: reducedMotion ? workingRingRadius : nil)
+      : OrbitDrawing.Core(
+        halfSide: restingCoreHalfSide, colour: OrbitPalette.restingCore, keyline: keyline,
+        ring: nil)
 
     let satellites = model.satellites.compactMap { satellite -> OrbitDrawing.Satellite? in
       guard satellite.slot < satelliteAngles.count else { return nil }
